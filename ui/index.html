@@ -3,33 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="TruthBeacon: Desktop Identity Ground-Truth & Impersonation Prevention Console by Orange Heart Industries">
-  <title>TruthBeacon — Identity Ground-Truth Console</title>
+  <meta name="description" content="TruthBeacon: Authentic Identity Ground-Truth, Canonical Benchmarking & Impersonation Adjudication Console by Orange Heart Industries">
+  <title>TruthBeacon — Identity Ground-Truth &amp; Kinship Stewardship Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <!-- Global Status Header -->
+  <!-- Persistent Global Status Header (7.2 Specification) -->
   <header class="global-header" id="app-header">
     <div class="brand-section">
       <img src="assets/logo.svg" alt="TruthBeacon Emblem" class="brand-logo" id="header-logo">
       <div class="brand-title-group">
         <h1 id="main-heading">TruthBeacon <span class="brand-badge">OH-Industries</span></h1>
-        <p class="brand-subtitle">Identity Ground-Truth &amp; Impersonation Prevention</p>
+        <p class="brand-subtitle">Authentic Identity Ground-Truth &amp; Kinship Stewardship</p>
       </div>
     </div>
 
-    <div class="header-status-indicators" id="header-status-bar">
-      <div class="status-pill" id="status-daemon">
-        <span class="status-dot" id="dot-daemon"></span>
-        <span>Local Engine: <strong>Active</strong></span>
+    <!-- Status Indicators: Daemon Health, Gateway Latency, Circuit Breaker State -->
+    <div class="header-status-indicators" id="header-status-bar" role="region" aria-label="System Health and Status">
+      <div class="status-pill" id="status-daemon" title="Local engine health and SQLite WAL storage state">
+        <span class="status-dot pulse" id="dot-daemon"></span>
+        <span>Local Engine: <strong id="daemon-health-text">Healthy (WAL)</strong></span>
       </div>
-      <div class="status-pill" id="status-gateway">
+      <div class="status-pill" id="status-gateway" title="Discord Gateway WebSocket roundtrip latency">
         <span class="status-dot" id="dot-gateway"></span>
-        <span>Gateway v10: <strong>Listening</strong></span>
+        <span>Gateway v10: <strong id="gateway-latency">24ms</strong></span>
       </div>
-      <div class="status-pill" id="status-circuit">
+      <div class="status-pill" id="status-circuit" title="Safety circuit breaker against rapid automated actions">
         <span class="status-dot" id="dot-circuit"></span>
-        <span id="circuit-status-text">Circuit: <strong>Arm Ready</strong></span>
+        <span id="circuit-status-text">Circuit: <strong>Armed (Nominal)</strong></span>
+      </div>
+      <div class="status-pill status-pill-sovereignty" title="Local data sovereignty guarantee: Zero telemetry and zero cloud egress.">
+        <span>Sovereignty: <strong>Local Only</strong></span>
       </div>
     </div>
   </header>
@@ -37,60 +44,65 @@
   <!-- Navigation Tab Strip -->
   <nav class="nav-tab-strip" id="nav-tabs" aria-label="Main Navigation">
     <button class="nav-tab active" id="tab-btn-triage" data-tab="triage">
-      <span>Triage Feed</span>
+      <span>Adjudication Feed</span>
       <span class="tab-counter" id="counter-incidents">2</span>
     </button>
     <button class="nav-tab" id="tab-btn-vault" data-tab="vault">
-      <span>Benchmark Vault</span>
-      <span style="font-size: 0.72rem; color: var(--text-muted);" id="counter-vault">(3)</span>
+      <span>Canonical Benchmarks</span>
+      <span style="font-size: 0.74rem; color: var(--text-muted);" id="counter-vault">(3)</span>
     </button>
     <button class="nav-tab" id="tab-btn-sandbox" data-tab="sandbox">
-      <span>Simulator Sandbox</span>
+      <span>Heuristic Simulator</span>
     </button>
     <button class="nav-tab" id="tab-btn-audit" data-tab="audit">
-      <span>Audit Trail</span>
+      <span>Stewardship Ledger</span>
     </button>
     <button class="nav-tab" id="tab-btn-sovereignty" data-tab="sovereignty">
-      <span>Data Sovereignty &amp; Privacy</span>
+      <span>Data Sovereignty &amp; Local Storage</span>
     </button>
   </nav>
 
   <!-- Main Viewport -->
   <main class="main-viewport" id="main-content">
-    <!-- Circuit Breaker Warning (Hidden by default, shown when tripped) -->
-    <div class="circuit-breaker-banner" id="circuit-breaker-alert" style="display: none;">
+    <!-- Circuit Breaker Safety Banner (Shown when tripped) -->
+    <div class="circuit-breaker-banner" id="circuit-breaker-alert" style="display: none;" role="alert">
       <div>
-        <strong style="color: #f87171;">Automatic Safety Brake Tripped</strong>
-        <p style="font-size: 0.8rem; color: var(--text-secondary);">Outbound mitigations exceeded safety threshold. Actions require manual confirmation.</p>
+        <strong style="color: #f87171; font-size: 0.95rem;">Circuit Breaker Active (Rate Escrow)</strong>
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px;">
+          Outbound adjudications exceeded the 5 actions / 60s sliding window safety ceiling. Actions paused for operator review.
+        </p>
       </div>
-      <button class="btn btn-dismiss" id="btn-reset-circuit">Reset Safety Brake</button>
+      <button class="btn btn-dismiss" id="btn-reset-circuit">Reset Safety Escrow</button>
     </div>
 
-    <!-- TAB 1: TRIAGE FEED -->
+    <!-- TAB 1: ADJUDICATION FEED (7.2 Comparative Inspection Cards) -->
     <section class="tab-pane active" id="pane-triage" aria-labelledby="tab-btn-triage">
       <div class="triage-header-bar">
         <div>
-          <h2 class="section-title">Active Discrepancy Triage</h2>
+          <h2 class="section-title">Ground-Truth Adjudication Queue</h2>
           <p class="section-caption">Real-time incoming member evaluations requiring operator adjudication</p>
         </div>
-        <div style="font-size: 0.8rem; color: var(--text-secondary);">
-          Connected Guild: <strong id="current-guild-name" style="color: var(--text-primary);">Crossroads Community Sanctuary</strong>
+        <div style="font-size: 0.82rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+          <span>Connected Sanctuary:</span>
+          <strong id="current-guild-name" style="color: var(--text-primary); background: rgba(30, 41, 59, 0.6); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            Crossroads Community Sanctuary
+          </strong>
         </div>
       </div>
 
-      <div class="triage-list" id="triage-cards-container">
-        <!-- Rendered dynamically by app.js -->
+      <div class="triage-list" id="triage-cards-container" aria-live="polite">
+        <!-- Rendered dynamically by app.js (Benchmark Pod, Center Metric Pillar, Suspect Pod, Action Bar) -->
       </div>
     </section>
 
-    <!-- TAB 2: BENCHMARK VAULT -->
+    <!-- TAB 2: CANONICAL BENCHMARKS -->
     <section class="tab-pane" id="pane-vault" aria-labelledby="tab-btn-vault">
       <div class="triage-header-bar">
         <div>
           <h2 class="section-title">Canonical Benchmark Vault</h2>
           <p class="section-caption">Protected ground-truth identities and official verified community representations</p>
         </div>
-        <button class="btn btn-ban-purge" id="btn-add-benchmark">+ New Benchmark Profile</button>
+        <button class="btn btn-primary" id="btn-add-benchmark">+ Enroll Canonical Benchmark</button>
       </div>
 
       <div class="grid-vault" id="vault-cards-container">
@@ -98,52 +110,58 @@
       </div>
     </section>
 
-    <!-- TAB 3: SIMULATOR SANDBOX -->
+    <!-- TAB 3: HEURISTIC SIMULATOR -->
     <section class="tab-pane" id="pane-sandbox" aria-labelledby="tab-btn-sandbox">
       <div class="triage-header-bar">
         <div>
-          <h2 class="section-title">Evaluation Sandbox Simulator</h2>
-          <p class="section-caption">Test Unicode homoglyphs, invisible spacing, and character metric sensitivity</p>
+          <h2 class="section-title">Heuristic Evaluation Simulator</h2>
+          <p class="section-caption">Evaluate Unicode homoglyphs, zero-width characters, and composite metric sensitivity</p>
         </div>
       </div>
 
-      <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 24px; max-width: 720px;">
-        <div style="display: flex; flex-direction: column; gap: 16px;">
-          <div>
-            <label for="sim-input-candidate" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px;">Simulated Lookalike Candidate Input</label>
-            <input type="text" id="sim-input-candidate" value="DanШard" style="width: 100%; padding: 10px 14px; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.95rem;">
+      <div style="background: var(--bg-card-glass); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 26px; max-width: 760px; box-shadow: var(--shadow-card);">
+        <div style="display: flex; flex-direction: column; gap: 18px;">
+          <div class="form-group">
+            <label for="sim-input-candidate" class="form-label">
+              Simulated Candidate Input
+              <span class="form-label-hint">Test Cyrillic lookalikes (e.g. DanШard), spacing tricks, or typosquats</span>
+            </label>
+            <input type="text" id="sim-input-candidate" value="DanШard" class="form-input">
           </div>
-          <div>
-            <label for="sim-input-benchmark" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px;">Canonical Benchmark Target Name</label>
-            <input type="text" id="sim-input-benchmark" value="DanWard" style="width: 100%; padding: 10px 14px; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.95rem;">
+          <div class="form-group">
+            <label for="sim-input-benchmark" class="form-label">
+              Target Canonical Benchmark
+              <span class="form-label-hint">Official authentic username to evaluate against</span>
+            </label>
+            <input type="text" id="sim-input-benchmark" value="DanWard" class="form-input">
           </div>
-          <button class="btn btn-ban-purge" id="btn-run-simulation" style="align-self: flex-start;">Run Evaluation Pipeline</button>
+          <button class="btn btn-primary" id="btn-run-simulation" style="align-self: flex-start;">Run Evaluation Pipeline</button>
 
-          <div id="sim-results" style="margin-top: 12px; padding: 16px; background: rgba(15, 23, 42, 0.5); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); font-size: 0.85rem;">
-            Click "Run Evaluation Pipeline" to test compatibility decomposition and string metrics.
+          <div id="sim-results" style="margin-top: 8px; padding: 18px; background: rgba(15, 23, 42, 0.7); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); font-size: 0.85rem;">
+            Click "Run Evaluation Pipeline" to test compatibility decomposition and multimodal metrics.
           </div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 4: AUDIT TRAIL -->
+    <!-- TAB 4: STEWARDSHIP AUDIT LEDGER -->
     <section class="tab-pane" id="pane-audit" aria-labelledby="tab-btn-audit">
       <div class="triage-header-bar">
         <div>
-          <h2 class="section-title">Local Audit Trail</h2>
-          <p class="section-caption">Immutable local record of all adjudications, resolutions, and system events</p>
+          <h2 class="section-title">Local Stewardship Audit Ledger</h2>
+          <p class="section-caption">Immutable local record of all adjudications, authorized alternates, and system events</p>
         </div>
       </div>
 
-      <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden;">
+      <div style="background: var(--bg-card-glass); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-card);">
         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;" id="audit-table">
           <thead>
-            <tr style="background: rgba(15, 23, 42, 0.7); border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary);">
-              <th style="padding: 12px 16px;">Timestamp</th>
-              <th style="padding: 12px 16px;">Action</th>
-              <th style="padding: 12px 16px;">Target</th>
-              <th style="padding: 12px 16px;">Operator</th>
-              <th style="padding: 12px 16px;">Reason</th>
+            <tr style="background: rgba(15, 23, 42, 0.8); border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary);">
+              <th style="padding: 14px 18px;">Timestamp</th>
+              <th style="padding: 14px 18px;">Action</th>
+              <th style="padding: 14px 18px;">Target Snowflake</th>
+              <th style="padding: 14px 18px;">Steward / Operator</th>
+              <th style="padding: 14px 18px;">Stewardship Rationale</th>
             </tr>
           </thead>
           <tbody id="audit-table-body">
@@ -156,30 +174,214 @@
     <!-- TAB 5: DATA SOVEREIGNTY & PRIVACY -->
     <section class="tab-pane" id="pane-sovereignty" aria-labelledby="tab-btn-sovereignty">
       <div class="sovereignty-banner">
-        <h3>100% Local Data Sovereignty Guarantee</h3>
-        <p>TruthBeacon transmits zero telemetry, zero analytics, and zero chat metadata. All benchmark vaults, audit logs, and perceptual hashes reside strictly on your local disk.</p>
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          100% Local Data Sovereignty Guarantee
+        </h3>
+        <p>TruthBeacon transmits zero telemetry, zero analytics, and zero chat metadata. All canonical benchmarks, audit ledgers, and perceptual hashes reside strictly on your local disk in SQLite WAL mode.</p>
       </div>
 
-      <div style="display: flex; flex-direction: column; gap: 20px; max-width: 760px;">
-        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 20px;">
+      <div style="display: flex; flex-direction: column; gap: 22px; max-width: 780px;">
+        <div style="background: var(--bg-card-glass); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 22px;">
           <h4 style="font-size: 0.95rem; margin-bottom: 8px;">Local Storage Diagnostic Path</h4>
-          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">SQLite Database with Write-Ahead Logging (WAL) mode:</p>
-          <code style="display: block; padding: 10px; background: rgba(15, 23, 42, 0.9); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.8rem; color: var(--oh-orange-400);" id="sqlite-local-path">/Volumes/External/OH-Industries/projects/truth-beacon/truthbeacon.local.db</code>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">SQLite Database with Write-Ahead Logging (WAL) and memory-mapped I/O:</p>
+          <code style="display: block; padding: 12px; background: rgba(15, 23, 42, 0.9); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.8rem; color: var(--oh-orange-400); font-family: var(--font-mono);" id="sqlite-local-path">/Volumes/External/OH-Industries/projects/truth-beacon/truthbeacon.local.db</code>
         </div>
 
-        <div style="background: var(--bg-card); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md); padding: 20px;">
-          <h4 style="font-size: 0.95rem; color: #f87171; margin-bottom: 8px;">Complete Local Data Eradication</h4>
-          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">Permanently flush all local databases, purge saved benchmark identities, clear audit logs, and erase credentials from OS keychain.</p>
-          <button class="btn" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);" id="btn-eradicate-data">Eradicate All Local Data</button>
+        <div style="background: var(--bg-card-glass); border: 1px solid rgba(244, 63, 94, 0.35); border-radius: var(--radius-md); padding: 22px;">
+          <h4 style="font-size: 0.95rem; color: #fda4af; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+            </svg>
+            Sovereign Local Data Eradication
+          </h4>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">
+            Permanently eradicate all local SQLite tables, flush WAL journals, purge registered canonical benchmarks, erase audit entries, and remove linked bot credentials from your OS Keychain.
+          </p>
+          <button class="btn btn-danger" id="btn-eradicate-data">Eradicate All Local Data...</button>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Global Footer -->
+  <!-- MODAL 1: BENCHMARK CREATION (7.2 Specification) -->
+  <div class="modal-overlay" id="modal-create-benchmark" role="dialog" aria-modal="true" aria-labelledby="modal-bm-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3 id="modal-bm-title">Enroll Canonical Benchmark</h3>
+          <p>Register a protected leadership or official identity baseline</p>
+        </div>
+        <button class="modal-close-btn" id="btn-close-bm-modal" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="bm-input-snowflake" class="form-label">
+            Discord Snowflake User ID *
+            <span class="form-label-hint">17-20 digit numeric ID</span>
+          </label>
+          <input type="text" id="bm-input-snowflake" placeholder="e.g. 291039401928374829" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label for="bm-input-username" class="form-label">Canonical Username *</label>
+          <input type="text" id="bm-input-username" placeholder="e.g. DanWard" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label for="bm-input-nickname" class="form-label">Server Display Nickname</label>
+          <input type="text" id="bm-input-nickname" placeholder="e.g. Pastor Dan (Lead)" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label for="bm-input-role" class="form-label">Community Stewardship Role *</label>
+          <select id="bm-input-role" class="form-select">
+            <option value="Executive Pastor">Executive Pastor / Server Owner</option>
+            <option value="Lead Moderator">Lead Moderator &amp; Elder</option>
+            <option value="Associate Pastor">Associate Pastor</option>
+            <option value="Guest Speaker">Guest Speaker / Ministry Leader</option>
+            <option value="Finance &amp; Care Escrow">Finance &amp; Care Escrow</option>
+            <option value="Official System Service">Official System Service / Bot</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="bm-input-avatar" class="form-label">
+            Official Avatar Image URL
+            <span class="form-label-hint">Used for 64-bit perceptual visual hashing</span>
+          </label>
+          <input type="url" id="bm-input-avatar" placeholder="https://..." class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label for="bm-input-tags" class="form-label">
+            Identity Tags
+            <span class="form-label-hint">Comma separated</span>
+          </label>
+          <input type="text" id="bm-input-tags" value="Core Staff, Verified VIP" class="form-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-dismiss" id="btn-cancel-benchmark">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-benchmark">Save Benchmark Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: AUTHORIZED ALT TAGGING (7.2 Specification) -->
+  <div class="modal-overlay" id="modal-tag-alt" role="dialog" aria-modal="true" aria-labelledby="modal-alt-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3 id="modal-alt-title">Authorize Alternate Identity</h3>
+          <p>Bind candidate as an authenticated secondary device or staff alt</p>
+        </div>
+        <button class="modal-close-btn" id="btn-close-alt-modal" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-info-callout" id="alt-candidate-summary">
+          <!-- Populated dynamically with suspect name & ID -->
+        </div>
+
+        <div class="form-group">
+          <label for="alt-select-benchmark" class="form-label">Link to Canonical Benchmark *</label>
+          <select id="alt-select-benchmark" class="form-select">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="alt-input-purpose" class="form-label">Alternate Designation / Purpose *</label>
+          <select id="alt-input-purpose" class="form-select">
+            <option value="Mobile Device">Secondary Mobile Device</option>
+            <option value="Sanctuary Media iPad">Sanctuary Media / Projection iPad</option>
+            <option value="Bot Integration Test">Integration / Bot Testing Account</option>
+            <option value="Personal Backup Account">Personal Backup Account (Known to Staff)</option>
+            <option value="Volunteer Rotation Alt">Volunteer Rotation Alt</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="alt-input-justification" class="form-label">
+            Stewardship Rationale *
+            <span class="form-label-hint">Recorded in immutable local audit ledger</span>
+          </label>
+          <textarea id="alt-input-justification" class="form-textarea" placeholder="State operational reason for alt identity authorization (e.g. 'Confirmed with Dan in person; verified mobile Discord client')"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-dismiss" id="btn-cancel-alt">Cancel</button>
+        <button class="btn btn-whitelist" id="btn-confirm-alt">Confirm Alt Authorization</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: SOVEREIGN LOCAL DATA ERADICATION (7.2 Specification) -->
+  <div class="modal-overlay" id="modal-eradicate-data" role="dialog" aria-modal="true" aria-labelledby="modal-eradicate-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3 id="modal-eradicate-title" style="color: #fda4af;">Sovereign Local Data Eradication</h3>
+          <p>Permanent cryptographic purge of all local storage &amp; credentials</p>
+        </div>
+        <button class="modal-close-btn" id="btn-close-eradicate-modal" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-info-callout callout-warning">
+          <strong>Irreversible Data Sovereignty Action</strong>
+          <p style="margin-top: 4px;">
+            TruthBeacon operates with 100% local sovereignty—no cloud copies or server backups exist. Once executed, all ground-truth benchmarks, audit histories, and credentials cannot be recovered.
+          </p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; margin: 4px 0;">
+          <div class="checklist-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Purge all SQLite tables (`benchmarks`, `incidents`, `audit_logs`)</span>
+          </div>
+          <div class="checklist-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Flush WAL buffers and execute database `VACUUM`</span>
+          </div>
+          <div class="checklist-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Delete Discord bot tokens from native OS Keychain (`keyring-rs`)</span>
+          </div>
+          <div class="checklist-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Clear in-memory perceptual image hashes and caches</span>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 6px;">
+          <label for="eradicate-confirm-input" class="form-label">
+            Type <span style="font-family: var(--font-mono); color: #fda4af; font-weight: 700;">ERADICATE</span> to unlock confirmation:
+          </label>
+          <input type="text" id="eradicate-confirm-input" class="form-input" placeholder="Type ERADICATE in capital letters" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-dismiss" id="btn-cancel-eradicate">Cancel / Retain Ground Truth</button>
+        <button class="btn btn-danger" id="btn-confirm-eradicate" disabled>Execute Sovereign Wipe</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Footer with Ergonomic Hotkeys Helper Strip -->
   <footer class="global-footer" id="app-footer">
-    <div>TruthBeacon v0.1.0 &bull; Orange Heart Industries</div>
-    <div id="footer-memory-stat">Memory Footprint: ~26.4 MB &bull; Zero Telemetry Active</div>
+    <div>TruthBeacon v0.1.0 &bull; Orange Heart Industries &bull; Kinship Stewardship Console</div>
+    
+    <div class="footer-hotkeys-strip" aria-label="Triage Keyboard Shortcuts">
+      <span class="hotkey-legend-item"><kbd>B</kbd> Adjudicate</span>
+      <span class="hotkey-legend-item"><kbd>D</kbd> Dismiss</span>
+      <span class="hotkey-legend-item"><kbd>W</kbd> Authorize Alt</span>
+      <span class="hotkey-legend-item"><kbd>E</kbd> Quarantine</span>
+      <span class="hotkey-legend-item"><kbd>Esc</kbd> Close Modal</span>
+    </div>
+
+    <div id="footer-memory-stat" class="tabular-nums">Memory: ~26.4 MB &bull; Zero Cloud Egress</div>
   </footer>
 
   <script type="module" src="js/app.js"></script>
