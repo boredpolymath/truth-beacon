@@ -1,0 +1,32 @@
+[package]
+name = "truth-beacon"
+version = "0.1.0"
+description = "TruthBeacon: Desktop Identity Ground-Truth & Impersonation Prevention Console"
+authors = ["Orange Heart Industries"]
+edition = "2021"
+default-run = "truth-beacon"
+
+[lib]
+name = "truth_beacon_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+strsim = "0.11"
+unicode-normalization = "0.1"
+deunicode = "1.6"
+image = "0.25"
+img_hash = "3.2"
+keyring = "3.0"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.11"

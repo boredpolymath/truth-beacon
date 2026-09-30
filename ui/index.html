@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TruthBeacon: Desktop Identity Ground-Truth & Impersonation Prevention Console by Orange Heart Industries">
+  <title>TruthBeacon — Identity Ground-Truth Console</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Global Status Header -->
+  <header class="global-header" id="app-header">
+    <div class="brand-section">
+      <img src="assets/logo.svg" alt="TruthBeacon Emblem" class="brand-logo" id="header-logo">
+      <div class="brand-title-group">
+        <h1 id="main-heading">TruthBeacon <span class="brand-badge">OH-Industries</span></h1>
+        <p class="brand-subtitle">Identity Ground-Truth &amp; Impersonation Prevention</p>
+      </div>
+    </div>
+
+    <div class="header-status-indicators" id="header-status-bar">
+      <div class="status-pill" id="status-daemon">
+        <span class="status-dot" id="dot-daemon"></span>
+        <span>Local Engine: <strong>Active</strong></span>
+      </div>
+      <div class="status-pill" id="status-gateway">
+        <span class="status-dot" id="dot-gateway"></span>
+        <span>Gateway v10: <strong>Listening</strong></span>
+      </div>
+      <div class="status-pill" id="status-circuit">
+        <span class="status-dot" id="dot-circuit"></span>
+        <span id="circuit-status-text">Circuit: <strong>Arm Ready</strong></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tab Strip -->
+  <nav class="nav-tab-strip" id="nav-tabs" aria-label="Main Navigation">
+    <button class="nav-tab active" id="tab-btn-triage" data-tab="triage">
+      <span>Triage Feed</span>
+      <span class="tab-counter" id="counter-incidents">2</span>
+    </button>
+    <button class="nav-tab" id="tab-btn-vault" data-tab="vault">
+      <span>Benchmark Vault</span>
+      <span style="font-size: 0.72rem; color: var(--text-muted);" id="counter-vault">(3)</span>
+    </button>
+    <button class="nav-tab" id="tab-btn-sandbox" data-tab="sandbox">
+      <span>Simulator Sandbox</span>
+    </button>
+    <button class="nav-tab" id="tab-btn-audit" data-tab="audit">
+      <span>Audit Trail</span>
+    </button>
+    <button class="nav-tab" id="tab-btn-sovereignty" data-tab="sovereignty">
+      <span>Data Sovereignty &amp; Privacy</span>
+    </button>
+  </nav>
+
+  <!-- Main Viewport -->
+  <main class="main-viewport" id="main-content">
+    <!-- Circuit Breaker Warning (Hidden by default, shown when tripped) -->
+    <div class="circuit-breaker-banner" id="circuit-breaker-alert" style="display: none;">
+      <div>
+        <strong style="color: #f87171;">Automatic Safety Brake Tripped</strong>
+        <p style="font-size: 0.8rem; color: var(--text-secondary);">Outbound mitigations exceeded safety threshold. Actions require manual confirmation.</p>
+      </div>
+      <button class="btn btn-dismiss" id="btn-reset-circuit">Reset Safety Brake</button>
+    </div>
+
+    <!-- TAB 1: TRIAGE FEED -->
+    <section class="tab-pane active" id="pane-triage" aria-labelledby="tab-btn-triage">
+      <div class="triage-header-bar">
+        <div>
+          <h2 class="section-title">Active Discrepancy Triage</h2>
+          <p class="section-caption">Real-time incoming member evaluations requiring operator adjudication</p>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+          Connected Guild: <strong id="current-guild-name" style="color: var(--text-primary);">Crossroads Community Sanctuary</strong>
+        </div>
+      </div>
+
+      <div class="triage-list" id="triage-cards-container">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- TAB 2: BENCHMARK VAULT -->
+    <section class="tab-pane" id="pane-vault" aria-labelledby="tab-btn-vault">
+      <div class="triage-header-bar">
+        <div>
+          <h2 class="section-title">Canonical Benchmark Vault</h2>
+          <p class="section-caption">Protected ground-truth identities and official verified community representations</p>
+        </div>
+        <button class="btn btn-ban-purge" id="btn-add-benchmark">+ New Benchmark Profile</button>
+      </div>
+
+      <div class="grid-vault" id="vault-cards-container">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- TAB 3: SIMULATOR SANDBOX -->
+    <section class="tab-pane" id="pane-sandbox" aria-labelledby="tab-btn-sandbox">
+      <div class="triage-header-bar">
+        <div>
+          <h2 class="section-title">Evaluation Sandbox Simulator</h2>
+          <p class="section-caption">Test Unicode homoglyphs, invisible spacing, and character metric sensitivity</p>
+        </div>
+      </div>
+
+      <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 24px; max-width: 720px;">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <label for="sim-input-candidate" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px;">Simulated Lookalike Candidate Input</label>
+            <input type="text" id="sim-input-candidate" value="DanШard" style="width: 100%; padding: 10px 14px; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.95rem;">
+          </div>
+          <div>
+            <label for="sim-input-benchmark" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px;">Canonical Benchmark Target Name</label>
+            <input type="text" id="sim-input-benchmark" value="DanWard" style="width: 100%; padding: 10px 14px; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.95rem;">
+          </div>
+          <button class="btn btn-ban-purge" id="btn-run-simulation" style="align-self: flex-start;">Run Evaluation Pipeline</button>
+
+          <div id="sim-results" style="margin-top: 12px; padding: 16px; background: rgba(15, 23, 42, 0.5); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); font-size: 0.85rem;">
+            Click "Run Evaluation Pipeline" to test compatibility decomposition and string metrics.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: AUDIT TRAIL -->
+    <section class="tab-pane" id="pane-audit" aria-labelledby="tab-btn-audit">
+      <div class="triage-header-bar">
+        <div>
+          <h2 class="section-title">Local Audit Trail</h2>
+          <p class="section-caption">Immutable local record of all adjudications, resolutions, and system events</p>
+        </div>
+      </div>
+
+      <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;" id="audit-table">
+          <thead>
+            <tr style="background: rgba(15, 23, 42, 0.7); border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary);">
+              <th style="padding: 12px 16px;">Timestamp</th>
+              <th style="padding: 12px 16px;">Action</th>
+              <th style="padding: 12px 16px;">Target</th>
+              <th style="padding: 12px 16px;">Operator</th>
+              <th style="padding: 12px 16px;">Reason</th>
+            </tr>
+          </thead>
+          <tbody id="audit-table-body">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 5: DATA SOVEREIGNTY & PRIVACY -->
+    <section class="tab-pane" id="pane-sovereignty" aria-labelledby="tab-btn-sovereignty">
+      <div class="sovereignty-banner">
+        <h3>100% Local Data Sovereignty Guarantee</h3>
+        <p>TruthBeacon transmits zero telemetry, zero analytics, and zero chat metadata. All benchmark vaults, audit logs, and perceptual hashes reside strictly on your local disk.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 20px; max-width: 760px;">
+        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 20px;">
+          <h4 style="font-size: 0.95rem; margin-bottom: 8px;">Local Storage Diagnostic Path</h4>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">SQLite Database with Write-Ahead Logging (WAL) mode:</p>
+          <code style="display: block; padding: 10px; background: rgba(15, 23, 42, 0.9); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.8rem; color: var(--oh-orange-400);" id="sqlite-local-path">/Volumes/External/OH-Industries/projects/truth-beacon/truthbeacon.local.db</code>
+        </div>
+
+        <div style="background: var(--bg-card); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md); padding: 20px;">
+          <h4 style="font-size: 0.95rem; color: #f87171; margin-bottom: 8px;">Complete Local Data Eradication</h4>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">Permanently flush all local databases, purge saved benchmark identities, clear audit logs, and erase credentials from OS keychain.</p>
+          <button class="btn" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);" id="btn-eradicate-data">Eradicate All Local Data</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="global-footer" id="app-footer">
+    <div>TruthBeacon v0.1.0 &bull; Orange Heart Industries</div>
+    <div id="footer-memory-stat">Memory Footprint: ~26.4 MB &bull; Zero Telemetry Active</div>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

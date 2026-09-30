@@ -1,0 +1,29 @@
+# Rust / Cargo
+/src-tauri/target/
+**/*.rs.bk
+Cargo.lock
+
+# Tauri build artifacts
+/src-tauri/gen/
+
+# Local databases and runtime state (Zero Cloud Snooping & Data Sovereignty)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IDE and Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary directories
+tmp/
+temp/

@@ -1,0 +1,30 @@
+{
+  "application": {
+    "name": "TruthBeacon",
+    "version": "0.1.0",
+    "vendor": "Orange Heart Industries",
+    "description": "Desktop Identity Ground-Truth & Impersonation Prevention Console"
+  },
+  "detection": {
+    "string_similarity_threshold": 0.85,
+    "homoglyph_detection_enabled": true,
+    "avatar_hamming_distance_threshold": 10,
+    "new_account_age_hours_threshold": 72,
+    "sensitivity_level": "standard"
+  },
+  "circuit_breaker": {
+    "enabled": true,
+    "rolling_window_seconds": 60,
+    "max_mitigations_per_window": 5,
+    "cooling_period_seconds": 300
+  },
+  "storage": {
+    "sqlite_filename": "truthbeacon.local.db",
+    "wal_mode": true,
+    "busy_timeout_ms": 5000
+  },
+  "privacy": {
+    "zero_telemetry": true,
+    "local_data_sovereignty": true
+  }
+}
