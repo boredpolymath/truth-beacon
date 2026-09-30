@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+pub mod rate_limiter;
+pub use rate_limiter::DiscordRateLimiter;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GatewayState {
     Disconnected,

@@ -18,7 +18,7 @@ pub fn calculate_hamming_distance(hash_a: &str, hash_b: &str) -> Result<u32, Has
 
 /// Decodes an image in-memory safely and calculates a 64-bit DCT perceptual hash.
 pub fn compute_perceptual_hash(image_bytes: &[u8]) -> Result<String, HashError> {
-    let img = image::load_from_memory(image_bytes).map_err(|_| HashError::DecodeFailed)?;
+    let img = img_hash::image::load_from_memory(image_bytes).map_err(|_| HashError::DecodeFailed)?;
     let hasher = img_hash::HasherConfig::new().hash_size(8, 8).to_hasher();
     let hash = hasher.hash_image(&img);
     Ok(hash.to_base64())
