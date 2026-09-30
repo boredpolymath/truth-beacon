@@ -27,3 +27,8 @@ Thumbs.db
 # Temporary directories
 tmp/
 temp/
+
+# Internal documentation & working checklists (not committed or pushed)
+/docs/
+docs/
+
