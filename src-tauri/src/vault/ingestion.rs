@@ -912,13 +912,16 @@ mod tests {
                 _ = &mut shutdown_rx => {}
                 res = listener.accept() => {
                     if let Ok((mut socket, _)) = res {
-                        use tokio::io::AsyncWriteExt;
+                        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                        let mut buf = [0u8; 2048];
+                        let _ = socket.read(&mut buf).await;
                         let response = format!(
                             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                             mock_body.len(),
                             mock_body
                         );
                         let _ = socket.write_all(response.as_bytes()).await;
+                        let _ = socket.shutdown().await;
                     }
                 }
             }

@@ -400,7 +400,9 @@ mod tests {
                 _ = &mut shutdown_rx => {}
                 res = listener.accept() => {
                     if let Ok((mut socket, _)) = res {
-                        use tokio::io::AsyncWriteExt;
+                        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                        let mut buf = [0u8; 2048];
+                        let _ = socket.read(&mut buf).await;
                         let header = format!(
                             "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
                             png_bytes.len()
@@ -408,6 +410,7 @@ mod tests {
                         let mut full = header.into_bytes();
                         full.extend_from_slice(&png_bytes);
                         let _ = socket.write_all(&full).await;
+                        let _ = socket.shutdown().await;
                     }
                 }
             }
@@ -524,6 +527,7 @@ mod tests {
                                 full.extend_from_slice(&new_png_bytes);
                                 let _ = socket.write_all(&full).await;
                             }
+                            let _ = socket.shutdown().await;
                         }
                     }
                 }
