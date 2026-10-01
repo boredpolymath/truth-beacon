@@ -157,6 +157,7 @@ impl IngestionClient {
     pub fn new() -> Self {
         Self {
             client: reqwest::Client::builder()
+                .connect_timeout(std::time::Duration::from_secs(5))
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .unwrap_or_default(),
@@ -170,6 +171,7 @@ impl IngestionClient {
         let base = url.into();
         Self {
             client: reqwest::Client::builder()
+                .connect_timeout(std::time::Duration::from_secs(5))
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .unwrap_or_default(),

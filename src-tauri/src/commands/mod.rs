@@ -66,19 +66,23 @@ pub struct SystemStatus {
 #[tauri::command]
 pub fn get_system_status() -> Result<SystemStatus, CommandError> {
     let breaker = crate::circuit_breaker::get_global_circuit_breaker();
+    let db_path = crate::storage::StorageManager::default_db_path();
     Ok(SystemStatus {
+        // TODO: Wire daemon_healthy and gateway_connected to live DiscordGatewayDaemon state
         daemon_healthy: true,
         gateway_connected: true,
         circuit_breaker_tripped: breaker.is_tripped(),
-        db_path: "/Users/local/.truthbeacon/truthbeacon.local.db".into(),
-        pending_incidents_count: 2,
-        benchmark_count: 5,
+        db_path: db_path.to_string_lossy().to_string(),
+        // TODO: Wire to StorageManager query when VaultManager state is injected via Tauri managed state
+        pending_incidents_count: 0,
+        benchmark_count: 0,
     })
 }
 
 #[tauri::command]
 pub fn list_benchmarks(guild_id: String) -> Result<Vec<CanonicalBenchmark>, CommandError> {
-    // Scaffolded endpoint: returns active benchmarks
+    // TODO: Wire to VaultManager::list_benchmarks(&guild_id, true) when VaultManager
+    // is injected via Tauri managed state (tauri::State<Arc<VaultManager>>)
     let _ = guild_id;
     Ok(vec![])
 }
@@ -116,6 +120,7 @@ pub fn create_benchmark(input: CreateBenchmarkInput) -> Result<CanonicalBenchmar
 
 #[tauri::command]
 pub fn list_incidents(guild_id: String) -> Result<Vec<TriageIncident>, CommandError> {
+    // TODO: Wire to StorageManager incident query when state injection is available
     let _ = guild_id;
     Ok(vec![])
 }
@@ -126,6 +131,7 @@ pub fn resolve_incident(
     status: IncidentStatus,
     resolution_notes: Option<String>,
 ) -> Result<bool, CommandError> {
+    // TODO: Wire to StorageManager to update incident status and record audit log
     let _ = (incident_id, status, resolution_notes);
     Ok(true)
 }

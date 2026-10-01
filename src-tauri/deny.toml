@@ -28,6 +28,7 @@ allow = [
     "NCSA",
     "MPL-2.0",
     "MIT-0",
+    "CDLA-Permissive-2.0",
 ]
 
 # Clarifications for packages with dual or non-standard license expressions
