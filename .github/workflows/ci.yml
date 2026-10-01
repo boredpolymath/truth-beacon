@@ -17,28 +17,29 @@ jobs:
   lint-and-audit:
     name: Lint, Format & Supply Chain Security
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install system dependencies for Linux
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev libsecret-1-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
 
+      - name: Code Formatting Check (cargo fmt)
+        working-directory: src-tauri
+        run: cargo fmt -- --check
+
+      - name: Install system dependencies for Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev libsecret-1-dev
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-
-      - name: Code Formatting Check (cargo fmt)
-        working-directory: src-tauri
-        run: cargo fmt -- --check
 
       - name: Compiler Linting Gate (cargo clippy)
         working-directory: src-tauri
@@ -64,6 +65,7 @@ jobs:
     name: Build & Test (${{ matrix.os }})
     needs: lint-and-audit
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
