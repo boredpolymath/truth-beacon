@@ -12,6 +12,13 @@ const counterVault = document.getElementById('counter-vault');
 const circuitBreakerAlert = document.getElementById('circuit-breaker-alert');
 const btnResetCircuit = document.getElementById('btn-reset-circuit');
 const dotCircuit = document.getElementById('dot-circuit');
+
+const escapeHtml = value => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
 const circuitStatusText = document.getElementById('circuit-status-text');
 const gatewayLatency = document.getElementById('gateway-latency');
 
@@ -536,18 +543,24 @@ btnRunSimulation.addEventListener('click', async () => {
     });
 
     if (result) {
+      const safeCandidateInput = escapeHtml(result.candidate_input ?? '');
+      const safeCandidateNormalized = escapeHtml(result.candidate_normalized ?? '');
+      const safeBenchmark = escapeHtml(benchmark ?? '');
+      const safeTargetNormalized = escapeHtml(result.target_normalized ?? '');
+      const safeRecommendedTier = escapeHtml(result.recommended_tier ?? '');
+
       simResults.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <div>Candidate Raw: <strong>${result.candidate_input}</strong> &rarr; Normalized: <code style="font-family: var(--font-mono); color: var(--oh-orange-300);">${result.candidate_normalized}</code></div>
-          <div>Benchmark Raw: <strong>${benchmark}</strong> &rarr; Normalized: <code style="font-family: var(--font-mono); color: var(--oh-orange-300);">${result.target_normalized}</code></div>
+          <div>Candidate Raw: <strong>${safeCandidateInput}</strong> &rarr; Normalized: <code style="font-family: var(--font-mono); color: var(--oh-orange-300);">${safeCandidateNormalized}</code></div>
+          <div>Benchmark Raw: <strong>${safeBenchmark}</strong> &rarr; Normalized: <code style="font-family: var(--font-mono); color: var(--oh-orange-300);">${safeTargetNormalized}</code></div>
           <div>Composite Similarity Score: <strong style="color: var(--oh-orange-400);">${Math.round(result.similarity_score * 100)}%</strong> (Jaro-Winkler 70% + Damerau 30%)</div>
           <div>Homoglyph Substitution Flagged: <strong style="color: ${result.homoglyph_detected ? '#fda4af' : '#34d399'};">${result.homoglyph_detected ? 'YES (Cyrillic Sha &rarr; Latin W substitution)' : 'No Homoglyphs Detected'}</strong></div>
-          <div>Recommended Ground-Truth Risk Tier: <strong style="text-transform: uppercase; color: ${result.recommended_tier === 'critical' ? '#fda4af' : 'var(--oh-orange-400)'};">${result.recommended_tier}</strong></div>
+          <div>Recommended Ground-Truth Risk Tier: <strong style="text-transform: uppercase; color: ${result.recommended_tier === 'critical' ? '#fda4af' : 'var(--oh-orange-400)'};">${safeRecommendedTier}</strong></div>
         </div>
       `;
     }
   } catch (err) {
-    simResults.innerHTML = `<span style="color: #fda4af;">Simulation error: ${err}</span>`;
+    simResults.innerHTML = `<span style="color: #fda4af;">Simulation error: ${escapeHtml(err)}</span>`;
   }
 });
 
