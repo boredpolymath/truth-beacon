@@ -32,8 +32,8 @@ impl TokenBucket {
 
     fn refill(&mut self, now: Instant) {
         let elapsed = now.duration_since(self.last_refill).as_secs_f64();
-        self.available_tokens = (self.available_tokens + elapsed * self.refill_rate_per_sec)
-            .min(self.capacity as f64);
+        self.available_tokens =
+            (self.available_tokens + elapsed * self.refill_rate_per_sec).min(self.capacity as f64);
         self.last_refill = now;
     }
 
@@ -63,6 +63,12 @@ impl TokenBucket {
         let unlock_at = Instant::now() + duration;
         self.locked_until = Some(unlock_at);
         self.available_tokens = 0.0;
+    }
+}
+
+impl Default for DiscordRateLimiter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

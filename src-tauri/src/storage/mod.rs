@@ -50,7 +50,10 @@ mod tests {
     #[test]
     fn test_storage_manager_init_and_eradicate() {
         let temp_dir = std::env::temp_dir();
-        let test_db_path = temp_dir.join(format!("truthbeacon_test_{}.db", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)));
+        let test_db_path = temp_dir.join(format!(
+            "truthbeacon_test_{}.db",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        ));
 
         let storage = StorageManager::init(&test_db_path).unwrap();
         assert_eq!(storage.get_path(), test_db_path);
@@ -62,4 +65,3 @@ mod tests {
         let _ = std::fs::remove_file(&test_db_path);
     }
 }
-

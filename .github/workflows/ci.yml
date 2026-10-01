@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-audit:
+    name: Lint, Format & Supply Chain Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies for Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev libsecret-1-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Code Formatting Check (cargo fmt)
+        working-directory: src-tauri
+        run: cargo fmt -- --check
+
+      - name: Compiler Linting Gate (cargo clippy)
+        working-directory: src-tauri
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Install cargo-deny & cargo-audit
+        run: |
+          cargo install cargo-deny --locked
+          cargo install cargo-audit --locked
+
+      - name: Supply Chain Policy Check (cargo deny)
+        working-directory: src-tauri
+        run: cargo deny check
+
+      - name: Security Vulnerability Audit (cargo audit)
+        working-directory: src-tauri
+        run: cargo audit --ignore RUSTSEC-2023-0080
+
+      - name: License & Asset Integrity Audit (Python)
+        run: python3 scripts/audit_licenses.py
+
+  matrix-test:
+    name: Build & Test (${{ matrix.os }})
+    needs: lint-and-audit
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-13, windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux native build prerequisites
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev libsecret-1-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Run Test Suite (cargo test)
+        working-directory: src-tauri
+        run: cargo test --all-targets
+
+      - name: Verify Application Compilation (cargo check)
+        working-directory: src-tauri
+        run: cargo check --all-targets

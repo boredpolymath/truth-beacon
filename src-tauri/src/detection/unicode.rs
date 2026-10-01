@@ -18,7 +18,5 @@ pub fn normalize_and_deobfuscate(input: &str) -> String {
     }
 
     // Transliterate homoglyphs (Cyrillic, Greek, mathematical lookalikes) to standard ASCII
-    deunicode::deunicode(&cleaned)
-        .trim()
-        .to_lowercase()
+    deunicode::deunicode(&cleaned).trim().to_lowercase()
 }

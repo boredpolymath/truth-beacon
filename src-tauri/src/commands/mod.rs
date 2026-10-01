@@ -75,10 +75,14 @@ pub fn list_benchmarks(guild_id: String) -> Result<Vec<CanonicalBenchmark>, Comm
 #[tauri::command]
 pub fn create_benchmark(input: CreateBenchmarkInput) -> Result<CanonicalBenchmark, CommandError> {
     if input.user_id.trim().is_empty() {
-        return Err(CommandError::ValidationFailed("Snowflake user ID cannot be empty".into()));
+        return Err(CommandError::ValidationFailed(
+            "Snowflake user ID cannot be empty".into(),
+        ));
     }
     if input.canonical_username.trim().is_empty() {
-        return Err(CommandError::ValidationFailed("Canonical username cannot be empty".into()));
+        return Err(CommandError::ValidationFailed(
+            "Canonical username cannot be empty".into(),
+        ));
     }
 
     let now = chrono::Utc::now().timestamp();
@@ -166,7 +170,10 @@ mod tests {
         let rate_err = CommandError::RateLimited(4.5);
         let rate_json = serde_json::to_value(&rate_err).unwrap();
         assert_eq!(rate_json["code"], "RATE_LIMITED");
-        assert_eq!(rate_json["message"], "Rate limited: retry after 4.5 seconds");
+        assert_eq!(
+            rate_json["message"],
+            "Rate limited: retry after 4.5 seconds"
+        );
 
         let breaker_err = CommandError::CircuitBreakerTripped;
         let breaker_json = serde_json::to_value(&breaker_err).unwrap();

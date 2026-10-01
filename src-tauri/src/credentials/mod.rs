@@ -47,7 +47,9 @@ impl CredentialManager {
         let entry = Entry::new(SERVICE_NAME, guild_id)?;
         match entry.get_password() {
             Ok(token) => Ok(token),
-            Err(keyring::Error::NoEntry) => Err(CredentialError::TokenNotFound(guild_id.to_string())),
+            Err(keyring::Error::NoEntry) => {
+                Err(CredentialError::TokenNotFound(guild_id.to_string()))
+            }
             Err(e) => Err(CredentialError::KeyringError(e)),
         }
     }

@@ -18,7 +18,8 @@ pub fn calculate_hamming_distance(hash_a: &str, hash_b: &str) -> Result<u32, Has
 
 /// Decodes an image in-memory safely and calculates a 64-bit DCT perceptual hash.
 pub fn compute_perceptual_hash(image_bytes: &[u8]) -> Result<String, HashError> {
-    let img = img_hash::image::load_from_memory(image_bytes).map_err(|_| HashError::DecodeFailed)?;
+    let img =
+        img_hash::image::load_from_memory(image_bytes).map_err(|_| HashError::DecodeFailed)?;
     let hasher = img_hash::HasherConfig::new().hash_size(8, 8).to_hasher();
     let hash = hasher.hash_image(&img);
     let bytes = hash.as_bytes();
@@ -48,7 +49,10 @@ mod tests {
         let hash_b = "d4c3b2a10000fffe";
         let dist = calculate_hamming_distance(hash_a, hash_b).unwrap();
         assert_eq!(dist, 1);
-        assert!(dist <= 12, "Small perturbation within visual clone threshold");
+        assert!(
+            dist <= 12,
+            "Small perturbation within visual clone threshold"
+        );
     }
 
     #[test]
@@ -57,7 +61,10 @@ mod tests {
         let hash_b = "ffffffffffffffff";
         let dist = calculate_hamming_distance(hash_a, hash_b).unwrap();
         assert_eq!(dist, 64);
-        assert!(dist > 12, "Completely different images exceed clone threshold");
+        assert!(
+            dist > 12,
+            "Completely different images exceed clone threshold"
+        );
     }
 
     #[test]

@@ -5,6 +5,12 @@ pub struct BenchmarkVault {
     benchmarks: Arc<Mutex<Vec<CanonicalBenchmark>>>,
 }
 
+impl Default for BenchmarkVault {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BenchmarkVault {
     pub fn new() -> Self {
         Self {
@@ -20,7 +26,11 @@ impl BenchmarkVault {
             .collect()
     }
 
-    pub fn add(&self, input: CreateBenchmarkInput, avatar_hash: Option<String>) -> CanonicalBenchmark {
+    pub fn add(
+        &self,
+        input: CreateBenchmarkInput,
+        avatar_hash: Option<String>,
+    ) -> CanonicalBenchmark {
         let now = chrono::Utc::now().timestamp();
         let benchmark = CanonicalBenchmark {
             id: format!("bm_{}", now),

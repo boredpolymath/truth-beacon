@@ -19,6 +19,12 @@ pub struct GatewayListener {
     is_running: Arc<AtomicBool>,
 }
 
+impl Default for GatewayListener {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GatewayListener {
     pub fn new() -> Self {
         Self {

@@ -23,7 +23,11 @@ impl Default for DetectionEngine {
 }
 
 impl DetectionEngine {
-    pub fn new(string_threshold: f64, avatar_hamming_threshold: u32, new_account_age_hours_threshold: u64) -> Self {
+    pub fn new(
+        string_threshold: f64,
+        avatar_hamming_threshold: u32,
+        new_account_age_hours_threshold: u64,
+    ) -> Self {
         Self {
             string_threshold,
             avatar_hamming_threshold,
@@ -54,11 +58,15 @@ impl DetectionEngine {
             }
 
             let normalized_bm_name = normalize_and_deobfuscate(&benchmark.canonical_username);
-            let name_eval = evaluate_string_metrics(&normalized_candidate_name, &normalized_bm_name);
+            let name_eval =
+                evaluate_string_metrics(&normalized_candidate_name, &normalized_bm_name);
 
             let nick_eval = if let (Some(nick), Some(bm_nick)) = (
                 &normalized_candidate_nick,
-                benchmark.server_nickname.as_ref().map(|n| normalize_and_deobfuscate(n)),
+                benchmark
+                    .server_nickname
+                    .as_ref()
+                    .map(|n| normalize_and_deobfuscate(n)),
             ) {
                 Some(evaluate_string_metrics(nick, &bm_nick))
             } else {
@@ -106,7 +114,10 @@ impl DetectionEngine {
                         suspect_account_age_hours: candidate_age_hours,
                         string_similarity_score: (top_string_score * 100.0).round() / 100.0,
                         homoglyph_detected: is_homoglyph,
-                        normalized_diff: format!("Candidate: '{}' -> Match: '{}'", normalized_candidate_name, normalized_bm_name),
+                        normalized_diff: format!(
+                            "Candidate: '{}' -> Match: '{}'",
+                            normalized_candidate_name, normalized_bm_name
+                        ),
                         avatar_hamming_distance: None,
                         risk_tier,
                     });
@@ -143,7 +154,11 @@ mod tests {
                     1 => Some("Mark | Tech Lead".into()),
                     _ => None,
                 },
-                community_role: if i < 5 { "Leadership".into() } else { "Staff".into() },
+                community_role: if i < 5 {
+                    "Leadership".into()
+                } else {
+                    "Staff".into()
+                },
                 avatar_url: Some(format!("https://cdn.discordapp.com/avatars/{}/a1.png", i)),
                 avatar_perceptual_hash: Some("d4c3b2a10000ffff".into()),
                 is_active: true,
@@ -210,26 +225,106 @@ mod tests {
 
         // Corpus of standard Latin names (no homoglyphs, legitimate diverse member names)
         let standard_latin_names = [
-            "Alexander Smith", "Benjamin Clark", "Catherine Davis", "Daniel Evans", "Elizabeth Frank",
-            "Franklin Garcia", "Grace Harris", "Henry Jenkins", "Isabella Kelly", "James Lewis",
-            "Katherine Martinez", "Liam Nelson", "Mia Owens", "Noah Patterson", "Olivia Quinn",
-            "Peter Roberts", "Quinn Sullivan", "Robert Taylor", "Sophia Underwood", "Thomas Vance",
-            "Ursula Washington", "Victor Xavier", "Willow Young", "Zachary Zimmerman", "Aaron Brooks",
-            "Brianna Campbell", "Christopher Diaz", "Danielle Edwards", "Ethan Flores", "Fiona Green",
-            "Gabriel Howard", "Hannah Ingram", "Ian Jackson", "Jessica King", "Kevin Lawson",
-            "Lauren Mitchell", "Michael Nguyen", "Natalie Ortiz", "Oliver Phillips", "Paige Ramirez",
-            "Ryan Stewart", "Samantha Turner", "Tyler Ward", "Vanessa White", "William Scott",
-            "Adam Bell", "Beatrice Cooper", "Colin Foster", "Diana Gray", "Edward Hayes",
-            "Faith Jordan", "George Long", "Holly Morgan", "Isaac Powell", "Julia Ross",
-            "Keith Sanders", "Laura Torres", "Marcus Webb", "Nora Adams", "Oscar Butler",
-            "Penelope Cox", "Richard Fisher", "Stella Griffin", "Timothy Henderson", "Victoria James",
-            "Walter Knight", "Yvonne Larson", "Arthur Myers", "Clara Price", "Derek Russell",
-            "Evelyn Simmons", "Felix Thomas", "Gloria Walker", "Harvey Allen", "Irene Bennett",
-            "Justin Coleman", "Kendra Hughes", "Leonard Morris", "Megan Perry", "Nathan Reed",
-            "Patricia Sanchez", "Raymond Wood", "Sylvia Barnes", "Travis Crawford", "Valerie Gomez",
-            "Wesley Hunt", "Audrey Myers", "Bradley Ross", "Carmen Sullivan", "Dominic West",
-            "Elena Foster", "Gerald Higgins", "Hazel Meyer", "Ivan Palmer", "Judith Shaw",
-            "Kyle Vaughn", "Lydia Weaver", "Martin Arnold", "Nina Bishop", "Owen Carroll"
+            "Alexander Smith",
+            "Benjamin Clark",
+            "Catherine Davis",
+            "Daniel Evans",
+            "Elizabeth Frank",
+            "Franklin Garcia",
+            "Grace Harris",
+            "Henry Jenkins",
+            "Isabella Kelly",
+            "James Lewis",
+            "Katherine Martinez",
+            "Liam Nelson",
+            "Mia Owens",
+            "Noah Patterson",
+            "Olivia Quinn",
+            "Peter Roberts",
+            "Quinn Sullivan",
+            "Robert Taylor",
+            "Sophia Underwood",
+            "Thomas Vance",
+            "Ursula Washington",
+            "Victor Xavier",
+            "Willow Young",
+            "Zachary Zimmerman",
+            "Aaron Brooks",
+            "Brianna Campbell",
+            "Christopher Diaz",
+            "Danielle Edwards",
+            "Ethan Flores",
+            "Fiona Green",
+            "Gabriel Howard",
+            "Hannah Ingram",
+            "Ian Jackson",
+            "Jessica King",
+            "Kevin Lawson",
+            "Lauren Mitchell",
+            "Michael Nguyen",
+            "Natalie Ortiz",
+            "Oliver Phillips",
+            "Paige Ramirez",
+            "Ryan Stewart",
+            "Samantha Turner",
+            "Tyler Ward",
+            "Vanessa White",
+            "William Scott",
+            "Adam Bell",
+            "Beatrice Cooper",
+            "Colin Foster",
+            "Diana Gray",
+            "Edward Hayes",
+            "Faith Jordan",
+            "George Long",
+            "Holly Morgan",
+            "Isaac Powell",
+            "Julia Ross",
+            "Keith Sanders",
+            "Laura Torres",
+            "Marcus Webb",
+            "Nora Adams",
+            "Oscar Butler",
+            "Penelope Cox",
+            "Richard Fisher",
+            "Stella Griffin",
+            "Timothy Henderson",
+            "Victoria James",
+            "Walter Knight",
+            "Yvonne Larson",
+            "Arthur Myers",
+            "Clara Price",
+            "Derek Russell",
+            "Evelyn Simmons",
+            "Felix Thomas",
+            "Gloria Walker",
+            "Harvey Allen",
+            "Irene Bennett",
+            "Justin Coleman",
+            "Kendra Hughes",
+            "Leonard Morris",
+            "Megan Perry",
+            "Nathan Reed",
+            "Patricia Sanchez",
+            "Raymond Wood",
+            "Sylvia Barnes",
+            "Travis Crawford",
+            "Valerie Gomez",
+            "Wesley Hunt",
+            "Audrey Myers",
+            "Bradley Ross",
+            "Carmen Sullivan",
+            "Dominic West",
+            "Elena Foster",
+            "Gerald Higgins",
+            "Hazel Meyer",
+            "Ivan Palmer",
+            "Judith Shaw",
+            "Kyle Vaughn",
+            "Lydia Weaver",
+            "Martin Arnold",
+            "Nina Bishop",
+            "Owen Carroll",
         ];
 
         let total_candidates = standard_latin_names.len();
@@ -262,7 +357,10 @@ mod tests {
             "False positive rate was {}% (expected < 1.0%)",
             false_positive_rate
         );
-        assert_eq!(false_positive_count, 0, "Expected 0 false positive homoglyphs on clean Latin corpus");
+        assert_eq!(
+            false_positive_count, 0,
+            "Expected 0 false positive homoglyphs on clean Latin corpus"
+        );
     }
 
     #[test]
@@ -345,4 +443,3 @@ mod tests {
         assert!(!triage.normalized_diff.is_empty());
     }
 }
-

@@ -218,18 +218,30 @@ mod tests {
 
         // Step 5: Verify existing operator data is completely preserved
         let username: String = conn
-            .query_row("SELECT canonical_username FROM benchmarks WHERE id = 'bm_pastor'", [], |row| row.get(0))
+            .query_row(
+                "SELECT canonical_username FROM benchmarks WHERE id = 'bm_pastor'",
+                [],
+                |row| row.get(0),
+            )
             .unwrap();
         assert_eq!(username, "PastorDan");
 
         // Step 6: Verify newly evolved columns are present and default-initialized
         let sensitivity: Option<f64> = conn
-            .query_row("SELECT sensitivity_override FROM benchmarks WHERE id = 'bm_pastor'", [], |row| row.get(0))
+            .query_row(
+                "SELECT sensitivity_override FROM benchmarks WHERE id = 'bm_pastor'",
+                [],
+                |row| row.get(0),
+            )
             .unwrap();
         assert!(sensitivity.is_none());
 
         let risk_score: f64 = conn
-            .query_row("SELECT composite_risk_score FROM incidents WHERE id = 'inc_001'", [], |row| row.get(0))
+            .query_row(
+                "SELECT composite_risk_score FROM incidents WHERE id = 'inc_001'",
+                [],
+                |row| row.get(0),
+            )
             .unwrap();
         assert_eq!(risk_score, 0.0);
     }
@@ -246,7 +258,9 @@ mod tests {
             [],
         );
 
-        assert!(res.is_err(), "Foreign key constraint must prevent orphan incidents");
+        assert!(
+            res.is_err(),
+            "Foreign key constraint must prevent orphan incidents"
+        );
     }
 }
-
