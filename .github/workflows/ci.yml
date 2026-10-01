@@ -69,7 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-13, windows-latest, ubuntu-latest]
+        os: [macos-14, windows-latest, ubuntu-latest]
 
     steps:
       - name: Checkout repository
