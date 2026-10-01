@@ -196,7 +196,10 @@ pub async fn sync_guild_avatar_hashes(
             ),
             Err(_) => {
                 // Fallback to global user query
-                match ingestion_client.fetch_user(bot_token, &target_snowflake).await {
+                match ingestion_client
+                    .fetch_user(bot_token, &target_snowflake)
+                    .await
+                {
                     Ok(user) => resolve_discord_avatar_url_with_cdn(
                         ingestion_client.cdn_base_url(),
                         &user,

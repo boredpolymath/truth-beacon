@@ -218,7 +218,9 @@ impl IngestionClient {
 
         let status = res.status();
         if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(IngestionError::UserNotFound(validated_snowflake.to_string()));
+            return Err(IngestionError::UserNotFound(
+                validated_snowflake.to_string(),
+            ));
         } else if !status.is_success() {
             let body = res.text().await.unwrap_or_default();
             return Err(IngestionError::DiscordApi(status.as_u16(), body));
@@ -256,7 +258,9 @@ impl IngestionClient {
 
         let status = res.status();
         if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(IngestionError::UserNotFound(validated_snowflake.to_string()));
+            return Err(IngestionError::UserNotFound(
+                validated_snowflake.to_string(),
+            ));
         } else if !status.is_success() {
             let body = res.text().await.unwrap_or_default();
             return Err(IngestionError::DiscordApi(status.as_u16(), body));
@@ -354,7 +358,10 @@ pub fn resolve_discord_avatar_url_with_cdn(
     }
 
     if let Some(ref av) = user.avatar {
-        return Some(format!("{}/avatars/{}/{}.png?size=256", base, snowflake_num, av));
+        return Some(format!(
+            "{}/avatars/{}/{}.png?size=256",
+            base, snowflake_num, av
+        ));
     }
 
     // Default avatar
@@ -509,11 +516,9 @@ pub async fn import_benchmark_by_snowflake(
     bot_token: &str,
     input: ManualSnowflakeImportInput,
 ) -> Result<CanonicalBenchmark, IngestionError> {
-    let snowflake_val: u64 = input
-        .user_id
-        .trim()
-        .parse()
-        .map_err(|_| IngestionError::Validation("Discord User ID must be a numeric Snowflake ID".into()))?;
+    let snowflake_val: u64 = input.user_id.trim().parse().map_err(|_| {
+        IngestionError::Validation("Discord User ID must be a numeric Snowflake ID".into())
+    })?;
     let target_snowflake = snowflake_val.to_string();
 
     // First attempt to fetch guild member to retrieve guild nickname and guild avatar
@@ -537,7 +542,9 @@ pub async fn import_benchmark_by_snowflake(
         }
         Err(IngestionError::UserNotFound(_)) | Err(IngestionError::DiscordApi(404, _)) => {
             // Fallback: Query global user profile
-            let user = ingestion_client.fetch_user(bot_token, &target_snowflake).await?;
+            let user = ingestion_client
+                .fetch_user(bot_token, &target_snowflake)
+                .await?;
             let name = user
                 .global_name
                 .clone()
