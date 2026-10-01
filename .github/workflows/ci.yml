@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   lint-and-audit:
     name: Lint, Format & Supply Chain Security
@@ -42,9 +45,9 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Install cargo-deny & cargo-audit
-        run: |
-          cargo install cargo-deny --locked
-          cargo install cargo-audit --locked
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-audit
 
       - name: Supply Chain Policy Check (cargo deny)
         working-directory: src-tauri
