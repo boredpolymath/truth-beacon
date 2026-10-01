@@ -8,7 +8,7 @@
 use crate::detection::perceptual_hash::compute_perceptual_hash;
 use crate::models::{CanonicalBenchmark, UpdateBenchmarkInput};
 use crate::vault::ingestion::{
-    resolve_discord_avatar_url_with_cdn, IngestionClient, IngestionError,
+    is_secure_endpoint, resolve_discord_avatar_url_with_cdn, IngestionClient, IngestionError,
 };
 use crate::vault::{VaultError, VaultManager};
 use rusqlite::params;
@@ -62,6 +62,10 @@ pub fn compute_hash_from_bytes(bytes: &[u8]) -> Option<String> {
 
 /// Downloads image bytes from the given URL and computes its 64-bit DCT perceptual hash.
 pub async fn fetch_and_hash_avatar(client: &reqwest::Client, avatar_url: &str) -> Option<String> {
+    if !is_secure_endpoint(avatar_url) {
+        log::warn!("Rejected insecure cleartext avatar URL: {}", avatar_url);
+        return None;
+    }
     let res = client.get(avatar_url).send().await.ok()?;
     if !res.status().is_success() {
         return None;
@@ -171,9 +175,16 @@ pub async fn sync_guild_avatar_hashes(
         .unwrap_or_default();
 
     for bm in benchmarks {
+        let snowflake_num: u64 = bm.user_id.trim().parse().unwrap_or(0);
+        let target_snowflake = if snowflake_num > 0 {
+            snowflake_num.to_string()
+        } else {
+            bm.user_id.clone()
+        };
+
         // Query live Discord member profile
         let live_member_res = ingestion_client
-            .fetch_guild_member(bot_token, guild_id, &bm.user_id)
+            .fetch_guild_member(bot_token, guild_id, &target_snowflake)
             .await;
 
         let live_avatar_url = match live_member_res {
@@ -185,7 +196,7 @@ pub async fn sync_guild_avatar_hashes(
             ),
             Err(_) => {
                 // Fallback to global user query
-                match ingestion_client.fetch_user(bot_token, &bm.user_id).await {
+                match ingestion_client.fetch_user(bot_token, &target_snowflake).await {
                     Ok(user) => resolve_discord_avatar_url_with_cdn(
                         ingestion_client.cdn_base_url(),
                         &user,

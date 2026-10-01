@@ -181,22 +181,32 @@ impl IngestionClient {
     }
 
     /// Returns the configured CDN base URL if overridden for offline testing.
+    /// Returns the configured CDN base URL if overridden for offline testing.
     pub fn cdn_base_url(&self) -> Option<&str> {
         self.cdn_base_url.as_deref()
     }
 
-    /// Fetch a single guild member via `GET /guilds/{guild_id}/members/{user_id}`.
+    /// Fetch a single guild member via `GET /guilds/{guild_id}/members/{target_snowflake}`.
     pub async fn fetch_guild_member(
         &self,
         bot_token: &str,
         guild_id: &str,
-        user_id: &str,
+        target_snowflake: &str,
     ) -> Result<DiscordGuildMember, IngestionError> {
         let clean_token = bot_token.trim().strip_prefix("Bot ").unwrap_or(bot_token);
+        let validated_snowflake: u64 = target_snowflake.trim().parse().map_err(|_| {
+            IngestionError::Validation("Target snowflake must be a numeric ID".into())
+        })?;
         let url = format!(
             "{}/guilds/{}/members/{}",
-            self.api_base_url, guild_id, user_id
+            self.api_base_url, guild_id, validated_snowflake
         );
+
+        if !is_secure_endpoint(&url) {
+            return Err(IngestionError::Validation(
+                "Cleartext HTTP transmission is disabled; endpoints must use HTTPS".into(),
+            ));
+        }
 
         let res = self
             .client
@@ -208,7 +218,7 @@ impl IngestionClient {
 
         let status = res.status();
         if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(IngestionError::UserNotFound(user_id.to_string()));
+            return Err(IngestionError::UserNotFound(validated_snowflake.to_string()));
         } else if !status.is_success() {
             let body = res.text().await.unwrap_or_default();
             return Err(IngestionError::DiscordApi(status.as_u16(), body));
@@ -218,14 +228,23 @@ impl IngestionClient {
         Ok(member)
     }
 
-    /// Fetch a user profile fallback via `GET /users/{user_id}`.
+    /// Fetch a user profile fallback via `GET /users/{target_snowflake}`.
     pub async fn fetch_user(
         &self,
         bot_token: &str,
-        user_id: &str,
+        target_snowflake: &str,
     ) -> Result<DiscordMemberUser, IngestionError> {
         let clean_token = bot_token.trim().strip_prefix("Bot ").unwrap_or(bot_token);
-        let url = format!("{}/users/{}", self.api_base_url, user_id);
+        let validated_snowflake: u64 = target_snowflake.trim().parse().map_err(|_| {
+            IngestionError::Validation("Target snowflake must be a numeric ID".into())
+        })?;
+        let url = format!("{}/users/{}", self.api_base_url, validated_snowflake);
+
+        if !is_secure_endpoint(&url) {
+            return Err(IngestionError::Validation(
+                "Cleartext HTTP transmission is disabled; endpoints must use HTTPS".into(),
+            ));
+        }
 
         let res = self
             .client
@@ -237,7 +256,7 @@ impl IngestionClient {
 
         let status = res.status();
         if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(IngestionError::UserNotFound(user_id.to_string()));
+            return Err(IngestionError::UserNotFound(validated_snowflake.to_string()));
         } else if !status.is_success() {
             let body = res.text().await.unwrap_or_default();
             return Err(IngestionError::DiscordApi(status.as_u16(), body));
@@ -260,6 +279,12 @@ impl IngestionClient {
             self.api_base_url, guild_id, limit
         );
 
+        if !is_secure_endpoint(&url) {
+            return Err(IngestionError::Validation(
+                "Cleartext HTTP transmission is disabled; endpoints must use HTTPS".into(),
+            ));
+        }
+
         let res = self
             .client
             .get(&url)
@@ -280,6 +305,10 @@ impl IngestionClient {
 
     /// Downloads image bytes from avatar URL and calculates a 64-bit DCT perceptual hash.
     pub async fn compute_avatar_hash(&self, avatar_url: &str) -> Option<String> {
+        if !is_secure_endpoint(avatar_url) {
+            log::warn!("Rejected insecure cleartext avatar URL: {}", avatar_url);
+            return None;
+        }
         let res = self.client.get(avatar_url).send().await.ok()?;
         if !res.status().is_success() {
             return None;
@@ -287,6 +316,16 @@ impl IngestionClient {
         let bytes = res.bytes().await.ok()?;
         compute_perceptual_hash(&bytes).ok()
     }
+}
+
+/// Validates that an endpoint URL is transmitted securely over TLS (HTTPS),
+/// or loopback addresses exclusively for offline integration tests.
+pub fn is_secure_endpoint(endpoint_url: &str) -> bool {
+    let lower = endpoint_url.to_ascii_lowercase();
+    lower.starts_with("https://")
+        || lower.starts_with("http://127.0.0.1")
+        || lower.starts_with("http://localhost")
+        || lower.starts_with("http://[::1]")
 }
 
 /// Resolves standard Discord CDN Avatar URL for a guild member or user.
@@ -306,15 +345,16 @@ pub fn resolve_discord_avatar_url_with_cdn(
     member_avatar: Option<&str>,
 ) -> Option<String> {
     let base = cdn_base.unwrap_or("https://cdn.discordapp.com");
+    let snowflake_num: u64 = user.id.trim().parse().unwrap_or(0);
     if let (Some(gid), Some(m_av)) = (guild_id, member_avatar) {
         return Some(format!(
             "{}/guilds/{}/users/{}/avatars/{}.png?size=256",
-            base, gid, user.id, m_av
+            base, gid, snowflake_num, m_av
         ));
     }
 
     if let Some(ref av) = user.avatar {
-        return Some(format!("{}/avatars/{}/{}.png?size=256", base, user.id, av));
+        return Some(format!("{}/avatars/{}/{}.png?size=256", base, snowflake_num, av));
     }
 
     // Default avatar
@@ -322,8 +362,7 @@ pub fn resolve_discord_avatar_url_with_cdn(
     let index = if discriminator_num != 0 {
         discriminator_num % 5
     } else {
-        let user_id_num: u64 = user.id.parse().unwrap_or(0);
-        (user_id_num >> 22) % 6
+        (snowflake_num >> 22) % 6
     };
     Some(format!("{}/embed/avatars/{}.png", base, index))
 }
@@ -470,16 +509,16 @@ pub async fn import_benchmark_by_snowflake(
     bot_token: &str,
     input: ManualSnowflakeImportInput,
 ) -> Result<CanonicalBenchmark, IngestionError> {
-    let user_id = input.user_id.trim();
-    if user_id.is_empty() || !user_id.chars().all(|c| c.is_ascii_digit()) {
-        return Err(IngestionError::Validation(
-            "Discord User ID must be a numeric Snowflake ID".into(),
-        ));
-    }
+    let snowflake_val: u64 = input
+        .user_id
+        .trim()
+        .parse()
+        .map_err(|_| IngestionError::Validation("Discord User ID must be a numeric Snowflake ID".into()))?;
+    let target_snowflake = snowflake_val.to_string();
 
     // First attempt to fetch guild member to retrieve guild nickname and guild avatar
     let (canonical_name, nickname, avatar_url) = match ingestion_client
-        .fetch_guild_member(bot_token, &input.guild_id, user_id)
+        .fetch_guild_member(bot_token, &input.guild_id, &target_snowflake)
         .await
     {
         Ok(member) => {
@@ -498,7 +537,7 @@ pub async fn import_benchmark_by_snowflake(
         }
         Err(IngestionError::UserNotFound(_)) | Err(IngestionError::DiscordApi(404, _)) => {
             // Fallback: Query global user profile
-            let user = ingestion_client.fetch_user(bot_token, user_id).await?;
+            let user = ingestion_client.fetch_user(bot_token, &target_snowflake).await?;
             let name = user
                 .global_name
                 .clone()
@@ -534,7 +573,7 @@ pub async fn import_benchmark_by_snowflake(
     let created = vault_mgr.create_benchmark(
         CreateBenchmarkInput {
             guild_id: input.guild_id,
-            user_id: user_id.to_string(),
+            user_id: target_snowflake,
             canonical_username: canonical_name,
             server_nickname: nickname,
             community_role,
