@@ -111,6 +111,12 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
     Ok(())
 }
 
+/// Runs SQLite PRAGMA integrity_check; to verify database health
+pub fn run_integrity_check(conn: &Connection) -> Result<bool> {
+    let status: String = conn.query_row("PRAGMA integrity_check;", [], |row| row.get(0))?;
+    Ok(status.to_lowercase() == "ok")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,24 +129,46 @@ mod tests {
         let version = get_user_version(&conn).unwrap();
         assert_eq!(version, CURRENT_SCHEMA_VERSION);
 
-        // Verify composite index exists
-        let index_exists: bool = conn
-            .query_row(
-                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='index' AND name='idx_incidents_guild_timestamp'",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert!(index_exists);
+        // Verify database integrity check passes
+        assert!(run_integrity_check(&conn).unwrap());
 
-        let bm_index_exists: bool = conn
-            .query_row(
-                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='index' AND name='idx_benchmarks_guild_active'",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert!(bm_index_exists);
+        // Verify all 7 optimized composite indices exist
+        let required_indices = vec![
+            "idx_benchmarks_guild_active",
+            "idx_benchmarks_user",
+            "idx_incidents_guild_timestamp",
+            "idx_incidents_status",
+            "idx_incidents_matched_bm",
+            "idx_audit_guild_timestamp",
+            "idx_audit_operator",
+        ];
+
+        for index_name in required_indices {
+            let index_exists: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='index' AND name = ?1",
+                    [&index_name],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert!(
+                index_exists,
+                "Required composite index '{}' must exist",
+                index_name
+            );
+        }
+
+        // Verify primary tables benchmarks, incidents, and audit_logs exist
+        for table in &["benchmarks", "incidents", "audit_logs"] {
+            let table_exists: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name = ?1",
+                    [table],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert!(table_exists, "Table '{}' must exist", table);
+        }
     }
 
     #[test]

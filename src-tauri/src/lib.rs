@@ -20,8 +20,15 @@ pub fn run() {
             list_incidents,
             resolve_incident,
             reset_circuit_breaker,
+            get_circuit_breaker_status,
             run_sandbox_simulation,
-            eradicate_local_data
+            eradicate_local_data,
+            verify_bot_handshake,
+            import_benchmarks_from_role,
+            import_benchmark_by_snowflake,
+            promote_incident_to_benchmark,
+            get_taxonomy_tags,
+            synchronize_benchmark_avatars
         ])
         .run(tauri::generate_context!())
         .expect("error while running TruthBeacon application");
