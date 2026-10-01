@@ -20,14 +20,14 @@ tauri-plugin-shell = "2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 strsim = "0.11"
 unicode-normalization = "0.1"
 deunicode = "1.6"
 image = "0.25"
 img_hash = "3.2"
-keyring = "3.0"
+keyring = "4.2"
 chrono = { version = "0.4", features = ["serde"] }
-thiserror = "1.0"
+thiserror = "2.0"
 log = "0.4"
 env_logger = "0.11"
