@@ -114,31 +114,22 @@ function renderTriageCards() {
 
     const similarityPct = Math.round(d.string_similarity_score * 100);
     const isMatchingPhoto = d.avatar_hamming_distance !== null && d.avatar_hamming_distance <= 5;
-    const isRapidJoin = d.suspect_account_age_hours < 24;
-
-    // Simple, concise summary of why this was flagged
-    let shortReason = '';
-    if (d.homoglyph_detected) {
-      shortReason = `Lookalike letters copied from ${benchmark.canonical_username}.`;
-    } else if (d.suspect_username.endsWith('_')) {
-      shortReason = `Extra underscore added to mimic ${benchmark.canonical_username}.`;
-    } else {
-      shortReason = `${similarityPct}% name match to ${benchmark.canonical_username}.`;
-    }
+    const isMatchingName = Boolean(d.homoglyph_detected || (d.string_similarity_score !== undefined && d.string_similarity_score >= 0.75) || !isMatchingPhoto);
 
     return `
       <article class="inspection-card ${isCritical ? '' : 'risk-elevated-card'}" id="card-${inc.id}" data-incident-id="${inc.id}">
-        <!-- Card Header Bar -->
+        <!-- Card Header Bar with Risk Badge and Reason Pills -->
         <div class="card-header-bar">
-          <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
             <span class="risk-chip ${riskChipClass}">
               <span class="risk-icon-dot"></span>
               ${riskText}
             </span>
             <span class="incident-time">Flagged ${formatTime(inc.timestamp)}</span>
           </div>
-          <div class="pipeline-eval-tag">
-            ${d.homoglyph_detected ? 'Lookalike Letters Detected' : 'Similar Username'}
+          <div class="flagged-reasons-group">
+            ${isMatchingPhoto ? `<span class="reason-pill reason-photo" title="Matching Profile Photo (Hamming Distance: ${d.avatar_hamming_distance})">Photo</span>` : ''}
+            ${isMatchingName ? `<span class="reason-pill reason-name" title="Matching Name (${similarityPct}% similarity${d.homoglyph_detected ? ' with lookalikes' : ''})">Name</span>` : ''}
           </div>
         </div>
 
@@ -156,8 +147,11 @@ function renderTriageCards() {
                 <span class="status-verified-check" title="Verified Server Leader">✓</span>
               </div>
               <div class="profile-identity">
-                <div class="profile-display-name">${benchmark.canonical_username}</div>
-                <div class="profile-handle-sub">@${benchmark.canonical_username.toLowerCase()}</div>
+                <div class="profile-display-name" title="${benchmark.server_nickname || benchmark.canonical_username}">${benchmark.server_nickname || benchmark.canonical_username}</div>
+                <div class="profile-handle-sub" title="Canonical Username: @${benchmark.canonical_username}">
+                  <span class="handle-prefix">User:</span>
+                  <span class="full-username-val">@${benchmark.canonical_username}</span>
+                </div>
                 <div class="profile-role-tag">
                   <span class="role-dot"></span>
                   ${benchmark.community_role}
@@ -184,8 +178,11 @@ function renderTriageCards() {
                 <span class="status-alert-mark ${isCritical ? '' : 'elevated'}" title="Flagged Imposter Account">!</span>
               </div>
               <div class="profile-identity">
-                <div class="profile-display-name">${renderedSuspectName}</div>
-                <div class="profile-handle-sub">@${d.suspect_username.toLowerCase()}</div>
+                <div class="profile-display-name" title="${d.suspect_nickname || d.suspect_username}">${d.suspect_nickname || renderedSuspectName}</div>
+                <div class="profile-handle-sub" title="Imposter Username: @${d.suspect_username}">
+                  <span class="handle-prefix">User:</span>
+                  <span class="full-username-val suspect">@${renderedSuspectName}</span>
+                </div>
                 <div class="profile-age-tag ${isCritical ? '' : 'elevated'}">
                   Joined ${d.suspect_account_age_hours}h ago
                 </div>
@@ -194,15 +191,31 @@ function renderTriageCards() {
           </div>
         </div>
 
-        <!-- Simple, Short "Why This Was Flagged" Footer Bar (At Bottom of Card) -->
-        <div class="card-flagged-footer">
-          <span class="flagged-footer-icon">⚠️</span>
-          <div class="flagged-footer-content">
-            <span class="flagged-footer-title">Why this was flagged:</span>
-            <span class="flagged-footer-text">${shortReason}</span>
-            ${isMatchingPhoto ? `<span class="photo-match-tag">Matching Profile Photo</span>` : ''}
+        <!-- Dedicated Full Username Threat Assessment Strip -->
+        <div class="username-threat-bar" aria-label="Exact Username Threat Comparison">
+          <div class="threat-user-box real-box" title="Full Real Canonical Username: @${benchmark.canonical_username}">
+            <div class="threat-user-label">
+              <span class="threat-label-dot real"></span>
+              <span>Real Username</span>
+            </div>
+            <div class="threat-user-value">@${benchmark.canonical_username}</div>
+          </div>
+
+          <div class="threat-vs-divider">
+            <span class="threat-vs-text">VS</span>
+            <span class="threat-vs-metric">${similarityPct}% match</span>
+          </div>
+
+          <div class="threat-user-box imposter-box" title="Full Imposter Username: @${d.suspect_username}">
+            <div class="threat-user-label">
+              <span class="threat-label-dot imposter"></span>
+              <span>Imposter Username</span>
+            </div>
+            <div class="threat-user-value imposter">@${renderedSuspectName}</div>
           </div>
         </div>
+
+
 
         <!-- Full-Spanning Action Resolution Bar -->
         <div class="card-actions-bar">

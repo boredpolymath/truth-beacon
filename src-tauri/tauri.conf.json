@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "TruthBeacon — Identity Ground-Truth Console",
+        "title": "TruthBeacon — Community Impersonation Protection",
         "width": 1280,
         "height": 840,
         "minWidth": 960,
