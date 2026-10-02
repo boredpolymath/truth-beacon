@@ -3,106 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="TruthBeacon: Authentic Identity Ground-Truth, Canonical Benchmarking & Impersonation Adjudication Console by Orange Heart Industries">
-  <title>TruthBeacon — Identity Ground-Truth &amp; Kinship Stewardship Console</title>
+  <meta name="description" content="TruthBeacon: Community Impersonation Protection Console">
+  <title>TruthBeacon — Impersonation Protection Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <!-- Persistent Global Status Header (7.2 Specification) -->
+  <!-- Header Bar -->
   <header class="global-header" id="app-header">
     <div class="brand-section">
-      <img src="assets/logo.svg" alt="TruthBeacon Emblem" class="brand-logo" id="header-logo">
+      <img src="assets/truthbeacon_emblem.png" alt="TruthBeacon Emblem" class="brand-logo" id="header-logo">
       <div class="brand-title-group">
-        <h1 id="main-heading">TruthBeacon <span class="brand-badge">OH-Industries</span></h1>
-        <p class="brand-subtitle">Authentic Identity Ground-Truth &amp; Kinship Stewardship</p>
+        <h1 id="main-heading" class="brand-heading-img">
+          <img src="assets/truthbeacon_wordmark.png" alt="TruthBeacon" class="brand-wordmark-img" id="header-wordmark">
+        </h1>
+        <p class="brand-subtitle">Community Impersonation Protection</p>
       </div>
     </div>
 
-    <!-- Status Indicators: Daemon Health, Gateway Latency, Circuit Breaker State -->
+    <!-- Status Indicators: Simple & Clear -->
     <div class="header-status-indicators" id="header-status-bar" role="region" aria-label="System Health and Status">
-      <div class="status-pill" id="status-daemon" title="Local engine health and SQLite WAL storage state">
-        <span class="status-dot pulse" id="dot-daemon"></span>
-        <span>Local Engine: <strong id="daemon-health-text">Healthy (WAL)</strong></span>
+      <div class="status-pill status-pill-voice" id="status-gateway" title="Discord bot connection is active and monitoring">
+        <span class="status-dot online"></span>
+        <span>Discord: <strong>Connected</strong></span>
       </div>
-      <div class="status-pill" id="status-gateway" title="Discord Gateway WebSocket roundtrip latency">
-        <span class="status-dot" id="dot-gateway"></span>
-        <span>Gateway v10: <strong id="gateway-latency">24ms</strong></span>
+      <div class="status-pill" id="status-circuit" title="Automatic safety brake is enabled to prevent mistakes">
+        <span class="status-dot online" id="dot-circuit"></span>
+        <span id="circuit-status-text">Protection: <strong>Active</strong></span>
       </div>
-      <div class="status-pill" id="status-circuit" title="Safety circuit breaker against rapid automated actions">
-        <span class="status-dot" id="dot-circuit"></span>
-        <span id="circuit-status-text">Circuit: <strong>Armed (Nominal)</strong></span>
-      </div>
-      <div class="status-pill status-pill-sovereignty" title="Local data sovereignty guarantee: Zero telemetry and zero cloud egress.">
-        <span>Sovereignty: <strong>Local Only</strong></span>
+      <div class="status-pill status-pill-sovereignty" title="Zero cloud tracking: Everything stays on this computer">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>100% Private</span>
       </div>
     </div>
   </header>
 
-  <!-- Navigation Tab Strip -->
+  <!-- Centered Navigation Tabs (Spanning the bar cleanly) -->
   <nav class="nav-tab-strip" id="nav-tabs" aria-label="Main Navigation">
-    <button class="nav-tab active" id="tab-btn-triage" data-tab="triage">
-      <span>Adjudication Feed</span>
-      <span class="tab-counter" id="counter-incidents">2</span>
-    </button>
-    <button class="nav-tab" id="tab-btn-vault" data-tab="vault">
-      <span>Canonical Benchmarks</span>
-      <span style="font-size: 0.74rem; color: var(--text-muted);" id="counter-vault">(3)</span>
-    </button>
-    <button class="nav-tab" id="tab-btn-sandbox" data-tab="sandbox">
-      <span>Heuristic Simulator</span>
-    </button>
-    <button class="nav-tab" id="tab-btn-audit" data-tab="audit">
-      <span>Stewardship Ledger</span>
-    </button>
-    <button class="nav-tab" id="tab-btn-sovereignty" data-tab="sovereignty">
-      <span>Data Sovereignty &amp; Local Storage</span>
-    </button>
+    <div class="nav-tabs-wrapper">
+      <button class="nav-tab active" id="tab-btn-triage" data-tab="triage">
+        <span class="tab-channel-hash">#</span>
+        <span>alerts</span>
+        <span class="tab-counter" id="counter-incidents">4</span>
+      </button>
+      <button class="nav-tab" id="tab-btn-vault" data-tab="vault">
+        <span class="tab-channel-hash">#</span>
+        <span>protected-members</span>
+        <span class="tab-count-subtle" id="counter-vault">(3)</span>
+      </button>
+      <button class="nav-tab" id="tab-btn-audit" data-tab="audit">
+        <span class="tab-channel-hash">#</span>
+        <span>activity-log</span>
+      </button>
+    </div>
   </nav>
 
   <!-- Main Viewport -->
   <main class="main-viewport" id="main-content">
-    <!-- Circuit Breaker Safety Banner (Shown when tripped) -->
+    <!-- Safety Pause Alert Banner (Shown only if safety rate limit is reached) -->
     <div class="circuit-breaker-banner" id="circuit-breaker-alert" style="display: none;" role="alert">
       <div>
-        <strong style="color: #f87171; font-size: 0.95rem;">Circuit Breaker Active (Rate Escrow)</strong>
+        <strong style="color: #ffa1a4; font-size: 0.95rem;">Safety Pause Activated</strong>
         <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px;">
-          Outbound adjudications exceeded the 5 actions / 60s sliding window safety ceiling. Actions paused for operator review.
+          Multiple moderator actions were taken in a short time. Protection is paused briefly to prevent accidental mass bans.
         </p>
       </div>
-      <button class="btn btn-dismiss" id="btn-reset-circuit">Reset Safety Escrow</button>
+      <button class="btn btn-dismiss" id="btn-reset-circuit">Resume Actions</button>
     </div>
 
-    <!-- TAB 1: ADJUDICATION FEED (7.2 Comparative Inspection Cards) -->
+    <!-- TAB 1: ALERTS QUEUE -->
     <section class="tab-pane active" id="pane-triage" aria-labelledby="tab-btn-triage">
       <div class="triage-header-bar">
         <div>
-          <h2 class="section-title">Ground-Truth Adjudication Queue</h2>
-          <p class="section-caption">Real-time incoming member evaluations requiring operator adjudication</p>
+          <h2 class="section-title">Alerts Requiring Review</h2>
+          <p class="section-caption">New accounts that look or sound like your server leaders</p>
         </div>
-        <div style="font-size: 0.82rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
-          <span>Connected Sanctuary:</span>
-          <strong id="current-guild-name" style="color: var(--text-primary); background: rgba(30, 41, 59, 0.6); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-            Crossroads Community Sanctuary
-          </strong>
+        <div class="connected-guild-pill">
+          <span class="guild-icon">C</span>
+          <span class="guild-text">Server:</span>
+          <strong id="current-guild-name">Crossroads Community Sanctuary</strong>
+          <span class="guild-badge-verified" title="Verified Community Sanctuary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+            </svg>
+          </span>
         </div>
       </div>
 
       <div class="triage-list" id="triage-cards-container" aria-live="polite">
-        <!-- Rendered dynamically by app.js (Benchmark Pod, Center Metric Pillar, Suspect Pod, Action Bar) -->
+        <!-- Rendered dynamically by app.js -->
       </div>
     </section>
 
-    <!-- TAB 2: CANONICAL BENCHMARKS -->
+    <!-- TAB 2: PROTECTED MEMBERS -->
     <section class="tab-pane" id="pane-vault" aria-labelledby="tab-btn-vault">
       <div class="triage-header-bar">
         <div>
-          <h2 class="section-title">Canonical Benchmark Vault</h2>
-          <p class="section-caption">Protected ground-truth identities and official verified community representations</p>
+          <h2 class="section-title">Protected Community Leaders</h2>
+          <p class="section-caption">People and official roles that TruthBeacon guards against impersonation</p>
         </div>
-        <button class="btn btn-primary" id="btn-add-benchmark">+ Enroll Canonical Benchmark</button>
+        <button class="btn btn-primary" id="btn-add-benchmark">+ Protect New Member</button>
       </div>
 
       <div class="grid-vault" id="vault-cards-container">
@@ -110,173 +112,104 @@
       </div>
     </section>
 
-    <!-- TAB 3: HEURISTIC SIMULATOR -->
-    <section class="tab-pane" id="pane-sandbox" aria-labelledby="tab-btn-sandbox">
-      <div class="triage-header-bar">
-        <div>
-          <h2 class="section-title">Heuristic Evaluation Simulator</h2>
-          <p class="section-caption">Evaluate Unicode homoglyphs, zero-width characters, and composite metric sensitivity</p>
-        </div>
-      </div>
-
-      <div style="background: var(--bg-card-glass); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 26px; max-width: 760px; box-shadow: var(--shadow-card);">
-        <div style="display: flex; flex-direction: column; gap: 18px;">
-          <div class="form-group">
-            <label for="sim-input-candidate" class="form-label">
-              Simulated Candidate Input
-              <span class="form-label-hint">Test Cyrillic lookalikes (e.g. DanШard), spacing tricks, or typosquats</span>
-            </label>
-            <input type="text" id="sim-input-candidate" value="DanШard" class="form-input">
-          </div>
-          <div class="form-group">
-            <label for="sim-input-benchmark" class="form-label">
-              Target Canonical Benchmark
-              <span class="form-label-hint">Official authentic username to evaluate against</span>
-            </label>
-            <input type="text" id="sim-input-benchmark" value="DanWard" class="form-input">
-          </div>
-          <button class="btn btn-primary" id="btn-run-simulation" style="align-self: flex-start;">Run Evaluation Pipeline</button>
-
-          <div id="sim-results" style="margin-top: 8px; padding: 18px; background: rgba(15, 23, 42, 0.7); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); font-size: 0.85rem;">
-            Click "Run Evaluation Pipeline" to test compatibility decomposition and multimodal metrics.
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 4: STEWARDSHIP AUDIT LEDGER -->
+    <!-- TAB 3: ACTIVITY LOG -->
     <section class="tab-pane" id="pane-audit" aria-labelledby="tab-btn-audit">
       <div class="triage-header-bar">
         <div>
-          <h2 class="section-title">Local Stewardship Audit Ledger</h2>
-          <p class="section-caption">Immutable local record of all adjudications, authorized alternates, and system events</p>
+          <h2 class="section-title">Activity Log</h2>
+          <p class="section-caption">A complete local record of alert decisions and protected member updates</p>
         </div>
       </div>
 
-      <div style="background: var(--bg-card-glass); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-card);">
-        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;" id="audit-table">
+      <div class="table-responsive-wrapper">
+        <table id="audit-table">
           <thead>
-            <tr style="background: rgba(15, 23, 42, 0.8); border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary);">
-              <th style="padding: 14px 18px;">Timestamp</th>
-              <th style="padding: 14px 18px;">Action</th>
-              <th style="padding: 14px 18px;">Target Snowflake</th>
-              <th style="padding: 14px 18px;">Steward / Operator</th>
-              <th style="padding: 14px 18px;">Stewardship Rationale</th>
+            <tr>
+              <th style="padding: 12px 16px;">Time</th>
+              <th style="padding: 12px 16px;">Action Taken</th>
+              <th style="padding: 12px 16px;">Target Account</th>
+              <th style="padding: 12px 16px;">Moderator</th>
+              <th style="padding: 12px 16px;">Notes</th>
             </tr>
           </thead>
           <tbody id="audit-table-body">
-            <!-- Rendered dynamically -->
+            <!-- Rendered dynamically by app.js -->
           </tbody>
         </table>
       </div>
     </section>
-
-    <!-- TAB 5: DATA SOVEREIGNTY & PRIVACY -->
-    <section class="tab-pane" id="pane-sovereignty" aria-labelledby="tab-btn-sovereignty">
-      <div class="sovereignty-banner">
-        <h3>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          100% Local Data Sovereignty Guarantee
-        </h3>
-        <p>TruthBeacon transmits zero telemetry, zero analytics, and zero chat metadata. All canonical benchmarks, audit ledgers, and perceptual hashes reside strictly on your local disk in SQLite WAL mode.</p>
-      </div>
-
-      <div style="display: flex; flex-direction: column; gap: 22px; max-width: 780px;">
-        <div style="background: var(--bg-card-glass); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 22px;">
-          <h4 style="font-size: 0.95rem; margin-bottom: 8px;">Local Storage Diagnostic Path</h4>
-          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">SQLite Database with Write-Ahead Logging (WAL) and memory-mapped I/O:</p>
-          <code style="display: block; padding: 12px; background: rgba(15, 23, 42, 0.9); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.8rem; color: var(--oh-orange-400); font-family: var(--font-mono);" id="sqlite-local-path">/Volumes/External/OH-Industries/projects/truth-beacon/truthbeacon.local.db</code>
-        </div>
-
-        <div style="background: var(--bg-card-glass); border: 1px solid rgba(244, 63, 94, 0.35); border-radius: var(--radius-md); padding: 22px;">
-          <h4 style="font-size: 0.95rem; color: #fda4af; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
-            </svg>
-            Sovereign Local Data Eradication
-          </h4>
-          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">
-            Permanently eradicate all local SQLite tables, flush WAL journals, purge registered canonical benchmarks, erase audit entries, and remove linked bot credentials from your OS Keychain.
-          </p>
-          <button class="btn btn-danger" id="btn-eradicate-data">Eradicate All Local Data...</button>
-        </div>
-      </div>
-    </section>
   </main>
 
-  <!-- MODAL 1: BENCHMARK CREATION (7.2 Specification) -->
+  <!-- MODAL 1: PROTECT NEW MEMBER -->
   <div class="modal-overlay" id="modal-create-benchmark" role="dialog" aria-modal="true" aria-labelledby="modal-bm-title">
     <div class="modal-dialog">
       <div class="modal-header">
         <div class="modal-title-group">
-          <h3 id="modal-bm-title">Enroll Canonical Benchmark</h3>
-          <p>Register a protected leadership or official identity baseline</p>
+          <h3 id="modal-bm-title">Protect a Community Leader</h3>
+          <p>Add a pastor, staff member, or moderator to watch for impersonators</p>
         </div>
         <button class="modal-close-btn" id="btn-close-bm-modal" aria-label="Close dialog">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
           <label for="bm-input-snowflake" class="form-label">
-            Discord Snowflake User ID *
-            <span class="form-label-hint">17-20 digit numeric ID</span>
+            Discord User ID *
+            <span class="form-label-hint">Right-click their name in Discord and choose "Copy User ID"</span>
           </label>
           <input type="text" id="bm-input-snowflake" placeholder="e.g. 291039401928374829" class="form-input" required>
         </div>
 
         <div class="form-group">
-          <label for="bm-input-username" class="form-label">Canonical Username *</label>
+          <label for="bm-input-username" class="form-label">Discord Username *</label>
           <input type="text" id="bm-input-username" placeholder="e.g. DanWard" class="form-input" required>
         </div>
 
         <div class="form-group">
-          <label for="bm-input-nickname" class="form-label">Server Display Nickname</label>
+          <label for="bm-input-nickname" class="form-label">Server Display Name</label>
           <input type="text" id="bm-input-nickname" placeholder="e.g. Pastor Dan (Lead)" class="form-input">
         </div>
 
         <div class="form-group">
-          <label for="bm-input-role" class="form-label">Community Stewardship Role *</label>
+          <label for="bm-input-role" class="form-label">Server Role *</label>
           <select id="bm-input-role" class="form-select">
             <option value="Executive Pastor">Executive Pastor / Server Owner</option>
-            <option value="Lead Moderator">Lead Moderator &amp; Elder</option>
+            <option value="Lead Moderator">Lead Moderator / Staff</option>
             <option value="Associate Pastor">Associate Pastor</option>
-            <option value="Guest Speaker">Guest Speaker / Ministry Leader</option>
-            <option value="Finance &amp; Care Escrow">Finance &amp; Care Escrow</option>
-            <option value="Official System Service">Official System Service / Bot</option>
+            <option value="Ministry Leader">Ministry Leader / Volunteer</option>
+            <option value="Official System Service">Official Bot / System Service</option>
           </select>
         </div>
 
         <div class="form-group">
           <label for="bm-input-avatar" class="form-label">
-            Official Avatar Image URL
-            <span class="form-label-hint">Used for 64-bit perceptual visual hashing</span>
+            Profile Picture URL (Optional)
+            <span class="form-label-hint">Link to their official avatar</span>
           </label>
           <input type="url" id="bm-input-avatar" placeholder="https://..." class="form-input">
         </div>
 
         <div class="form-group">
           <label for="bm-input-tags" class="form-label">
-            Identity Tags
-            <span class="form-label-hint">Comma separated</span>
+            Tags (Optional)
+            <span class="form-label-hint">e.g. Core Staff, Verified VIP</span>
           </label>
           <input type="text" id="bm-input-tags" value="Core Staff, Verified VIP" class="form-input">
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-dismiss" id="btn-cancel-benchmark">Cancel</button>
-        <button class="btn btn-primary" id="btn-save-benchmark">Save Benchmark Profile</button>
+        <button class="btn btn-primary" id="btn-save-benchmark">Save Protected Member</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL 2: AUTHORIZED ALT TAGGING (7.2 Specification) -->
+  <!-- MODAL 2: ALLOW KNOWN ALTERNATE ACCOUNT -->
   <div class="modal-overlay" id="modal-tag-alt" role="dialog" aria-modal="true" aria-labelledby="modal-alt-title">
     <div class="modal-dialog">
       <div class="modal-header">
         <div class="modal-title-group">
-          <h3 id="modal-alt-title">Authorize Alternate Identity</h3>
-          <p>Bind candidate as an authenticated secondary device or staff alt</p>
+          <h3 id="modal-alt-title">Allow as Known Secondary Account</h3>
+          <p>Mark this account as an approved device or alternate belonging to a leader</p>
         </div>
         <button class="modal-close-btn" id="btn-close-alt-modal" aria-label="Close dialog">&times;</button>
       </div>
@@ -286,102 +219,51 @@
         </div>
 
         <div class="form-group">
-          <label for="alt-select-benchmark" class="form-label">Link to Canonical Benchmark *</label>
+          <label for="alt-select-benchmark" class="form-label">Link to Protected Leader *</label>
           <select id="alt-select-benchmark" class="form-select">
             <!-- Populated dynamically -->
           </select>
         </div>
 
         <div class="form-group">
-          <label for="alt-input-purpose" class="form-label">Alternate Designation / Purpose *</label>
+          <label for="alt-input-purpose" class="form-label">Account Purpose *</label>
           <select id="alt-input-purpose" class="form-select">
-            <option value="Mobile Device">Secondary Mobile Device</option>
+            <option value="Mobile Device">Secondary Mobile Phone Account</option>
             <option value="Sanctuary Media iPad">Sanctuary Media / Projection iPad</option>
             <option value="Bot Integration Test">Integration / Bot Testing Account</option>
             <option value="Personal Backup Account">Personal Backup Account (Known to Staff)</option>
-            <option value="Volunteer Rotation Alt">Volunteer Rotation Alt</option>
+            <option value="Volunteer Rotation Alt">Volunteer Rotation Account</option>
           </select>
         </div>
 
         <div class="form-group">
           <label for="alt-input-justification" class="form-label">
-            Stewardship Rationale *
-            <span class="form-label-hint">Recorded in immutable local audit ledger</span>
+            Notes / Reason *
+            <span class="form-label-hint">Saved in your activity log</span>
           </label>
-          <textarea id="alt-input-justification" class="form-textarea" placeholder="State operational reason for alt identity authorization (e.g. 'Confirmed with Dan in person; verified mobile Discord client')"></textarea>
+          <textarea id="alt-input-justification" class="form-textarea" placeholder="e.g. Confirmed with Dan in person; approved mobile device account"></textarea>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-dismiss" id="btn-cancel-alt">Cancel</button>
-        <button class="btn btn-whitelist" id="btn-confirm-alt">Confirm Alt Authorization</button>
+        <button class="btn btn-whitelist" id="btn-confirm-alt">Approve Account</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL 3: SOVEREIGN LOCAL DATA ERADICATION (7.2 Specification) -->
-  <div class="modal-overlay" id="modal-eradicate-data" role="dialog" aria-modal="true" aria-labelledby="modal-eradicate-title">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <h3 id="modal-eradicate-title" style="color: #fda4af;">Sovereign Local Data Eradication</h3>
-          <p>Permanent cryptographic purge of all local storage &amp; credentials</p>
-        </div>
-        <button class="modal-close-btn" id="btn-close-eradicate-modal" aria-label="Close dialog">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-info-callout callout-warning">
-          <strong>Irreversible Data Sovereignty Action</strong>
-          <p style="margin-top: 4px;">
-            TruthBeacon operates with 100% local sovereignty—no cloud copies or server backups exist. Once executed, all ground-truth benchmarks, audit histories, and credentials cannot be recovered.
-          </p>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 8px; margin: 4px 0;">
-          <div class="checklist-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <span>Purge all SQLite tables (`benchmarks`, `incidents`, `audit_logs`)</span>
-          </div>
-          <div class="checklist-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <span>Flush WAL buffers and execute database `VACUUM`</span>
-          </div>
-          <div class="checklist-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <span>Delete Discord bot tokens from native OS Keychain (`keyring-rs`)</span>
-          </div>
-          <div class="checklist-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <span>Clear in-memory perceptual image hashes and caches</span>
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-top: 6px;">
-          <label for="eradicate-confirm-input" class="form-label">
-            Type <span style="font-family: var(--font-mono); color: #fda4af; font-weight: 700;">ERADICATE</span> to unlock confirmation:
-          </label>
-          <input type="text" id="eradicate-confirm-input" class="form-input" placeholder="Type ERADICATE in capital letters" autocomplete="off">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-dismiss" id="btn-cancel-eradicate">Cancel / Retain Ground Truth</button>
-        <button class="btn btn-danger" id="btn-confirm-eradicate" disabled>Execute Sovereign Wipe</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Global Footer with Ergonomic Hotkeys Helper Strip -->
+  <!-- Global Footer -->
   <footer class="global-footer" id="app-footer">
-    <div>TruthBeacon v0.1.0 &bull; Orange Heart Industries &bull; Kinship Stewardship Console</div>
+    <div>TruthBeacon &bull; Community Impersonation Protection</div>
     
-    <div class="footer-hotkeys-strip" aria-label="Triage Keyboard Shortcuts">
-      <span class="hotkey-legend-item"><kbd>B</kbd> Adjudicate</span>
-      <span class="hotkey-legend-item"><kbd>D</kbd> Dismiss</span>
-      <span class="hotkey-legend-item"><kbd>W</kbd> Authorize Alt</span>
-      <span class="hotkey-legend-item"><kbd>E</kbd> Quarantine</span>
-      <span class="hotkey-legend-item"><kbd>Esc</kbd> Close Modal</span>
+    <div class="footer-hotkeys-strip" aria-label="Keyboard Shortcuts">
+      <span class="hotkey-legend-item"><kbd>B</kbd> Ban Imposter</span>
+      <span class="hotkey-legend-item"><kbd>W</kbd> Allow Alt</span>
+      <span class="hotkey-legend-item"><kbd>E</kbd> Restrict</span>
+      <span class="hotkey-legend-item"><kbd>D</kbd> Ignore</span>
+      <span class="hotkey-legend-item"><kbd>Esc</kbd> Close</span>
     </div>
 
-    <div id="footer-memory-stat" class="tabular-nums">Memory: ~26.4 MB &bull; Zero Cloud Egress</div>
+    <div id="footer-memory-stat" class="tabular-nums">100% Private &bull; No Cloud Tracking</div>
   </footer>
 
   <script type="module" src="js/app.js"></script>
