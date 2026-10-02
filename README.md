@@ -1,7 +1,4 @@
-# TruthBeacon
-
-### Desktop Identity Ground-Truth & Impersonation Prevention Console
-**Crafted with care by Orange Heart Industries**
+# TruthBeacon: Desktop Identity Ground-Truth & Impersonation Prevention Console
 
 <p align="center">
   <img src="ui/assets/app_preview.png" alt="TruthBeacon Desktop Application Preview" width="100%" style="border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
