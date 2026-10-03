@@ -1,9 +1,56 @@
 # TruthBeacon: Desktop Identity Ground-Truth & Impersonation Prevention Console
 ### Community Impersonation Protection Console • Tauri v2 • Rust Core • Zero Cloud Telemetry
 
-<p align="center">
-  <img src="ui/assets/app_preview.png" alt="TruthBeacon Desktop Application Preview" width="100%" style="border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
-</p>
+<!-- Application Views Carousel & Thumbnail Gallery -->
+<table align="center" width="100%" style="border-collapse: collapse; border: none; margin: 16px 0;">
+  <tr>
+    <td align="center" width="33.3%" style="padding: 6px; border: none;">
+      <a href="#view-1-alerts-requiring-review">
+        <img src="ui/assets/screenshot_alerts.png" alt="Alerts View Thumbnail" width="100%" style="border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.35);">
+      </a>
+      <br>
+      <sub><b>1. Alerts Requiring Review</b></sub>
+    </td>
+    <td align="center" width="33.3%" style="padding: 6px; border: none;">
+      <a href="#view-2-protected-community-leaders">
+        <img src="ui/assets/screenshot_protected.png" alt="Protected Members Thumbnail" width="100%" style="border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.35);">
+      </a>
+      <br>
+      <sub><b>2. Protected Community Leaders</b></sub>
+    </td>
+    <td align="center" width="33.3%" style="padding: 6px; border: none;">
+      <a href="#view-3-activity-log">
+        <img src="ui/assets/screenshot_activity_log.png" alt="Activity Log Thumbnail" width="100%" style="border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.35);">
+      </a>
+      <br>
+      <sub><b>3. Activity Log & Audit Trail</b></sub>
+    </td>
+  </tr>
+</table>
+
+<details open>
+  <summary id="view-1-alerts-requiring-review"><b>🚨 View 1: Alerts Requiring Review</b> <i>(Click to toggle view)</i></summary>
+  <p align="center">
+    <img src="ui/assets/screenshot_alerts.png" alt="Alerts Requiring Review: High-risk imposter detection with side-by-side comparative inspection and dedicated username threat assessment strip" width="100%" style="border-radius: 8px; margin-top: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
+  </p>
+  <p align="center"><em>Alerts Requiring Review: High-risk imposter detection with side-by-side comparative inspection and dedicated username threat assessment strip.</em></p>
+</details>
+
+<details>
+  <summary id="view-2-protected-community-leaders"><b>🛡️ View 2: Protected Community Leaders</b> <i>(Click to toggle view)</i></summary>
+  <p align="center">
+    <img src="ui/assets/screenshot_protected.png" alt="Protected Community Leaders: Ground-truth canonical identity benchmark vault with verified role badges and impersonation shielding" width="100%" style="border-radius: 8px; margin-top: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
+  </p>
+  <p align="center"><em>Protected Community Leaders: Ground-truth canonical identity benchmark vault with verified role badges and impersonation shielding.</em></p>
+</details>
+
+<details>
+  <summary id="view-3-activity-log"><b>📜 View 3: Activity Log & Local Audit Trail</b> <i>(Click to toggle view)</i></summary>
+  <p align="center">
+    <img src="ui/assets/screenshot_activity_log.png" alt="Activity Log: Complete local immutable audit trail of moderation decisions and benchmark updates" width="100%" style="border-radius: 8px; margin-top: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
+  </p>
+  <p align="center"><em>Activity Log: Complete local immutable audit trail of moderation decisions and benchmark updates.</em></p>
+</details>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
