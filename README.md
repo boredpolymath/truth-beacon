@@ -334,23 +334,7 @@ Engine parameters, detection thresholds, and privacy constraints can be customiz
 
 ---
 
-## 10. Architectural Specifications & Compliance Documentation
-
-For in-depth technical specifications, regulatory filings, and threat models, refer to the documentation suite in `docs/`:
-
-* **[01: Scope Boundaries & System Resource Envelopes](docs/01-scope-boundaries-and-system-envelopes.md)** — Hardware target matrices, standby memory envelopes (< 30 MB idle), and non-functional boundaries.
-* **[02: Licensing Structure & OSS Compliance Audit](docs/02-licensing-structure-and-oss-compliance-audit.md)** — Dual-licensing model, copyleft auditing, and transitive crate license compliance.
-* **[03: Discord Developer Policy & ToS Compliance](docs/03-discord-developer-policy-and-tos-compliance.md)** — Strict bot-only token usage, anti-scraping guarantees, and data retention rules.
-* **[04: Privileged Gateway Intent & Rate-Limit Compliance](docs/04-privileged-gateway-intent-and-rate-limit-compliance.md)** — Technical justification for `GUILD_MEMBERS` intent and token-bucket rate limiter specs.
-* **[05: User Personas, Acceptance Criteria & Definition of Done](docs/05-user-personas-acceptance-criteria-and-definition-of-done.md)** — User personas, latency thresholds (< 50ms), and acceptance criteria.
-* **[06: STRIDE Threat Analysis & Evasion Mitigations](docs/06-stride-threat-analysis-and-evasion-mitigations.md)** — Threat modeling against spoofing, homoglyphs, visual avatar perturbations, and DoS attacks.
-* **[07: High-Level Architecture & IPC Contract](docs/07-high-level-architecture-and-ipc-contract.md)** — Three-tier asynchronous threading model, separation of concerns, and type-safe IPC schemas.
-* **[08: Local Storage Architecture & Migration Strategy](docs/08-local-storage-architecture-and-migration-strategy.md)** — Normalized SQLite WAL schema, composite indexing, and transactional schema migrations.
-* **[Master SDLC Implementation & Lifecycle Checklist](docs/truthbeacon-master-checklist.md)** — The 29-phase master development roadmap from inception through testing, pilot, and sunsetting.
-
----
-
-## 11. Quick Start & Development
+## 10. Quick Start & Development
 
 ### Prerequisites
 * **Rust Toolchain:** v1.75+ (`cargo`, `rustc`)
@@ -399,7 +383,7 @@ Open [http://localhost:8080](http://localhost:8080) to inspect and test the UI i
 
 ---
 
-## 12. License & Ethical Stewardship
+## 11. License & Ethical Stewardship
 
 TruthBeacon is engineered with love and precision by **Orange Heart Industries**.
 
