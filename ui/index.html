@@ -25,9 +25,9 @@
 
     <!-- Status Indicators: Simple & Clear -->
     <div class="header-status-indicators" id="header-status-bar" role="region" aria-label="System Health and Status">
-      <div class="status-pill status-pill-voice" id="status-gateway" title="Discord bot connection is active and monitoring">
-        <span class="status-dot online"></span>
-        <span>Discord: <strong>Connected</strong></span>
+      <div class="status-pill status-pill-voice" id="status-gateway" title="Discord bot connection status">
+        <span class="status-dot offline"></span>
+        <span>Discord: <strong>Disconnected</strong></span>
       </div>
       <div class="status-pill" id="status-circuit" title="Automatic safety brake is enabled to prevent mistakes">
         <span class="status-dot online" id="dot-circuit"></span>
@@ -42,12 +42,12 @@
       <button class="nav-tab active" id="tab-btn-triage" data-tab="triage">
         <span class="tab-channel-hash">#</span>
         <span>alerts</span>
-        <span class="tab-counter" id="counter-incidents">4</span>
+        <span class="tab-counter tab-counter-zero" id="counter-incidents">0</span>
       </button>
       <button class="nav-tab" id="tab-btn-vault" data-tab="vault">
         <span class="tab-channel-hash">#</span>
         <span>protected-members</span>
-        <span class="tab-count-subtle" id="counter-vault">(3)</span>
+        <span class="tab-count-subtle" id="counter-vault">(0)</span>
       </button>
       <button class="nav-tab" id="tab-btn-audit" data-tab="audit">
         <span class="tab-channel-hash">#</span>
@@ -85,19 +85,13 @@
           <p class="section-caption">New accounts that look or sound like your server leaders</p>
         </div>
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-          <button class="btn btn-dismiss" id="btn-test-toast" style="padding: 5px 12px; font-size: 0.78rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.06); border: 1px solid var(--border-subtle);" title="Test Native OS Desktop Notification Toast">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <button class="btn btn-dismiss" id="btn-test-toast" style="display: none;" title="Test Native OS Desktop Notification Toast">
             <span>Test OS Toast</span>
           </button>
           <div class="connected-guild-pill">
-            <span class="guild-icon">C</span>
+            <span class="guild-icon" id="current-guild-icon">—</span>
             <span class="guild-text">Server:</span>
-            <strong id="current-guild-name">Crossroads Community Sanctuary</strong>
-            <span class="guild-badge-verified" title="Verified Community Sanctuary">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
-              </svg>
-            </span>
+            <strong id="current-guild-name">No Server Connected</strong>
           </div>
         </div>
       </div>
@@ -168,17 +162,17 @@
               </svg>
             </div>
             <img id="discord-bot-avatar-img" class="discord-bot-avatar" src="" alt="Bot Avatar" style="display: none;">
-            <span class="discord-status-indicator online" id="discord-hero-status-dot" title="Active"></span>
+            <span class="discord-status-indicator offline" id="discord-hero-status-dot" title="Disconnected"></span>
           </div>
           <div class="discord-hero-meta">
             <div class="discord-hero-title-row">
-              <h3 class="discord-bot-name" id="discord-hero-bot-name">TruthBeacon Guard</h3>
+              <h3 class="discord-bot-name" id="discord-hero-bot-name">TruthBeacon Bot</h3>
               <span class="discord-bot-tag">BOT</span>
-              <span class="discord-badge-active" id="discord-hero-badge">CONNECTED</span>
+              <span class="discord-badge-active disconnected" id="discord-hero-badge">DISCONNECTED</span>
             </div>
             <p class="discord-hero-server-line">
-              Monitoring Server: <strong id="discord-hero-server-name">Crossroads Community Sanctuary</strong>
-              <span class="discord-snowflake-code" id="discord-hero-guild-id">ID: 999888777666555444</span>
+              Monitoring Server: <strong id="discord-hero-server-name">Not Configured</strong>
+              <span class="discord-snowflake-code" id="discord-hero-guild-id">No Server Set</span>
             </p>
           </div>
         </div>
@@ -229,7 +223,7 @@
                 Target Discord Server (Guild) ID *
                 <span class="form-label-hint">Right-click server icon in Discord &rarr; "Copy Server ID"</span>
               </label>
-              <input type="text" id="discord-guild-id-input" class="form-input" placeholder="e.g. 999888777666555444" value="999888777666555444" spellcheck="false" required>
+              <input type="text" id="discord-guild-id-input" class="form-input" placeholder="e.g. 999888777666555444" spellcheck="false" required>
             </div>
 
             <!-- Action Buttons Strip -->
@@ -252,24 +246,24 @@
             </div>
             <div class="diagnostic-checklist" id="diag-checklist">
               <div class="diag-item" id="diag-check-format">
-                <span class="diag-icon success">&#10003;</span>
-                <span class="diag-text">Token Format: <strong>Official 3-Part Bot Token</strong></span>
+                <span class="diag-icon pending">&bull;</span>
+                <span class="diag-text">Token Format: <strong>Awaiting verification</strong></span>
               </div>
               <div class="diag-item" id="diag-check-auth">
-                <span class="diag-icon success">&#10003;</span>
-                <span class="diag-text">Gateway Handshake: <strong>Authenticated with Discord v10</strong></span>
+                <span class="diag-icon pending">&bull;</span>
+                <span class="diag-text">Gateway Handshake: <strong>Awaiting verification</strong></span>
               </div>
               <div class="diag-item" id="diag-check-intents">
-                <span class="diag-icon success">&#10003;</span>
-                <span class="diag-text">Privileged Intent: <strong>Server Members Intent (GUILD_MEMBERS) Active</strong></span>
+                <span class="diag-icon pending">&bull;</span>
+                <span class="diag-text">Privileged Intent: <strong>Awaiting verification</strong></span>
               </div>
               <div class="diag-item" id="diag-check-membership">
-                <span class="diag-icon success">&#10003;</span>
-                <span class="diag-text">Server Membership: <strong>Bot is Present in Target Guild</strong></span>
+                <span class="diag-icon pending">&bull;</span>
+                <span class="diag-text">Server Membership: <strong>Awaiting verification</strong></span>
               </div>
               <div class="diag-item" id="diag-check-permissions">
-                <span class="diag-icon success">&#10003;</span>
-                <span class="diag-text">Moderation Permissions: <strong>Kick, Ban, Moderate & View Channels Granted</strong></span>
+                <span class="diag-icon pending">&bull;</span>
+                <span class="diag-text">Moderation Permissions: <strong>Awaiting verification</strong></span>
               </div>
             </div>
           </div>

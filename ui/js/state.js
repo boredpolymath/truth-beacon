@@ -8,27 +8,31 @@ class StateStore {
     this.auditLogs = JSON.parse(JSON.stringify(INITIAL_AUDIT_LOGS));
     this.activeTab = 'triage';
     this.selectedGuild = {
-      id: 'guild_crossroads_9921',
-      name: 'Crossroads Community Sanctuary',
-      member_count: 1420
+      id: null,
+      name: 'No Server Connected',
+      member_count: 0
     };
     this.daemonHealth = {
       online: true,
-      gateway_connected: true,
-      latency_ms: 24,
+      gateway_connected: false,
+      latency_ms: 0,
       memory_mb: 26.4,
       circuit_breaker: {
         tripped: false,
-        rolling_requests: 1,
+        rolling_requests: 0,
         max_requests: 5,
         remaining_cooldown: 0
       }
     };
     this.listeners = [];
 
-    // Subtle gentle latency jitter (21 - 28ms) to reflect live WebSocket connection
+    // Subtle gentle latency jitter (21 - 28ms) to reflect live WebSocket connection when connected
     setInterval(() => {
-      this.daemonHealth.latency_ms = 20 + Math.floor(Math.random() * 8);
+      if (this.daemonHealth.gateway_connected) {
+        this.daemonHealth.latency_ms = 20 + Math.floor(Math.random() * 8);
+      } else {
+        this.daemonHealth.latency_ms = 0;
+      }
       this.notifyHeaderOnly();
     }, 4000);
   }
@@ -49,7 +53,9 @@ class StateStore {
   notifyHeaderOnly() {
     const latencyEl = document.getElementById('gateway-latency');
     if (latencyEl) {
-      latencyEl.textContent = `${this.daemonHealth.latency_ms}ms`;
+      latencyEl.textContent = this.daemonHealth.gateway_connected
+        ? `${this.daemonHealth.latency_ms}ms`
+        : '--';
     }
   }
 

@@ -47,7 +47,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Python dependencies
-        run: pip install pillow
+        run: pip install pillow dmgbuild ds-store mac-alias
 
       - name: Install Rust targets
         uses: dtolnay/rust-toolchain@stable

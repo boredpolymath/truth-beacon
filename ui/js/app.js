@@ -284,6 +284,31 @@ function renderTriageCards() {
 // Render Protected Members Grid
 function renderVaultGrid() {
   counterVault.textContent = `(${appState.benchmarks.length})`;
+
+  if (appState.benchmarks.length === 0) {
+    vaultContainer.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 56px 20px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-card);">
+        <div style="width: 48px; height: 48px; margin: 0 auto 14px; border-radius: 50%; background: rgba(88, 101, 242, 0.12); border: 1px solid rgba(88, 101, 242, 0.25); display: flex; align-items: center; justify-content: center; color: var(--brand-blurple);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <h3 style="color: var(--text-header); font-weight: 700; font-size: 1.15rem; margin-bottom: 6px;">No Protected Members Yet</h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; max-width: 440px; margin: 0 auto 18px;">
+          Add pastors, elders, or staff to create official ground-truth benchmarks that safeguard against imposter accounts.
+        </p>
+        <button class="btn btn-primary" id="btn-empty-add-bm" style="display: inline-flex; align-items: center; gap: 8px; margin: 0 auto;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Enroll First Leader</span>
+        </button>
+      </div>
+    `;
+    document.getElementById('btn-empty-add-bm')?.addEventListener('click', () => {
+      openModal(modalCreateBm);
+    });
+    return;
+  }
+
   vaultContainer.innerHTML = appState.benchmarks.map(bm => {
     const displayName = bm.server_nickname || bm.canonical_username;
     const hasDistinctHandle = bm.server_nickname && bm.server_nickname !== bm.canonical_username;
@@ -1074,9 +1099,28 @@ async function loadDiscordConfig() {
 function renderDiscordConfig(config) {
   if (!config) return;
 
-  if (discordHeroBotName) discordHeroBotName.textContent = config.bot_name || 'TruthBeacon Guard';
+  if (discordHeroBotName) discordHeroBotName.textContent = config.bot_name || 'TruthBeacon Bot';
   if (discordHeroServerName) discordHeroServerName.textContent = config.guild_name || 'Not Configured';
   if (discordHeroGuildId) discordHeroGuildId.textContent = config.guild_id ? `ID: ${config.guild_id}` : 'No Server Set';
+
+  const currentGuildName = document.getElementById('current-guild-name');
+  const currentGuildIcon = document.getElementById('current-guild-icon');
+  if (currentGuildName) {
+    currentGuildName.textContent = config.guild_name || (config.guild_id ? `Server (${config.guild_id})` : 'No Server Connected');
+  }
+  if (currentGuildIcon) {
+    currentGuildIcon.textContent = config.guild_name ? config.guild_name.charAt(0).toUpperCase() : '—';
+  }
+
+  if (config.connected !== undefined) {
+    appState.daemonHealth.gateway_connected = !!config.connected;
+  }
+  if (config.guild_id) {
+    appState.selectedGuild.id = config.guild_id;
+  }
+  if (config.guild_name) {
+    appState.selectedGuild.name = config.guild_name;
+  }
 
   if (discordGuildIdInput && !discordGuildIdInput.matches(':focus')) {
     discordGuildIdInput.value = config.guild_id || '';

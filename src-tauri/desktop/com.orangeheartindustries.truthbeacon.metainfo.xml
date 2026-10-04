@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.orangeheartindustries.truthbeacon</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <name>TruthBeacon</name>
+  <summary>Desktop Identity Ground-Truth &amp; Impersonation Prevention Console</summary>
+  <description>
+    <p>
+      TruthBeacon is an operator-focused desktop security console designed for Discord community stewardship.
+      It monitors server member events in real-time, detecting homoglyphic spoofing, authoritative affix impersonation,
+      and cloned avatars against verified identity benchmarks before malicious actors can defraud community members.
+    </p>
+    <p>Key Capabilities:</p>
+    <ul>
+      <li>Sub-50ms deterministic multi-script homoglyph evaluation (Cyrillic, Greek, Mathematical).</li>
+      <li>Perceptual discrete cosine transform (DCT) visual hash matching for avatar clones.</li>
+      <li>Cryptographic snowflake age analysis and automated compound threat adjudication.</li>
+      <li>Zero-telemetry architecture with local data sovereignty and encrypted OS Keychain credential storage.</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">truthbeacon.desktop</launchable>
+  <url type="homepage">https://github.com/Orange-Heart-Industries/truth-beacon</url>
+  <url type="bugtracker">https://github.com/Orange-Heart-Industries/truth-beacon/issues</url>
+  <developer_name>Orange Heart Industries</developer_name>
+  <developer id="com.orangeheartindustries">
+    <name>Orange Heart Industries</name>
+  </developer>
+  <categories>
+    <category>Utility</category>
+    <category>Security</category>
+    <category>Network</category>
+  </categories>
+  <provides>
+    <binary>truth-beacon</binary>
+  </provides>
+  <releases>
+    <release version="0.1.0" date="2026-10-04">
+      <description>
+        <p>Initial release of TruthBeacon with real-time Discord Gateway v10 monitoring and multi-tiered threat adjudication.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

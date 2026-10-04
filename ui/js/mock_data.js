@@ -3,7 +3,16 @@
  * Designed according to Orange Heart Industries Human-Centered Stewardship ethos.
  */
 
-export const INITIAL_BENCHMARKS = [
+export const INITIAL_BENCHMARKS = [];
+
+export const INITIAL_INCIDENTS = [];
+
+export const INITIAL_AUDIT_LOGS = [];
+
+/**
+ * Demo Fixtures for Development Testing & Red Team Drills
+ */
+export const DEMO_BENCHMARKS = [
   {
     id: "bm_pastor_dan",
     guild_id: "guild_crossroads_9921",
@@ -53,16 +62,16 @@ export const INITIAL_BENCHMARKS = [
   }
 ];
 
-export const INITIAL_INCIDENTS = [
+export const DEMO_INCIDENTS = [
   {
     id: "inc_901",
     guild_id: "guild_crossroads_9921",
-    timestamp: Date.now() - 1000 * 60 * 14, // 14 mins ago
+    timestamp: Date.now() - 1000 * 60 * 14,
     discrepancy: {
       matched_benchmark_id: "bm_pastor_dan",
       matched_benchmark_name: "DanWard",
       suspect_user_id: "128492019482710492",
-      suspect_username: "Dan\u0428ard", // Cyrillic homoglyph for W
+      suspect_username: "Dan\u0428ard",
       suspect_raw_display: "DanШard",
       suspect_nickname: "Pastor Dan (Lead)",
       suspect_avatar_url: "assets/avatars/pastor_dan_alt.svg",
@@ -83,7 +92,7 @@ export const INITIAL_INCIDENTS = [
   {
     id: "inc_902",
     guild_id: "guild_crossroads_9921",
-    timestamp: Date.now() - 1000 * 60 * 52, // 52 mins ago
+    timestamp: Date.now() - 1000 * 60 * 52,
     discrepancy: {
       matched_benchmark_id: "bm_support_bot",
       matched_benchmark_name: "CrossroadsHelpDesk",
@@ -109,7 +118,7 @@ export const INITIAL_INCIDENTS = [
   {
     id: "inc_903",
     guild_id: "guild_crossroads_9921",
-    timestamp: Date.now() - 1000 * 60 * 110, // ~2 hours ago
+    timestamp: Date.now() - 1000 * 60 * 110,
     discrepancy: {
       matched_benchmark_id: "bm_sarah_mod",
       matched_benchmark_name: "SarahChen",
@@ -135,7 +144,7 @@ export const INITIAL_INCIDENTS = [
   {
     id: "inc_904",
     guild_id: "guild_crossroads_9921",
-    timestamp: Date.now() - 1000 * 60 * 240, // 4 hours ago
+    timestamp: Date.now() - 1000 * 60 * 240,
     discrepancy: {
       matched_benchmark_id: "bm_pastor_dan",
       matched_benchmark_name: "DanWard",
@@ -160,7 +169,7 @@ export const INITIAL_INCIDENTS = [
   }
 ];
 
-export const INITIAL_AUDIT_LOGS = [
+export const DEMO_AUDIT_LOGS = [
   {
     id: "aud_01",
     timestamp: Date.now() - 1000 * 60 * 180,

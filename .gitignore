@@ -28,7 +28,15 @@ Thumbs.db
 tmp/
 temp/
 
-# Internal documentation & working checklists (not committed or pushed)
+# Internal documentation & working checklists
 /docs/
 docs/
 
+# Release bundle binaries
+release/*.dmg
+release/*.zip
+release/*-universal
+release/*.exe
+release/*.msi
+release/*.deb
+release/*.AppImage

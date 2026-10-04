@@ -78,7 +78,10 @@
           "libappindicator3-1",
           "libsecret-1-0",
           "libxdo3"
-        ]
+        ],
+        "files": {
+          "/usr/share/metainfo/com.orangeheartindustries.truthbeacon.metainfo.xml": "desktop/com.orangeheartindustries.truthbeacon.metainfo.xml"
+        }
       },
       "appimage": {
         "bundleMediaFramework": false

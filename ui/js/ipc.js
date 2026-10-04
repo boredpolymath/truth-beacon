@@ -27,7 +27,7 @@ export async function invokeCommand(cmd, args = {}) {
     case 'get_system_status':
       return {
         daemon_healthy: true,
-        gateway_connected: true,
+        gateway_connected: false,
         circuit_breaker_tripped: mockCircuitBreakerTripped,
         db_path: "/Users/local/.truthbeacon/truthbeacon.local.db",
         pending_incidents_count: mockIncidents.filter(i => i.status === 'pending').length,
@@ -190,9 +190,9 @@ export async function invokeCommand(cmd, args = {}) {
 
     case 'get_discord_config':
       return {
-        has_token: true,
-        guild_id: "guild_crossroads_9921",
-        registered_guilds: ["guild_crossroads_9921"],
+        has_token: false,
+        guild_id: "",
+        registered_guilds: [],
         string_similarity_threshold: 0.85,
         new_account_age_hours_threshold: 72,
         avatar_hamming_threshold: 10,
@@ -210,8 +210,8 @@ export async function invokeCommand(cmd, args = {}) {
         bot_discriminator: "0",
         bot_avatar: null,
         is_official_bot: true,
-        target_guild_id: guild_id || "guild_crossroads_9921",
-        target_guild_name: "Crossroads Community Sanctuary",
+        target_guild_id: guild_id || "",
+        target_guild_name: guild_id ? `Server (${guild_id})` : "Verified Community Sanctuary",
         permissions: {
           is_administrator: false,
           has_kick_members: true,

@@ -176,7 +176,7 @@ pub fn resolve_incident(
     let guild_id = existing_opt
         .as_ref()
         .map(|i| i.guild_id.clone())
-        .unwrap_or_else(|| "guild_crossroads_9921".into());
+        .unwrap_or_default();
     let suspect_username = existing_opt
         .as_ref()
         .map(|i| i.discrepancy.suspect_username.clone());

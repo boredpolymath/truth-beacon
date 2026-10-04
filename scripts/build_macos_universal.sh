@@ -44,10 +44,11 @@ echo "Universal binary verified:"
 lipo -info "${UNIVERSAL_DIR}/truth-beacon"
 file "${UNIVERSAL_DIR}/truth-beacon"
 
-# 5. Build Tauri DMG bundle using universal target
+# 5. Build Tauri App bundle and package DMG via dmgbuild
 echo "==> [5/5] Packaging TruthBeacon Drag-and-Drop .dmg with Orange Heart layout..."
 cd "${SRC_TAURI_DIR}"
-cargo tauri build --target universal-apple-darwin --no-sign
+cargo tauri build --target universal-apple-darwin --no-sign -b app
+python3 "${SCRIPT_DIR}/package_macos_dmg.py"
 
 echo "======================================================================"
 echo " macOS Universal 2 DMG packaging completed successfully!"
