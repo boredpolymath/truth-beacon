@@ -4,9 +4,9 @@
 **Built with Tauri v2 &bull; Powered by Rust &bull; 100% Local &bull; Zero Cloud Telemetry**
 
 <p align="center">
-  <img src="ui/assets/app_carousel.webp" alt="TruthBeacon Desktop Application: Alerts Triage, Protected Community Leaders, Activity Log, and Discord Connection Setup" width="100%" style="border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
+  <img src="ui/assets/app_carousel.webp" alt="TruthBeacon Desktop Application: Alerts Triage, Protected Community Leaders, Activity Log, Discord Connection Setup, and Setup Guide" width="100%" style="border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
   <br>
-  <em>TruthBeacon Console: Real-time imposter alerts triage, canonical benchmark vault, local activity log, and Discord connection setup.</em>
+  <em>TruthBeacon Console: Real-time imposter alerts triage, canonical benchmark vault, local activity log, Discord connection setup, and bot setup guide.</em>
 </p>
 
 <p align="center">
