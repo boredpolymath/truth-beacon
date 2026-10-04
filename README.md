@@ -4,9 +4,9 @@
 **Built with Tauri v2 &bull; Powered by Rust &bull; 100% Local &bull; Zero Cloud Telemetry**
 
 <p align="center">
-  <img src="ui/assets/app_carousel.webp" alt="TruthBeacon Desktop Application: Alerts Triage, Protected Community Leaders, and Activity Log" width="100%" style="border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
+  <img src="ui/assets/app_carousel.webp" alt="TruthBeacon Desktop Application: Alerts Triage, Protected Community Leaders, Activity Log, and Discord Connection Setup" width="100%" style="border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
   <br>
-  <em>TruthBeacon Console: Real-time imposter alerts, side-by-side profile comparisons, and instant one-key resolution.</em>
+  <em>TruthBeacon Console: Real-time imposter alerts triage, canonical benchmark vault, local activity log, and Discord connection setup.</em>
 </p>
 
 <p align="center">
@@ -120,6 +120,7 @@ TruthBeacon makes protecting your server straightforward:
 | **Monospace Comparison Bar** | Uncut, full-length display of canonical and suspect usernames so zero subtle character swaps go unnoticed. |
 | **Direct Trigger Pills** | Instant visual tags on each alert card (`Photo`, `Name`) explaining exactly why the account was flagged. |
 | **Protected VIP Vault** | Easily save team members, pastors, founders, and moderators with one-click role imports from Discord. |
+| **Discord Connection & Setup** | Seamless bot token authentication, guild pairing, and interactive detection sensitivity controls. |
 | **Discord Gateway Daemon** | Background event listener that instantly catches incoming joins and profile edits without polling. |
 | **Persistent System Tray** | Sits quietly in your menu bar or taskbar with multi-resolution assets (16x16 to 256x256), health controls, and background residency. |
 | **Native Action Toasts** | Interactive desktop notifications for `Elevated` and `Critical` threats with instant action buttons: `Inspect`, `Dismiss`, and `Ban & Purge`. |
