@@ -423,8 +423,8 @@ pub struct DiscordConfigSummary {
 
 #[tauri::command]
 pub fn get_discord_config() -> Result<DiscordConfigSummary, CommandError> {
-    let registered_guilds = crate::credentials::CredentialManager::list_registered_guilds()
-        .unwrap_or_default();
+    let registered_guilds =
+        crate::credentials::CredentialManager::list_registered_guilds().unwrap_or_default();
     let has_token = !registered_guilds.is_empty();
     let guild_id = registered_guilds.first().cloned();
 
@@ -446,7 +446,9 @@ pub async fn save_discord_config(
 ) -> Result<crate::credentials::HandshakeSummary, CommandError> {
     let trimmed_guild = guild_id.trim();
     if trimmed_guild.is_empty() {
-        return Err(CommandError::ValidationFailed("Server Guild ID cannot be empty".to_string()));
+        return Err(CommandError::ValidationFailed(
+            "Server Guild ID cannot be empty".to_string(),
+        ));
     }
     let summary = verify_bot_handshake(token.clone(), Some(trimmed_guild.to_string())).await?;
     crate::credentials::CredentialManager::store_token(trimmed_guild, &token)

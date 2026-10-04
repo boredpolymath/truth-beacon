@@ -306,7 +306,9 @@ mod tests {
         }
 
         let mut base_bytes = std::io::Cursor::new(Vec::new());
-        base_img.write_to(&mut base_bytes, image::ImageFormat::Png).unwrap();
+        base_img
+            .write_to(&mut base_bytes, image::ImageFormat::Png)
+            .unwrap();
         let base_hash = compute_perceptual_hash(base_bytes.get_ref()).unwrap();
 
         // 2. Subtle rotation simulation (subtle coordinate shear / 2-3 degree perturbation)
@@ -319,7 +321,9 @@ mod tests {
             }
         }
         let mut rot_bytes = std::io::Cursor::new(Vec::new());
-        rotated_img.write_to(&mut rot_bytes, image::ImageFormat::Png).unwrap();
+        rotated_img
+            .write_to(&mut rot_bytes, image::ImageFormat::Png)
+            .unwrap();
         let rot_hash = compute_perceptual_hash(rot_bytes.get_ref()).unwrap();
         let rot_dist = calculate_hamming_distance(&base_hash, &rot_hash).unwrap();
         assert!(
@@ -332,7 +336,9 @@ mod tests {
         let cropped_view = crop_imm(&base_img, 4, 4, 56, 56).to_image();
         let cropped_resized = resize(&cropped_view, width, height, FilterType::Triangle);
         let mut crop_bytes = std::io::Cursor::new(Vec::new());
-        cropped_resized.write_to(&mut crop_bytes, image::ImageFormat::Png).unwrap();
+        cropped_resized
+            .write_to(&mut crop_bytes, image::ImageFormat::Png)
+            .unwrap();
         let crop_hash = compute_perceptual_hash(crop_bytes.get_ref()).unwrap();
         let crop_dist = calculate_hamming_distance(&base_hash, &crop_hash).unwrap();
         assert!(
@@ -350,7 +356,9 @@ mod tests {
             *pixel = Rgba([r, g, b, 255]);
         }
         let mut color_bytes = std::io::Cursor::new(Vec::new());
-        color_img.write_to(&mut color_bytes, image::ImageFormat::Png).unwrap();
+        color_img
+            .write_to(&mut color_bytes, image::ImageFormat::Png)
+            .unwrap();
         let color_hash = compute_perceptual_hash(color_bytes.get_ref()).unwrap();
         let color_dist = calculate_hamming_distance(&base_hash, &color_hash).unwrap();
         assert!(
@@ -371,7 +379,9 @@ mod tests {
             }
         }
         let mut noise_bytes = std::io::Cursor::new(Vec::new());
-        noise_img.write_to(&mut noise_bytes, image::ImageFormat::Png).unwrap();
+        noise_img
+            .write_to(&mut noise_bytes, image::ImageFormat::Png)
+            .unwrap();
         let noise_hash = compute_perceptual_hash(noise_bytes.get_ref()).unwrap();
         let noise_dist = calculate_hamming_distance(&base_hash, &noise_hash).unwrap();
         assert!(
@@ -390,7 +400,9 @@ mod tests {
             *pixel = Rgba([r.saturating_add(noise), g, b, 255]);
         }
         let mut compound_bytes = std::io::Cursor::new(Vec::new());
-        compound_img.write_to(&mut compound_bytes, image::ImageFormat::Png).unwrap();
+        compound_img
+            .write_to(&mut compound_bytes, image::ImageFormat::Png)
+            .unwrap();
         let compound_hash = compute_perceptual_hash(compound_bytes.get_ref()).unwrap();
         let compound_dist = calculate_hamming_distance(&base_hash, &compound_hash).unwrap();
         assert!(
@@ -402,4 +414,3 @@ mod tests {
         assert!(comparison.is_notable_similarity);
     }
 }
-

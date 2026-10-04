@@ -1296,7 +1296,9 @@ mod tests {
             }
         }
         let mut dan_bytes = std::io::Cursor::new(Vec::new());
-        dan_avatar.write_to(&mut dan_bytes, image::ImageFormat::Png).unwrap();
+        dan_avatar
+            .write_to(&mut dan_bytes, image::ImageFormat::Png)
+            .unwrap();
         let dan_hash = compute_perceptual_hash(dan_bytes.get_ref()).unwrap();
 
         let benchmarks = vec![
@@ -1346,11 +1348,18 @@ mod tests {
             &benchmarks,
         );
         let elapsed_1a = t0.elapsed();
-        assert!(res_dan_cyrillic.is_some(), "DanШard attack must be detected");
+        assert!(
+            res_dan_cyrillic.is_some(),
+            "DanШard attack must be detected"
+        );
         let disc_1a = res_dan_cyrillic.unwrap();
         assert!(disc_1a.homoglyph_detected);
         assert_eq!(disc_1a.risk_tier, RiskTier::Elevated);
-        assert!(elapsed_1a.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_1a);
+        assert!(
+            elapsed_1a.as_millis() < 50,
+            "Latency {:?} exceeded 50ms budget",
+            elapsed_1a
+        );
 
         // Attack Vector 1B: Script-mixed lookalike username SarahСhen (Cyrillic Es \u{0421})
         let t0 = Instant::now();
@@ -1364,11 +1373,22 @@ mod tests {
             &benchmarks,
         );
         let elapsed_1b = t0.elapsed();
-        assert!(res_sarah_cyrillic.is_some(), "SarahСhen attack must be detected");
+        assert!(
+            res_sarah_cyrillic.is_some(),
+            "SarahСhen attack must be detected"
+        );
         let disc_1b = res_sarah_cyrillic.unwrap();
         assert!(disc_1b.homoglyph_detected);
-        assert_eq!(disc_1b.risk_tier, RiskTier::Critical, "Homoglyph on brand new account must trigger Critical");
-        assert!(elapsed_1b.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_1b);
+        assert_eq!(
+            disc_1b.risk_tier,
+            RiskTier::Critical,
+            "Homoglyph on brand new account must trigger Critical"
+        );
+        assert!(
+            elapsed_1b.as_millis() < 50,
+            "Latency {:?} exceeded 50ms budget",
+            elapsed_1b
+        );
 
         // Attack Vector 1C: Authority affix spoofing DanWard_Official
         let t0 = Instant::now();
@@ -1382,11 +1402,18 @@ mod tests {
             &benchmarks,
         );
         let elapsed_1c = t0.elapsed();
-        assert!(res_dan_official.is_some(), "DanWard_Official must be detected");
+        assert!(
+            res_dan_official.is_some(),
+            "DanWard_Official must be detected"
+        );
         let disc_1c = res_dan_official.unwrap();
         assert!(disc_1c.string_similarity_score >= 0.94);
         assert_eq!(disc_1c.risk_tier, RiskTier::Elevated);
-        assert!(elapsed_1c.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_1c);
+        assert!(
+            elapsed_1c.as_millis() < 50,
+            "Latency {:?} exceeded 50ms budget",
+            elapsed_1c
+        );
 
         // Attack Vector 2A: Zero-width separator injection D\u{200B}a\u{200C}n\u{200D}W\u{FEFF}a\u{2060}r\u{00AD}d
         let t0 = Instant::now();
@@ -1405,7 +1432,11 @@ mod tests {
         let disc_2a = res_zw.unwrap();
         assert!(disc_2a.homoglyph_detected);
         assert_eq!(disc_2a.risk_tier, RiskTier::Elevated);
-        assert!(elapsed_2a.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_2a);
+        assert!(
+            elapsed_2a.as_millis() < 50,
+            "Latency {:?} exceeded 50ms budget",
+            elapsed_2a
+        );
 
         // Attack Vector 2B: Invisible whitespace injection Dan\u{00A0}\u{2003}\u{3000}Ward
         let t0 = Instant::now();
@@ -1420,20 +1451,33 @@ mod tests {
             &benchmarks,
         );
         let elapsed_2b = t0.elapsed();
-        assert!(res_ws.is_some(), "Invisible whitespace injection must be detected");
+        assert!(
+            res_ws.is_some(),
+            "Invisible whitespace injection must be detected"
+        );
         let disc_2b = res_ws.unwrap();
         assert!(disc_2b.homoglyph_detected);
         assert_eq!(disc_2b.risk_tier, RiskTier::Elevated);
-        assert!(elapsed_2b.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_2b);
+        assert!(
+            elapsed_2b.as_millis() < 50,
+            "Latency {:?} exceeded 50ms budget",
+            elapsed_2b
+        );
 
         // Attack Vector 3A: Avatar modified with subtle rotation & crop
         let cropped = crop_imm(&dan_avatar, 3, 3, 58, 58).to_image();
         let resized = resize(&cropped, base_avatar_w, base_avatar_h, FilterType::Triangle);
         let mut mod_bytes = std::io::Cursor::new(Vec::new());
-        resized.write_to(&mut mod_bytes, image::ImageFormat::Png).unwrap();
+        resized
+            .write_to(&mut mod_bytes, image::ImageFormat::Png)
+            .unwrap();
         let mod_avatar_hash = compute_perceptual_hash(mod_bytes.get_ref()).unwrap();
         let dist = calculate_hamming_distance(&dan_hash, &mod_avatar_hash).unwrap();
-        assert!(dist <= 10, "Hamming distance must indicate notable similarity or clone (dist={})", dist);
+        assert!(
+            dist <= 10,
+            "Hamming distance must indicate notable similarity or clone (dist={})",
+            dist
+        );
 
         // Attack Vector 3B: Avatar modified with color balance shift & noise overlays
         let mut color_noise_img = resized;
@@ -1445,10 +1489,16 @@ mod tests {
             *p = Rgba([r.saturating_add(noise), g, b, 255]);
         }
         let mut cn_bytes = std::io::Cursor::new(Vec::new());
-        color_noise_img.write_to(&mut cn_bytes, image::ImageFormat::Png).unwrap();
+        color_noise_img
+            .write_to(&mut cn_bytes, image::ImageFormat::Png)
+            .unwrap();
         let cn_avatar_hash = compute_perceptual_hash(cn_bytes.get_ref()).unwrap();
         let cn_dist = calculate_hamming_distance(&dan_hash, &cn_avatar_hash).unwrap();
-        assert!(cn_dist <= 10, "Color+noise avatar Hamming distance {} should be <= 10", cn_dist);
+        assert!(
+            cn_dist <= 10,
+            "Color+noise avatar Hamming distance {} should be <= 10",
+            cn_dist
+        );
 
         // Attack Vector 4: Compound Red Team attack: Script-mixed name + Modified avatar + Brand new account (< 24h)
         let t0 = Instant::now();
@@ -1462,12 +1512,24 @@ mod tests {
             &benchmarks,
         );
         let elapsed_compound = t0.elapsed();
-        assert!(compound_res.is_some(), "Compound adversarial attack must be flagged");
+        assert!(
+            compound_res.is_some(),
+            "Compound adversarial attack must be flagged"
+        );
         let compound_disc = compound_res.unwrap();
-        assert_eq!(compound_disc.risk_tier, RiskTier::Critical, "Compound red team attack must trigger CRITICAL risk tier");
-        assert!(compound_disc.avatar_hamming_distance.is_some_and(|d| d <= 10));
+        assert_eq!(
+            compound_disc.risk_tier,
+            RiskTier::Critical,
+            "Compound red team attack must trigger CRITICAL risk tier"
+        );
+        assert!(compound_disc
+            .avatar_hamming_distance
+            .is_some_and(|d| d <= 10));
         assert!(compound_disc.homoglyph_detected);
-        assert!(elapsed_compound.as_millis() < 50, "Compound evaluation took {:?}, exceeding 50ms budget", elapsed_compound);
+        assert!(
+            elapsed_compound.as_millis() < 50,
+            "Compound evaluation took {:?}, exceeding 50ms budget",
+            elapsed_compound
+        );
     }
 }
-

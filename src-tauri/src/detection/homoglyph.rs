@@ -82,8 +82,8 @@ pub fn map_visual_confusables(input: &str) -> String {
             // Cyrillic lookalikes
             '\u{0428}' | '\u{0448}' => 'w', // Cyrillic Sha (Ш, ш) looks like w
             '\u{0421}' | '\u{0441}' => 'c', // Cyrillic Es (С, с) looks like c
-            '\u{0412}' => 'b',             // Cyrillic Ve (В) looks like B
-            '\u{041D}' => 'h',             // Cyrillic En (Н) looks like H
+            '\u{0412}' => 'b',              // Cyrillic Ve (В) looks like B
+            '\u{041D}' => 'h',              // Cyrillic En (Н) looks like H
             '\u{0420}' | '\u{0440}' => 'p', // Cyrillic Er (Р, р) looks like p
             '\u{0425}' | '\u{0445}' => 'x', // Cyrillic Kha (Х, х) looks like x
             '\u{0423}' | '\u{0443}' => 'y', // Cyrillic U (У, у) looks like y
@@ -102,11 +102,11 @@ pub fn map_visual_confusables(input: &str) -> String {
             '\u{0391}' | '\u{03B1}' => 'a', // Alpha
             '\u{0392}' | '\u{03B2}' => 'b', // Beta
             '\u{0395}' | '\u{03B5}' => 'e', // Epsilon
-            '\u{0396}' => 'z',             // Zeta
-            '\u{0397}' => 'h',             // Eta looks like H
+            '\u{0396}' => 'z',              // Zeta
+            '\u{0397}' => 'h',              // Eta looks like H
             '\u{0399}' | '\u{03B9}' => 'i', // Iota
             '\u{039A}' | '\u{03BA}' => 'k', // Kappa
-            '\u{039C}' => 'm',             // Mu looks like M
+            '\u{039C}' => 'm',              // Mu looks like M
             '\u{039D}' | '\u{03BD}' => 'v', // Nu looks like v
             '\u{039F}' | '\u{03BF}' => 'o', // Omicron
             '\u{03A1}' | '\u{03C1}' => 'p', // Rho looks like p
@@ -238,30 +238,42 @@ pub fn detect_visual_substitutions(candidate: &str, target: &str) -> Vec<String>
     {
         subs.push("Ш <-> w".to_string());
     }
-    if (candidate.contains('\u{0421}') || candidate.contains('\u{0441}')) && tgt_lower.contains('c') {
+    if (candidate.contains('\u{0421}') || candidate.contains('\u{0441}')) && tgt_lower.contains('c')
+    {
         subs.push("С <-> c".to_string());
     }
-    if (candidate.contains('\u{0412}') || candidate.contains('\u{0432}')) && tgt_lower.contains('b') {
+    if (candidate.contains('\u{0412}') || candidate.contains('\u{0432}')) && tgt_lower.contains('b')
+    {
         subs.push("В <-> b".to_string());
     }
-    if (candidate.contains('\u{041D}') || candidate.contains('\u{043D}')) && tgt_lower.contains('h') {
+    if (candidate.contains('\u{041D}') || candidate.contains('\u{043D}')) && tgt_lower.contains('h')
+    {
         subs.push("Н <-> h".to_string());
     }
-    if (candidate.contains('\u{0420}') || candidate.contains('\u{0440}')) && tgt_lower.contains('p') {
+    if (candidate.contains('\u{0420}') || candidate.contains('\u{0440}')) && tgt_lower.contains('p')
+    {
         subs.push("Р <-> p".to_string());
     }
-    if (candidate.contains('\u{0425}') || candidate.contains('\u{0445}')) && tgt_lower.contains('x') {
+    if (candidate.contains('\u{0425}') || candidate.contains('\u{0445}')) && tgt_lower.contains('x')
+    {
         subs.push("Х <-> x".to_string());
     }
-    if (candidate.contains('\u{0423}') || candidate.contains('\u{0443}')) && tgt_lower.contains('y') {
+    if (candidate.contains('\u{0423}') || candidate.contains('\u{0443}')) && tgt_lower.contains('y')
+    {
         subs.push("У <-> y".to_string());
     }
 
     // Check zero-width and invisible whitespace separator injections
-    if candidate.chars().any(crate::detection::unicode::is_zero_width) {
+    if candidate
+        .chars()
+        .any(crate::detection::unicode::is_zero_width)
+    {
         subs.push("Zero-width separator injection".to_string());
     }
-    if candidate.chars().any(crate::detection::unicode::is_invisible_whitespace) {
+    if candidate
+        .chars()
+        .any(crate::detection::unicode::is_invisible_whitespace)
+    {
         subs.push("Invisible whitespace injection".to_string());
     }
 
@@ -309,7 +321,8 @@ pub fn evaluate_homoglyph_spoof_with_precomputed(
     // 1. Check Script Transliteration Match:
     // Candidate differs from target in raw form, but after Unicode deobfuscation and script transliteration
     // (e.g. Cyrillic/Greek/Math lookalikes), they are strictly identical.
-    let script_match = (cand_norm == tgt_norm || cand_norm.replace(' ', "") == tgt_norm.replace(' ', ""))
+    let script_match = (cand_norm == tgt_norm
+        || cand_norm.replace(' ', "") == tgt_norm.replace(' ', ""))
         && candidate != cand_norm;
 
     // 2. Check Visual Confusable Skeleton Match:
@@ -530,12 +543,16 @@ mod tests {
         // DanШard vs DanWard (Cyrillic 'Ш' U+0428 vs Latin 'W')
         let result_dan = evaluate_homoglyph_spoof("Dan\u{0428}ard", "DanWard");
         assert!(result_dan.is_homoglyph_match);
-        assert!(result_dan.substitutions_detected.contains(&"Ш <-> w".to_string()));
+        assert!(result_dan
+            .substitutions_detected
+            .contains(&"Ш <-> w".to_string()));
 
         // SarahСhen vs SarahChen (Cyrillic 'С' U+0421 vs Latin 'C')
         let result_sarah = evaluate_homoglyph_spoof("Sarah\u{0421}hen", "SarahChen");
         assert!(result_sarah.is_homoglyph_match);
-        assert!(result_sarah.substitutions_detected.contains(&"С <-> c".to_string()));
+        assert!(result_sarah
+            .substitutions_detected
+            .contains(&"С <-> c".to_string()));
     }
 
     #[test]
@@ -544,13 +561,16 @@ mod tests {
         let injected_zw = "D\u{200B}a\u{200C}n\u{200D}W\u{FEFF}a\u{2060}r\u{00AD}d";
         let result_zw = evaluate_homoglyph_spoof(injected_zw, "DanWard");
         assert!(result_zw.is_homoglyph_match);
-        assert!(result_zw.substitutions_detected.contains(&"Zero-width separator injection".to_string()));
+        assert!(result_zw
+            .substitutions_detected
+            .contains(&"Zero-width separator injection".to_string()));
 
         // Invisible whitespace injected: Dan\u{00A0}\u{2003}\u{3000}Ward vs DanWard
         let injected_ws = "Dan\u{00A0}Ward";
         let result_ws = evaluate_homoglyph_spoof(injected_ws, "Dan Ward");
         assert!(result_ws.is_homoglyph_match);
-        assert!(result_ws.substitutions_detected.contains(&"Invisible whitespace injection".to_string()));
+        assert!(result_ws
+            .substitutions_detected
+            .contains(&"Invisible whitespace injection".to_string()));
     }
 }
-

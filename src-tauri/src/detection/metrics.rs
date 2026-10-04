@@ -82,20 +82,59 @@ pub struct MultiFieldSimilarityResult {
 pub fn strip_authority_affixes(input: &str) -> Option<&str> {
     let lower = input.trim();
     const SUFFIXES: &[&str] = &[
-        "_official", "-official", ".official", " official", "official",
-        "_staff", "-staff", ".staff", " staff", "staff",
-        "_admin", "-admin", ".admin", " admin", "admin",
-        "_mod", "-mod", ".mod", " mod",
-        "_real", "-real", ".real", " real",
-        "_support", "-support", ".support", " support",
-        "_verified", "-verified", ".verified", " verified",
-        "_bot", "-bot", ".bot", " bot",
+        "_official",
+        "-official",
+        ".official",
+        " official",
+        "official",
+        "_staff",
+        "-staff",
+        ".staff",
+        " staff",
+        "staff",
+        "_admin",
+        "-admin",
+        ".admin",
+        " admin",
+        "admin",
+        "_mod",
+        "-mod",
+        ".mod",
+        " mod",
+        "_real",
+        "-real",
+        ".real",
+        " real",
+        "_support",
+        "-support",
+        ".support",
+        " support",
+        "_verified",
+        "-verified",
+        ".verified",
+        " verified",
+        "_bot",
+        "-bot",
+        ".bot",
+        " bot",
     ];
     const PREFIXES: &[&str] = &[
-        "official_", "official-", "official.", "official ",
-        "real_", "real-", "real.", "real ",
-        "staff_", "staff-", "staff.", "staff ",
-        "admin_", "admin-", "admin.", "admin ",
+        "official_",
+        "official-",
+        "official.",
+        "official ",
+        "real_",
+        "real-",
+        "real.",
+        "real ",
+        "staff_",
+        "staff-",
+        "staff.",
+        "staff ",
+        "admin_",
+        "admin-",
+        "admin.",
+        "admin ",
     ];
 
     for &sfx in SUFFIXES {
@@ -130,9 +169,13 @@ pub fn evaluate_string_metrics(candidate: &str, benchmark: &str) -> StringSimila
         if stripped_res.composite_score >= 0.88 {
             let elevated = stripped_res.composite_score.max(0.94);
             return StringSimilarityResult {
-                jaro_winkler_score: base_res.jaro_winkler_score.max(stripped_res.jaro_winkler_score),
+                jaro_winkler_score: base_res
+                    .jaro_winkler_score
+                    .max(stripped_res.jaro_winkler_score),
                 damerau_distance: base_res.damerau_distance,
-                normalized_damerau_score: base_res.normalized_damerau_score.max(stripped_res.normalized_damerau_score),
+                normalized_damerau_score: base_res
+                    .normalized_damerau_score
+                    .max(stripped_res.normalized_damerau_score),
                 composite_score: (elevated * 10000.0).round() / 10000.0,
             };
         }
@@ -425,4 +468,3 @@ mod tests {
         assert!(unrelated.composite_score < 0.50);
     }
 }
-
