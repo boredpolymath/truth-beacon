@@ -61,7 +61,7 @@ jobs:
         run: ./scripts/build_macos_universal.sh
 
       - name: Upload macOS Bundles
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: truthbeacon-macos-universal
           path: |
@@ -98,7 +98,7 @@ jobs:
         run: ./scripts/build_windows_bundle.ps1 -SkipSign
 
       - name: Upload Windows Bundles
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: truthbeacon-windows-x64
           path: |
@@ -137,7 +137,7 @@ jobs:
         run: ./scripts/build_linux_bundle.sh
 
       - name: Upload Linux Bundles
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: truthbeacon-linux-x86_64
           path: |
