@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/Database-SQLite%20(WAL)-blueviolet?style=flat-square" alt="SQLite WAL">
   <img src="https://img.shields.io/badge/Telemetry-Zero%20(100%25%20Local)-brightgreen?style=flat-square" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-success?style=flat-square" alt="WCAG AA">
-  <img src="https://img.shields.io/badge/Automated%20Tests-142%20Passing-brightgreen?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated%20Tests-149%20Passing-brightgreen?style=flat-square" alt="Tests">
 </p>
 
 ---
@@ -140,7 +140,7 @@ Whether you love building sleek web interfaces or writing blazingly fast systems
 ### 🦀 Rust & Systems Engineers
 - Modern, clean codebase using **Rust 2021**, **Tokio**, and **Tauri v2**.
 - High-performance, memory-safe heuristics (< 50ms evaluation budget).
-- Comprehensive test suite with **142 passing automated tests** ready to validate your changes.
+- Comprehensive test suite with **149 passing automated tests** ready to validate your changes.
 - Safe concurrency with SQLite Write-Ahead Logging (WAL) and native OS Keychain bindings.
 
 ### 🌟 Great Ways to Jump In
@@ -195,8 +195,8 @@ We take reliability seriously so communities can trust TruthBeacon in production
 ```bash
 cd src-tauri
 
-# Run all 142 automated unit and integration tests
-cargo test
+# Run all 149 automated unit and integration tests
+cargo test --all-targets
 
 # Check code formatting
 cargo fmt -- --check
@@ -206,6 +206,9 @@ cargo clippy --all-targets --all-features -- -D warnings
 
 # Verify all open-source dependency licenses
 python3 ../scripts/audit_licenses.py
+
+# Verify cross-platform packaging pipeline and installer assets
+python3 ../scripts/verify_packaging_pipeline.py
 ```
 
 ---
@@ -267,31 +270,104 @@ You can adjust sensitivity thresholds, rate limits, and safety settings directly
 
 ---
 
+## Cross-Platform Distribution & Packaging
+
+TruthBeacon delivers first-class, native desktop installers across all major operating systems via Tauri v2 release pipelines:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                          TRUTHBEACON RELEASE ARTIFACT MATRIX                           │
+├─────────────────────┬─────────────────────────────────┬────────────────────────────────┤
+│ Platform            │ Package Format                  │ Architectural Highlight        │
+├─────────────────────┼─────────────────────────────────┼────────────────────────────────┤
+│ 🍏 macOS            │ Universal 2 Drag-and-Drop .dmg  │ Fat binary (Apple Silicon arm64│
+│                     │ & signed .app bundle            │ + Intel x86_64 via lipo) with  │
+│                     │                                 │ Orange Heart branded canvas    │
+├─────────────────────┼─────────────────────────────────┼────────────────────────────────┤
+│ 🪟 Windows          │ WiX Toolset MSI (.msi),         │ 64-bit MSVC binary, branded    │
+│                     │ NSIS Installer (.exe),          │ NSIS sidebar/header, portable  │
+│                     │ Standalone Portable (.exe)      │ zero-install single executable │
+├─────────────────────┼─────────────────────────────────┼────────────────────────────────┤
+│ 🐧 Linux            │ Standalone AppImage (.AppImage),│ Bundled via linuxdeploy; debian│
+│                     │ Debian Package (.deb),          │ declares libappindicator3-1,   │
+│                     │ Freedesktop .desktop entry      │ libsecret-1-0 & webkit runtime │
+└─────────────────────┴─────────────────────────────────┴────────────────────────────────┘
+```
+
+### Packaging Automation Scripts
+
+- **macOS Universal 2 DMG:**
+  ```bash
+  ./scripts/build_macos_universal.sh
+  ```
+- **Windows WiX / NSIS / Portable (PowerShell):**
+  ```powershell
+  ./scripts/build_windows_bundle.ps1 -SkipSign
+  ```
+- **Linux AppImage & Debian Package:**
+  ```bash
+  ./scripts/build_linux_bundle.sh
+  ```
+- **Verify All Packaging Specifications:**
+  ```bash
+  python3 scripts/verify_packaging_pipeline.py
+  ```
+
+---
+
 ## Project Structure
 
 ```
 truth-beacon/
 ├── README.md                      # Project overview and getting started guide
 ├── truthbeacon.config.json        # Custom detection thresholds and safety limits
+├── .github/                       # GitHub Actions CI/CD workflows
+│   └── workflows/
+│       ├── ci.yml                 # Linting, formatting, security audit & cross-platform test matrix
+│       └── release.yml            # Multi-platform release matrix (macOS, Windows, Linux)
 ├── docs/                          # Architecture guides and specifications
-│   ├── truthbeacon-master-checklist.md # Comprehensive roadmap & test matrix
-│   └── ...
-├── scripts/
-│   └── audit_licenses.py          # Automatic open-source license compliance auditor
+│   ├── truthbeacon-master-checklist.md                  # Comprehensive roadmap & SDLC checklist
+│   ├── 01-scope-boundaries-and-system-envelopes.md      # Non-functional boundaries & resource budgets
+│   ├── 02-licensing-structure-and-oss-compliance-audit.md # Permissive OSS compliance matrix
+│   ├── 03-discord-developer-policy-and-tos-compliance.md# Discord ToS & policy guarantees
+│   ├── 04-privileged-gateway-intent-and-rate-limit-compliance.md # Gateway intent & rate limit rules
+│   ├── 05-user-personas-acceptance-criteria-and-definition-of-done.md # Personas & DoD
+│   ├── 06-stride-threat-analysis-and-evasion-mitigations.md # STRIDE threat model
+│   ├── 07-high-level-architecture-and-ipc-contract.md   # Asynchronous model & IPC contract
+│   ├── 08-local-storage-architecture-and-migration-strategy.md # SQLite schema & migrations
+│   └── 09-cross-platform-packaging-and-release-staging.md # Build bundling & packaging specification
+├── scripts/                       # Engineering & release verification scripts
+│   ├── audit_licenses.py          # Automatic open-source license compliance auditor
+│   ├── benchmark_standby_and_launch.py # Memory footprint & launch latency benchmark
+│   ├── red_team_adversarial_simulation.py # Automated adversarial attack drill
+│   ├── generate_installer_assets.py # Generates branded DMG canvas & Windows BMPs
+│   ├── build_macos_universal.sh   # Builds Universal 2 lipo binary & branded .dmg
+│   ├── build_windows_bundle.ps1   # Builds Windows WiX, NSIS & portable .exe
+│   ├── build_linux_bundle.sh      # Validates desktop file & packages deb/AppImage
+│   └── verify_packaging_pipeline.py # End-to-end packaging specification validator
 ├── src-tauri/                     # Native Rust core backend
 │   ├── Cargo.toml                 # Rust dependencies and package metadata
-│   ├── src/
-│   │   ├── main.rs                # Application entry point
-│   │   ├── circuit_breaker/       # Runaway moderation safety brake
-│   │   ├── commands/              # Typed IPC command handlers
-│   │   ├── credentials/           # Secure OS Keychain manager
-│   │   ├── detection/             # Multi-vector heuristic detection engine
-│   │   ├── gateway/               # Real-time Discord Gateway v10 client
-│   │   ├── notification/          # Native OS desktop notifications & action routing
-│   │   ├── storage/               # SQLite database setup and migrations
-│   │   ├── tray/                  # Persistent system tray, menu bar & background residency
-│   │   └── vault/                 # Protected leader benchmarks and sync
-│   └── icons/                     # Multi-resolution desktop and system tray icons (16x16 - 256x256)
+│   ├── tauri.conf.json            # Tauri v2 bundle, window & security configuration
+│   ├── desktop/                   # Linux desktop integration
+│   │   └── truthbeacon.desktop    # Freedesktop specification-compliant desktop entry
+│   ├── icons/                     # Multi-resolution icons & branded installer artwork
+│   │   ├── dmg-background.png     # Custom Orange Heart DMG layout (660x400)
+│   │   ├── nsis-header.bmp        # NSIS installer header image (150x57)
+│   │   ├── nsis-sidebar.bmp       # NSIS installer sidebar image (164x314)
+│   │   ├── wix-banner.bmp         # WiX MSI top banner (493x58)
+│   │   ├── wix-dialog.bmp         # WiX MSI dialog background (493x312)
+│   │   └── icon.icns, icon.ico... # Desktop and system tray icons (16x16 - 256x256)
+│   └── src/
+│       ├── main.rs                # Application entry point
+│       ├── circuit_breaker/       # Runaway moderation safety brake
+│       ├── commands/              # Typed IPC command handlers
+│       ├── credentials/           # Secure OS Keychain manager
+│       ├── detection/             # Multi-vector heuristic detection engine
+│       ├── gateway/               # Real-time Discord Gateway v10 client
+│       ├── notification/          # Native OS desktop notifications & action routing
+│       ├── storage/               # SQLite database setup and migrations
+│       ├── tray/                  # Persistent system tray, menu bar & background residency
+│       └── vault/                 # Protected leader benchmarks and sync
 └── ui/                            # Clean, responsive web frontend
     ├── index.html                 # Accessible layout and navigation
     ├── css/styles.css             # Discord-inspired dark theme and triage grid
