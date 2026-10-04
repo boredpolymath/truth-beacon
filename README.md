@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/Database-SQLite%20(WAL)-blueviolet?style=flat-square" alt="SQLite WAL">
   <img src="https://img.shields.io/badge/Telemetry-Zero%20(100%25%20Local)-brightgreen?style=flat-square" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-success?style=flat-square" alt="WCAG AA">
-  <img src="https://img.shields.io/badge/Automated%20Tests-133%20Passing-brightgreen?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated%20Tests-142%20Passing-brightgreen?style=flat-square" alt="Tests">
 </p>
 
 ---
@@ -121,7 +121,9 @@ TruthBeacon makes protecting your server straightforward:
 | **Direct Trigger Pills** | Instant visual tags on each alert card (`Photo`, `Name`) explaining exactly why the account was flagged. |
 | **Protected VIP Vault** | Easily save team members, pastors, founders, and moderators with one-click role imports from Discord. |
 | **Discord Gateway Daemon** | Background event listener that instantly catches incoming joins and profile edits without polling. |
-| **Native System Tray** | Sits quietly in your menu bar or taskbar with quick status indicators and health controls. |
+| **Persistent System Tray** | Sits quietly in your menu bar or taskbar with multi-resolution assets (16x16 to 256x256), health controls, and background residency. |
+| **Native Action Toasts** | Interactive desktop notifications for `Elevated` and `Critical` threats with instant action buttons: `Inspect`, `Dismiss`, and `Ban & Purge`. |
+| **Immutable Audit Trail** | Forensic chronological logging of all administrative mitigations with zero cloud egress. |
 | **One-Click Data Wipe** | Complete peace of mind: securely zeroes and deletes all local logs and database records on demand. |
 
 ---
@@ -138,7 +140,7 @@ Whether you love building sleek web interfaces or writing blazingly fast systems
 ### 🦀 Rust & Systems Engineers
 - Modern, clean codebase using **Rust 2021**, **Tokio**, and **Tauri v2**.
 - High-performance, memory-safe heuristics (< 50ms evaluation budget).
-- Comprehensive test suite with **133 passing automated tests** ready to validate your changes.
+- Comprehensive test suite with **142 passing automated tests** ready to validate your changes.
 - Safe concurrency with SQLite Write-Ahead Logging (WAL) and native OS Keychain bindings.
 
 ### 🌟 Great Ways to Jump In
@@ -193,7 +195,7 @@ We take reliability seriously so communities can trust TruthBeacon in production
 ```bash
 cd src-tauri
 
-# Run all 133 automated unit and integration tests
+# Run all 142 automated unit and integration tests
 cargo test
 
 # Check code formatting
@@ -285,9 +287,11 @@ truth-beacon/
 │   │   ├── credentials/           # Secure OS Keychain manager
 │   │   ├── detection/             # Multi-vector heuristic detection engine
 │   │   ├── gateway/               # Real-time Discord Gateway v10 client
+│   │   ├── notification/          # Native OS desktop notifications & action routing
 │   │   ├── storage/               # SQLite database setup and migrations
+│   │   ├── tray/                  # Persistent system tray, menu bar & background residency
 │   │   └── vault/                 # Protected leader benchmarks and sync
-│   └── icons/                     # Multi-resolution desktop and system tray icons
+│   └── icons/                     # Multi-resolution desktop and system tray icons (16x16 - 256x256)
 └── ui/                            # Clean, responsive web frontend
     ├── index.html                 # Accessible layout and navigation
     ├── css/styles.css             # Discord-inspired dark theme and triage grid
