@@ -1,7 +1,8 @@
-import { INITIAL_BENCHMARKS, INITIAL_INCIDENTS } from './mock_data.js';
+import { INITIAL_BENCHMARKS, INITIAL_INCIDENTS, INITIAL_AUDIT_LOGS } from './mock_data.js';
 
 let mockBenchmarks = [...INITIAL_BENCHMARKS];
 let mockIncidents = [...INITIAL_INCIDENTS];
+let mockAuditLogs = [...INITIAL_AUDIT_LOGS];
 let mockCircuitBreakerTripped = false;
 
 export const isTauriEnvironment = () => {
@@ -60,6 +61,17 @@ export async function invokeCommand(cmd, args = {}) {
         updated_at: Math.floor(now / 1000)
       };
       mockBenchmarks.push(newBm);
+      mockAuditLogs.unshift({
+        id: `aud_${now}`,
+        timestamp: now,
+        action: "create_benchmark",
+        guild_id: newBm.guild_id,
+        operator_id: "LocalSteward",
+        target_user_id: newBm.user_id,
+        incident_id: null,
+        reason: `Created benchmark for @${newBm.canonical_username}`,
+        metadata: { role: newBm.community_role }
+      });
       return newBm;
     }
 
@@ -67,18 +79,64 @@ export async function invokeCommand(cmd, args = {}) {
       return [...mockIncidents];
 
     case 'resolve_incident': {
-      const { incident_id, status, resolution_notes } = args;
+      const { incident_id, status, resolution_notes, operator_id, target_benchmark_id } = args;
       const inc = mockIncidents.find(i => i.id === incident_id);
+      const now = Date.now();
       if (inc) {
         inc.status = status;
         inc.resolution_notes = resolution_notes;
-        inc.resolved_at = Math.floor(Date.now() / 1000);
+        inc.resolved_at = Math.floor(now / 1000);
       }
+
+      if (status === 'whitelisted') {
+        const targetId = target_benchmark_id || inc?.discrepancy?.matched_benchmark_id;
+        const bm = mockBenchmarks.find(b => b.id === targetId);
+        if (bm && inc?.discrepancy?.suspect_user_id) {
+          const altTag = `Whitelisted Alt: ${inc.discrepancy.suspect_user_id}`;
+          if (!bm.tags.includes(altTag)) bm.tags.push(altTag);
+          if (!bm.tags.includes("Authorized Alt")) bm.tags.push("Authorized Alt");
+        }
+      }
+
+      const auditAction = status === 'banned' ? 'ban_and_purge'
+        : (status === 'whitelisted' ? 'whitelist_alternate'
+        : (status === 'excluded' ? 'exclude_user' : 'dismiss'));
+
+      mockAuditLogs.unshift({
+        id: `aud_${now}`,
+        timestamp: now,
+        action: auditAction,
+        guild_id: inc?.guild_id || "guild_crossroads_9921",
+        operator_id: operator_id || "LocalSteward",
+        target_user_id: inc?.discrepancy?.suspect_user_id || "user_unknown",
+        incident_id,
+        reason: resolution_notes || `Adjudicated with status: ${status}`,
+        metadata: {
+          suspect_username: inc?.discrepancy?.suspect_username,
+          status,
+          target_benchmark_id
+        }
+      });
+
       return true;
     }
 
+    case 'list_audit_logs':
+      return [...mockAuditLogs];
+
     case 'reset_circuit_breaker':
       mockCircuitBreakerTripped = false;
+      mockAuditLogs.unshift({
+        id: `aud_${Date.now()}`,
+        timestamp: Date.now(),
+        action: "circuit_breaker_reset",
+        guild_id: "global",
+        operator_id: "LocalSteward",
+        target_user_id: null,
+        incident_id: null,
+        reason: "Manual operator reset via console or system tray",
+        metadata: null
+      });
       return true;
 
     case 'run_sandbox_simulation': {
@@ -100,7 +158,35 @@ export async function invokeCommand(cmd, args = {}) {
     case 'eradicate_local_data':
       mockBenchmarks = [];
       mockIncidents = [];
+      mockAuditLogs = [];
       return true;
+
+    case 'dispatch_desktop_notification':
+      console.info("[TruthBeacon IPC] Dispatched OS notification:", args.payload);
+      return true;
+
+    case 'execute_notification_action': {
+      const { incident_id, action } = args;
+      console.info(`[TruthBeacon IPC] Executing notification action '${action}' for ${incident_id}`);
+      if (action === 'Inspect') {
+        return true;
+      } else if (action === 'Dismiss') {
+        return await invokeCommand('resolve_incident', {
+          incident_id,
+          status: 'dismissed',
+          resolution_notes: 'Dismissed via desktop notification toast action button',
+          operator_id: 'NotificationToast'
+        });
+      } else if (action === 'Ban & Purge') {
+        return await invokeCommand('resolve_incident', {
+          incident_id,
+          status: 'banned',
+          resolution_notes: 'Banned and purged via desktop notification toast action button',
+          operator_id: 'NotificationToast'
+        });
+      }
+      return true;
+    }
 
     default:
       console.warn(`[TruthBeacon Mock IPC] Unhandled command: ${cmd}`);

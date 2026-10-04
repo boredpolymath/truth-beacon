@@ -1720,3 +1720,315 @@ body {
     gap: 6px;
   }
 }
+
+/* ==========================================================================
+   Phase 17.2: Native OS Desktop Notification Toasts & Interactive Actions
+   ========================================================================== */
+.desktop-toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 440px;
+  width: calc(100vw - 48px);
+}
+
+.desktop-toast {
+  pointer-events: auto;
+  background: rgba(26, 28, 34, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  border: 1px solid var(--border-medium);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  animation: toastSlideIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+  position: relative;
+}
+
+.desktop-toast.hiding {
+  opacity: 0;
+  transform: translateX(30px) scale(0.96);
+}
+
+.desktop-toast.risk-critical {
+  border-left: 4px solid var(--status-critical);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 24px rgba(237, 66, 69, 0.22);
+}
+
+.desktop-toast.risk-elevated {
+  border-left: 4px solid var(--status-elevated);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 24px rgba(250, 166, 26, 0.22);
+}
+
+.toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.toast-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast-brand-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.toast-brand-title {
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-header);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.toast-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast-risk-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.toast-risk-badge.critical {
+  background: var(--status-critical-bg);
+  color: #ff9496;
+  border: 1px solid var(--status-critical-border);
+}
+
+.toast-risk-badge.elevated {
+  background: var(--status-elevated-bg);
+  color: #fed071;
+  border: 1px solid var(--status-elevated-border);
+}
+
+.toast-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.toast-close-btn:hover {
+  color: var(--text-header);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.toast-body {
+  padding: 12px 14px 8px;
+}
+
+.toast-comparison-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.toast-suspect-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #ffa1a4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.toast-vs-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.toast-target-name {
+  font-weight: 600;
+  font-size: 0.84rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.toast-meta-line {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.toast-meta-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fed071;
+  background: rgba(250, 166, 26, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+}
+
+/* Toast Action Buttons Row (Inspect, Dismiss, Ban & Purge) */
+.toast-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr;
+  gap: 7px;
+  padding: 8px 14px 12px;
+  background: rgba(17, 18, 20, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.toast-actions-row .btn-toast {
+  height: 32px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+
+.toast-actions-row .btn-toast kbd {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.btn-toast-inspect {
+  background: var(--brand-blurple);
+  color: #ffffff;
+}
+
+.btn-toast-inspect:hover {
+  background: var(--brand-blurple-hover);
+  transform: translateY(-1px);
+}
+
+.btn-toast-dismiss {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.btn-toast-dismiss:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.btn-toast-ban {
+  background: var(--status-critical);
+  color: #ffffff;
+}
+
+.btn-toast-ban:hover {
+  background: #c83538;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(237, 66, 69, 0.35);
+}
+
+/* Toast Countdown Progress Bar */
+.toast-progress-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  width: 100%;
+}
+
+.toast-progress-bar {
+  height: 100%;
+  width: 100%;
+  background: var(--brand-blurple);
+  transform-origin: left center;
+  animation: toastCountdown 12s linear forwards;
+}
+
+.desktop-toast.risk-critical .toast-progress-bar {
+  background: var(--status-critical);
+}
+
+.desktop-toast.risk-elevated .toast-progress-bar {
+  background: var(--status-elevated);
+}
+
+.desktop-toast:hover .toast-progress-bar {
+  animation-play-state: paused;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toastCountdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Incident card inspection highlight animation */
+@keyframes cardPulseHighlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(88, 101, 242, 0.65), 0 12px 32px rgba(0, 0, 0, 0.45);
+    border-color: var(--brand-blurple);
+  }
+  50% {
+    box-shadow: 0 0 24px 6px rgba(88, 101, 242, 0.45), 0 16px 36px rgba(0, 0, 0, 0.55);
+    border-color: #7983f5;
+  }
+  100% {
+    box-shadow: var(--shadow-card);
+    border-color: var(--border-medium);
+  }
+}
+
+.inspection-card.card-inspected-highlight {
+  animation: cardPulseHighlight 2.4s ease-out forwards;
+}
+

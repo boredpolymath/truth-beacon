@@ -58,43 +58,68 @@ class StateStore {
     this.notify();
   }
 
+  authorizeAlternate(incidentId, targetBenchmarkId, purpose, justification) {
+    const note = justification || `Approved alternate account (${purpose})`;
+    this.resolveIncident(incidentId, 'whitelist', note, {
+      targetBenchmarkId,
+      purpose,
+      label: purpose,
+      note
+    });
+  }
+
   resolveIncident(id, action, reason = "", altMetadata = null) {
     const incIndex = this.incidents.findIndex(i => i.id === id);
     if (incIndex === -1) return;
 
     const incident = this.incidents[incIndex];
     let newStatus = 'dismissed';
-    let auditAction = 'dismiss_coincidence';
+    let auditAction = 'dismiss';
+    let defaultReason = 'Mark incident as resolved / benign coincidence';
 
     if (action === 'ban') {
-      newStatus = 'adjudicated';
-      auditAction = 'adjudicate_impersonation';
+      newStatus = 'banned';
+      auditAction = 'ban_and_purge';
+      defaultReason = 'Ban account from guild with message pruning and audit logging';
     } else if (action === 'exclude') {
-      newStatus = 'quarantined';
-      auditAction = 'quarantine_user';
+      newStatus = 'excluded';
+      auditAction = 'exclude_user';
+      defaultReason = 'Quarantine / remove elevated permissions with clear reason';
     } else if (action === 'whitelist') {
-      newStatus = 'authorized_alt';
-      auditAction = 'authorize_alternate';
+      newStatus = 'whitelisted';
+      auditAction = 'whitelist_alternate';
+      defaultReason = 'Approved alternate account; appended to benchmark tags to prevent future alerts';
 
-      // Link alternate identity to target benchmark if provided
-      if (altMetadata && altMetadata.targetBenchmarkId) {
-        const bm = this.benchmarks.find(b => b.id === altMetadata.targetBenchmarkId);
+      // Phase 16.3: Link alternate identity to target benchmark and append tags to prevent future alerts
+      const targetBmId = altMetadata?.targetBenchmarkId || incident.discrepancy.matched_benchmark_id;
+      if (targetBmId) {
+        const bm = this.benchmarks.find(b => b.id === targetBmId);
         if (bm) {
           if (!bm.authorized_alts) bm.authorized_alts = [];
+          const suspectId = incident.discrepancy.suspect_user_id;
           bm.authorized_alts.push({
-            user_id: incident.discrepancy.suspect_user_id,
-            label: altMetadata.label || "Authorized Secondary Account",
-            note: reason || altMetadata.note || "Operator verified alternate identity"
+            user_id: suspectId,
+            label: altMetadata?.label || "Authorized Secondary Account",
+            note: reason || altMetadata?.note || "Operator verified alternate identity"
           });
+
+          if (!bm.tags) bm.tags = [];
+          const altTag = `Whitelisted Alt: ${suspectId}`;
+          if (!bm.tags.includes(altTag)) bm.tags.push(altTag);
+          if (!bm.tags.includes("Authorized Alt")) bm.tags.push("Authorized Alt");
         }
       }
+    } else if (action === 'dismiss') {
+      newStatus = 'dismissed';
+      auditAction = 'dismiss';
+      defaultReason = 'Mark incident as resolved / benign coincidence';
     }
 
     incident.status = newStatus;
     incident.resolved_at = Date.now();
-    incident.resolution_notes = reason || `Adjudicated by operator: ${auditAction}`;
+    incident.resolution_notes = reason || defaultReason;
 
-    // Record audit entry in local ledger
+    // Phase 16.4: Record immutable audit entry in local ledger
     this.auditLogs.unshift({
       id: `aud_${Date.now()}`,
       timestamp: Date.now(),
@@ -104,17 +129,31 @@ class StateStore {
       target_user_id: incident.discrepancy.suspect_user_id,
       incident_id: id,
       reason: incident.resolution_notes,
-      metadata: { action, suspect_username: incident.discrepancy.suspect_username, altMetadata }
+      metadata: {
+        action,
+        status: newStatus,
+        suspect_username: incident.discrepancy.suspect_username,
+        matched_benchmark_id: incident.discrepancy.matched_benchmark_id,
+        altMetadata
+      }
     });
 
     // Check circuit breaker trigger simulation
-    this.daemonHealth.circuit_breaker.rolling_requests += 1;
-    if (this.daemonHealth.circuit_breaker.rolling_requests >= this.daemonHealth.circuit_breaker.max_requests) {
-      this.daemonHealth.circuit_breaker.tripped = true;
-      this.daemonHealth.circuit_breaker.remaining_cooldown = 60;
+    if (action === 'ban' || action === 'exclude') {
+      this.daemonHealth.circuit_breaker.rolling_requests += 1;
+      if (this.daemonHealth.circuit_breaker.rolling_requests >= this.daemonHealth.circuit_breaker.max_requests) {
+        this.daemonHealth.circuit_breaker.tripped = true;
+        this.daemonHealth.circuit_breaker.remaining_cooldown = 60;
+      }
     }
 
-    invokeCommand('resolve_incident', { incident_id: id, status: newStatus, resolution_notes: incident.resolution_notes });
+    invokeCommand('resolve_incident', {
+      incident_id: id,
+      status: newStatus,
+      resolution_notes: incident.resolution_notes,
+      operator_id: "LocalSteward",
+      target_benchmark_id: altMetadata?.targetBenchmarkId || null
+    });
     this.notify();
   }
 

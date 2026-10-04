@@ -13,6 +13,8 @@ const circuitBreakerAlert = document.getElementById('circuit-breaker-alert');
 const btnResetCircuit = document.getElementById('btn-reset-circuit');
 const dotCircuit = document.getElementById('dot-circuit');
 const circuitStatusText = document.getElementById('circuit-status-text');
+const toastContainer = document.getElementById('desktop-toast-container');
+const btnTestToast = document.getElementById('btn-test-toast');
 
 // Modals & Controls
 const modalCreateBm = document.getElementById('modal-create-benchmark');
@@ -303,32 +305,58 @@ function renderVaultGrid() {
 
 // Render Activity Log Table
 function renderAuditTable() {
+  if (!appState.auditLogs || appState.auditLogs.length === 0) {
+    auditTableBody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; padding: 48px 20px; color: var(--text-muted); font-size: 0.9rem;">
+          No activity recorded in local audit ledger yet.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
   auditTableBody.innerHTML = appState.auditLogs.map(aud => {
     let actionBadgeColor = 'var(--text-secondary)';
     let actionBadgeBg = 'var(--bg-secondary)';
     let actionBadgeText = aud.action;
 
-    if (aud.action.includes('adjudicate') || aud.action.includes('ban')) {
+    const actionLower = (aud.action || '').toLowerCase();
+
+    if (actionLower.includes('adjudicate') || actionLower.includes('ban')) {
       actionBadgeColor = '#ffa1a4';
       actionBadgeBg = 'var(--discord-red-subtle)';
       actionBadgeText = 'Banned Imposter';
-    } else if (aud.action.includes('authorize') || aud.action.includes('whitelist')) {
+    } else if (actionLower.includes('authorize') || actionLower.includes('whitelist')) {
       actionBadgeColor = '#c7d2fe';
       actionBadgeBg = 'var(--brand-blurple-subtle)';
       actionBadgeText = 'Allowed Known Alt';
-    } else if (aud.action.includes('quarantine') || aud.action.includes('exclude')) {
+    } else if (actionLower.includes('quarantine') || actionLower.includes('exclude')) {
       actionBadgeColor = '#e9d5ff';
       actionBadgeBg = 'var(--discord-purple-subtle)';
       actionBadgeText = 'Restricted Account';
-    } else if (aud.action.includes('dismiss')) {
+    } else if (actionLower.includes('dismiss')) {
       actionBadgeColor = 'var(--text-secondary)';
       actionBadgeBg = 'rgba(255, 255, 255, 0.05)';
-      actionBadgeText = 'Ignored Alert';
-    } else if (aud.action.includes('benchmark')) {
+      actionBadgeText = 'Ignored Alert (Safe)';
+    } else if (actionLower.includes('benchmark')) {
       actionBadgeColor = 'var(--oh-orange-400)';
       actionBadgeBg = 'var(--oh-orange-subtle)';
       actionBadgeText = 'Protected Leader Added';
+    } else if (actionLower.includes('circuit_breaker_tripped')) {
+      actionBadgeColor = '#fbbf24';
+      actionBadgeBg = 'rgba(251, 191, 36, 0.12)';
+      actionBadgeText = 'Safety Pause Tripped';
+    } else if (actionLower.includes('circuit_breaker_reset')) {
+      actionBadgeColor = '#34d399';
+      actionBadgeBg = 'var(--discord-green-subtle)';
+      actionBadgeText = 'Safety Pause Reset';
     }
+
+    const suspectName = aud.metadata?.suspect_username;
+    const targetDisplay = suspectName 
+      ? `<span style="font-weight: 600; color: var(--text-primary);">@${suspectName}</span> <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">(${aud.target_user_id || ''})</span>`
+      : (aud.target_user_id || 'System');
 
     return `
       <tr style="border-bottom: 1px solid var(--border-subtle);">
@@ -338,7 +366,7 @@ function renderAuditTable() {
             ${actionBadgeText}
           </span>
         </td>
-        <td style="padding: 14px 20px; font-size: 0.84rem; color: var(--text-secondary);">${aud.target_user_id || 'System'}</td>
+        <td style="padding: 14px 20px; font-size: 0.84rem; color: var(--text-secondary);">${targetDisplay}</td>
         <td style="padding: 14px 20px; color: var(--text-header); font-weight: 600; font-size: 0.86rem;">${aud.operator_id}</td>
         <td style="padding: 14px 20px; color: var(--text-primary); font-size: 0.84rem; line-height: 1.4;">${aud.reason}</td>
       </tr>
@@ -552,6 +580,217 @@ window.addEventListener('keydown', e => {
     }
   }
 });
+
+// ==========================================================================
+// Phase 17.2: Native OS Desktop Notifications & Interactive Action Toasts
+// ==========================================================================
+const notifiedIncidentIds = new Set();
+
+export function showDesktopNotificationToast(payload, forceShow = false) {
+  if (!toastContainer) return;
+
+  const incidentId = payload.incident_id || payload.id;
+  if (!forceShow && notifiedIncidentIds.has(incidentId)) {
+    return;
+  }
+  notifiedIncidentIds.add(incidentId);
+
+  const rawTier = (payload.risk_tier || payload.discrepancy?.risk_tier || '').toLowerCase();
+  const isCritical = rawTier === 'critical';
+  const isElevated = rawTier === 'elevated';
+
+  // Only dispatch for Elevated or Critical discrepancies per Phase 17.2 specification
+  if (!isCritical && !isElevated && !forceShow) {
+    return;
+  }
+
+  const tierClass = isCritical ? 'risk-critical' : 'risk-elevated';
+  const tierBadge = isCritical ? 'Critical' : 'Elevated';
+
+  const suspectName = payload.suspect_username || payload.discrepancy?.suspect_username || 'Unknown_Suspect';
+  const suspectId = payload.suspect_user_id || payload.discrepancy?.suspect_user_id || '998877665544332211';
+  const targetName = payload.matched_benchmark_name || payload.discrepancy?.matched_benchmark_name || 'Protected Leader';
+
+  let similarityPct = 95;
+  if (payload.similarity_score !== undefined) {
+    similarityPct = Math.round(payload.similarity_score * 100);
+  } else if (payload.discrepancy?.string_similarity_score !== undefined) {
+    similarityPct = Math.round(payload.discrepancy.string_similarity_score * 100);
+  }
+
+  const reason = payload.reason || payload.discrepancy?.normalized_diff || 'Lookalike impersonation candidate detected';
+
+  // Remove existing toast for same incident if already present
+  const existingToast = document.getElementById(`toast-${incidentId}`);
+  if (existingToast) existingToast.remove();
+
+  const toastEl = document.createElement('div');
+  toastEl.className = `desktop-toast ${tierClass}`;
+  toastEl.id = `toast-${incidentId}`;
+  toastEl.setAttribute('role', 'alert');
+  toastEl.innerHTML = `
+    <div class="toast-header">
+      <div class="toast-brand-row">
+        <img src="assets/truthbeacon_emblem.png" class="toast-brand-icon" alt="TruthBeacon">
+        <span class="toast-brand-title">TruthBeacon Alert</span>
+      </div>
+      <div class="toast-header-right">
+        <span class="toast-risk-badge ${isCritical ? 'critical' : 'elevated'}">${tierBadge}</span>
+        <button class="toast-close-btn" data-action="close" title="Dismiss notification" aria-label="Close notification">&times;</button>
+      </div>
+    </div>
+    <div class="toast-body">
+      <div class="toast-comparison-strip">
+        <span class="toast-suspect-name" title="Suspect Imposter: @${suspectName}">@${suspectName}</span>
+        <span class="toast-vs-tag">VS</span>
+        <span class="toast-target-name" title="Official Leader: @${targetName}">@${targetName}</span>
+      </div>
+      <div class="toast-meta-line">
+        <span class="toast-meta-pill">${similarityPct}% Match</span>
+        ${reason}
+      </div>
+    </div>
+    <div class="toast-actions-row">
+      <button class="btn-toast btn-toast-inspect" data-action="inspect" data-incident-id="${incidentId}" title="Inspect in alerts queue">
+        Inspect
+      </button>
+      <button class="btn-toast btn-toast-dismiss" data-action="dismiss" data-incident-id="${incidentId}" title="Dismiss as benign coincidence [D]">
+        <kbd>D</kbd> Dismiss
+      </button>
+      <button class="btn-toast btn-toast-ban" data-action="ban" data-incident-id="${incidentId}" title="Ban imposter from server [B]">
+        <kbd>B</kbd> Ban & Purge
+      </button>
+    </div>
+    <div class="toast-progress-track">
+      <div class="toast-progress-bar"></div>
+    </div>
+  `;
+
+  toastContainer.appendChild(toastEl);
+
+  // Dispatch Native OS Notification Toast
+  invokeCommand('dispatch_desktop_notification', {
+    payload: {
+      incident_id: incidentId,
+      risk_tier: isCritical ? 'Critical' : 'Elevated',
+      suspect_username: suspectName,
+      suspect_user_id: suspectId,
+      matched_benchmark_name: targetName,
+      similarity_score: similarityPct / 100,
+      reason,
+      actions: ['Inspect', 'Dismiss', 'Ban & Purge']
+    }
+  }).catch(err => {
+    console.debug('[TruthBeacon Notification] OS notification note:', err);
+  });
+
+  // Auto-dismiss countdown timer (12s)
+  const autoDismissTimer = setTimeout(() => {
+    closeToastWithAnimation(toastEl);
+  }, 12000);
+
+  toastEl._dismissTimer = autoDismissTimer;
+}
+
+function closeToastWithAnimation(toastEl) {
+  if (!toastEl) return;
+  if (toastEl._dismissTimer) clearTimeout(toastEl._dismissTimer);
+  toastEl.classList.add('hiding');
+  setTimeout(() => {
+    if (toastEl.parentNode) toastEl.remove();
+  }, 220);
+}
+
+export function inspectIncidentCard(incidentId) {
+  // 1. Switch to triage alerts tab
+  navTabs.forEach(t => t.classList.remove('active'));
+  tabPanes.forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-tab="triage"]')?.classList.add('active');
+  document.getElementById('pane-triage')?.classList.add('active');
+  appState.setTab('triage');
+
+  // 2. Locate inspection card, scroll into center, and pulse highlight
+  requestAnimationFrame(() => {
+    const card = document.getElementById(`card-${incidentId}`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.remove('card-inspected-highlight');
+      void card.offsetWidth; // trigger reflow
+      card.classList.add('card-inspected-highlight');
+      setTimeout(() => card.classList.remove('card-inspected-highlight'), 3000);
+    }
+  });
+}
+
+// Event delegation for notification toast action buttons: Inspect, Dismiss, Ban & Purge
+toastContainer?.addEventListener('click', async e => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+
+  const action = btn.getAttribute('data-action');
+  const incidentId = btn.getAttribute('data-incident-id');
+  const toastEl = btn.closest('.desktop-toast');
+
+  if (action === 'close') {
+    closeToastWithAnimation(toastEl);
+  } else if (action === 'inspect') {
+    closeToastWithAnimation(toastEl);
+    inspectIncidentCard(incidentId);
+    invokeCommand('execute_notification_action', {
+      incident_id: incidentId,
+      action: 'Inspect'
+    }).catch(() => {});
+  } else if (action === 'dismiss') {
+    closeToastWithAnimation(toastEl);
+    appState.resolveIncident(incidentId, 'dismiss');
+    invokeCommand('execute_notification_action', {
+      incident_id: incidentId,
+      action: 'Dismiss'
+    }).catch(() => {});
+  } else if (action === 'ban') {
+    closeToastWithAnimation(toastEl);
+    appState.resolveIncident(incidentId, 'ban');
+    invokeCommand('execute_notification_action', {
+      incident_id: incidentId,
+      action: 'Ban & Purge'
+    }).catch(() => {});
+  }
+});
+
+// Manual Test Toast Button
+btnTestToast?.addEventListener('click', () => {
+  const pendingIncidents = appState.incidents.filter(i => i.status === 'pending');
+  const targetIncident = pendingIncidents.find(i => i.discrepancy.risk_tier === 'critical')
+    || pendingIncidents[0]
+    || {
+      id: `test_crit_${Date.now()}`,
+      discrepancy: {
+        suspect_username: "Pastor_Dan",
+        suspect_user_id: "987654321012345678",
+        matched_benchmark_name: "PastorDan",
+        string_similarity_score: 0.98,
+        normalized_diff: "Lookalike homoglyph substitution detected",
+        risk_tier: "critical"
+      }
+    };
+
+  showDesktopNotificationToast(targetIncident, true);
+});
+
+// Listen for Tauri backend events
+if (typeof window !== 'undefined' && window.__TAURI__?.event?.listen) {
+  window.__TAURI__.event.listen('truthbeacon://inspect-incident', event => {
+    if (event.payload?.incident_id) {
+      inspectIncidentCard(event.payload.incident_id);
+    }
+  });
+
+  window.__TAURI__.event.listen('truthbeacon://native-notification', event => {
+    if (event.payload) {
+      showDesktopNotificationToast(event.payload);
+    }
+  });
+}
 
 // Subscribe to state changes and initial render
 appState.subscribe(updateView);

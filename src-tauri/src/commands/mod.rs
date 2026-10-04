@@ -120,9 +120,17 @@ pub fn create_benchmark(input: CreateBenchmarkInput) -> Result<CanonicalBenchmar
 
 #[tauri::command]
 pub fn list_incidents(guild_id: String) -> Result<Vec<TriageIncident>, CommandError> {
-    // TODO: Wire to StorageManager incident query when state injection is available
-    let _ = guild_id;
-    Ok(vec![])
+    let storage = crate::storage::StorageManager::default_instance()
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+    let gid = if guild_id.trim().is_empty() {
+        None
+    } else {
+        Some(guild_id.as_str())
+    };
+    let incidents = storage
+        .list_incidents(gid, None)
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+    Ok(incidents)
 }
 
 #[tauri::command]
@@ -130,11 +138,161 @@ pub fn resolve_incident(
     incident_id: String,
     status: IncidentStatus,
     resolution_notes: Option<String>,
+    operator_id: Option<String>,
+    target_benchmark_id: Option<String>,
 ) -> Result<bool, CommandError> {
-    // TODO: Wire to StorageManager to update incident status and record audit log
-    let _ = (incident_id, status, resolution_notes);
+    if incident_id.trim().is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Incident ID cannot be empty".into(),
+        ));
+    }
+
+    // 1. Safety Circuit Breaker check for mitigation actions (Phase 16.3: Ban / Restrict)
+    if matches!(status, IncidentStatus::Banned | IncidentStatus::Excluded) {
+        let breaker = crate::circuit_breaker::get_global_circuit_breaker();
+        let acquired = breaker.try_acquire_mitigation(
+            crate::circuit_breaker::MitigationOrigin::Manual {
+                operator_confirmed: true,
+            },
+        );
+        if acquired.is_err() {
+            return Err(CommandError::CircuitBreakerTripped);
+        }
+    }
+
+    let storage = crate::storage::StorageManager::default_instance()
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+
+    let now = chrono::Utc::now().timestamp();
+    let op = operator_id.unwrap_or_else(|| "LocalSteward".to_string());
+
+    // 2. Fetch existing incident record if stored
+    let existing_opt = storage
+        .get_incident(&incident_id)
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+
+    let target_user_id = existing_opt
+        .as_ref()
+        .map(|i| i.discrepancy.suspect_user_id.clone());
+    let guild_id = existing_opt
+        .as_ref()
+        .map(|i| i.guild_id.clone())
+        .unwrap_or_else(|| "guild_crossroads_9921".into());
+    let suspect_username = existing_opt
+        .as_ref()
+        .map(|i| i.discrepancy.suspect_username.clone());
+    let matched_bm_id = existing_opt
+        .as_ref()
+        .map(|i| i.discrepancy.matched_benchmark_id.clone());
+
+    // 3. Update status in SQLite incidents table
+    let _ = storage.update_incident_status(
+        &incident_id,
+        status.clone(),
+        resolution_notes.as_deref(),
+        Some(&op),
+        Some(now),
+    );
+
+    // 4. Phase 16.3: Allow Known Alt [W]: Whitelist account and append to benchmark tags to prevent future alerts
+    if status == IncidentStatus::Whitelisted {
+        let bm_target = target_benchmark_id.or(matched_bm_id.clone());
+        if let (Some(bm_id), Some(ref uid)) = (bm_target, &target_user_id) {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+
+            let tags_res: rusqlite::Result<Option<String>> = conn.query_row(
+                "SELECT tags FROM benchmarks WHERE id = ?1;",
+                [&bm_id],
+                |row| row.get(0),
+            );
+
+            if let Ok(tags_opt) = tags_res {
+                let mut tags: Vec<String> = tags_opt
+                    .and_then(|t| serde_json::from_str(&t).ok())
+                    .unwrap_or_default();
+
+                let alt_tag = format!("Whitelisted Alt: {}", uid.trim());
+                if !tags.contains(&alt_tag) {
+                    tags.push(alt_tag);
+                }
+                if !tags.contains(&"Authorized Alt".to_string()) {
+                    tags.push("Authorized Alt".to_string());
+                }
+
+                let tags_json =
+                    serde_json::to_string(&tags).unwrap_or_else(|_| "[]".to_string());
+                let _ = conn.execute(
+                    "UPDATE benchmarks SET tags = ?1, updated_at = ?2 WHERE id = ?3;",
+                    rusqlite::params![tags_json, now, bm_id],
+                );
+            }
+        }
+    }
+
+    // 5. Phase 16.4: Write record to audit_logs for every executed action
+    let (action_type, default_reason) = match status {
+        IncidentStatus::Dismissed => (
+            crate::models::audit::ActionType::Dismiss,
+            "Mark incident as resolved / benign coincidence",
+        ),
+        IncidentStatus::Whitelisted => (
+            crate::models::audit::ActionType::WhitelistAlternate,
+            "Approved alternate account; appended to benchmark tags to prevent future alerts",
+        ),
+        IncidentStatus::Excluded => (
+            crate::models::audit::ActionType::ExcludeUser,
+            "Quarantine / remove elevated permissions with clear reason",
+        ),
+        IncidentStatus::Banned => (
+            crate::models::audit::ActionType::BanAndPurge,
+            "Ban account from guild with message pruning and audit logging",
+        ),
+        IncidentStatus::Pending => (
+            crate::models::audit::ActionType::Other,
+            "Incident marked as pending review",
+        ),
+    };
+
+    let reason_str = resolution_notes.unwrap_or_else(|| default_reason.to_string());
+
+    let audit_entry = crate::models::audit::AuditLogEntry {
+        id: format!("audit_{}_{}", now, incident_id),
+        timestamp: now,
+        action: action_type,
+        guild_id,
+        operator_id: op,
+        target_user_id,
+        incident_id: Some(incident_id),
+        reason: reason_str,
+        metadata: Some(serde_json::json!({
+            "action_status": format!("{:?}", status).to_lowercase(),
+            "suspect_username": suspect_username,
+            "matched_benchmark_id": matched_bm_id,
+            "prune_message_days": if status == IncidentStatus::Banned { Some(7) } else { None },
+        })),
+    };
+
+    storage
+        .record_audit_log(&audit_entry)
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+
     Ok(true)
 }
+
+#[tauri::command]
+pub fn list_audit_logs(
+    guild_id: Option<String>,
+    limit: Option<usize>,
+) -> Result<Vec<crate::models::audit::AuditLogEntry>, CommandError> {
+    let storage = crate::storage::StorageManager::default_instance()
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+    let gid = guild_id.as_deref();
+    storage
+        .list_audit_logs(gid, limit)
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))
+}
+
 
 #[tauri::command]
 pub fn reset_circuit_breaker() -> Result<bool, CommandError> {
@@ -338,6 +496,24 @@ pub async fn synchronize_benchmark_avatars(
         .await
         .map_err(|e| CommandError::InternalError(e.to_string()))
 }
+#[tauri::command]
+pub fn dispatch_desktop_notification(
+    app: tauri::AppHandle,
+    payload: crate::notification::NotificationPayload,
+) -> Result<bool, CommandError> {
+    crate::notification::dispatch_native_notification(Some(&app), &payload)
+        .map_err(|e| CommandError::InternalError(e.to_string()))
+}
+
+#[tauri::command]
+pub fn execute_notification_action(
+    app: tauri::AppHandle,
+    incident_id: String,
+    action: String,
+) -> Result<bool, CommandError> {
+    crate::notification::execute_notification_action(&app, &incident_id, &action)
+        .map_err(|e| CommandError::InternalError(e.to_string()))
+}
 
 #[cfg(test)]
 mod tests {
@@ -384,4 +560,178 @@ mod tests {
             _ => panic!("Expected ValidationFailed error"),
         }
     }
+
+    #[test]
+    fn test_resolve_incident_validation() {
+        let res = resolve_incident("".into(), IncidentStatus::Dismissed, None, None, None);
+        assert!(res.is_err());
+        match res.err().unwrap() {
+            CommandError::ValidationFailed(msg) => {
+                assert!(msg.contains("Incident ID cannot be empty"))
+            }
+            _ => panic!("Expected ValidationFailed error"),
+        }
+    }
+
+    #[test]
+    fn test_phase_16_administrative_mitigation_actions_and_audit_logging() {
+        let storage = crate::storage::StorageManager::default_instance().unwrap();
+
+        // 1. Seed canonical benchmark
+        let bm_id = format!(
+            "bm_test_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let suspect_id = "987654321012345678";
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            conn.execute(
+                "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at, tags)
+                 VALUES (?1, 'guild_test', '111222333', 'LeaderDan', 'Pastor', 1000, 1000, '[\"Core Staff\"]');",
+                [&bm_id],
+            ).unwrap();
+        }
+
+        // 2. Seed a test incident
+        let inc_id = format!(
+            "inc_test_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let inc = TriageIncident {
+            id: inc_id.clone(),
+            guild_id: "guild_test".into(),
+            timestamp: 1000,
+            discrepancy: crate::models::incident::IdentityDiscrepancy {
+                suspect_user_id: suspect_id.into(),
+                suspect_username: "LeaderDan_Alt".into(),
+                suspect_nickname: Some("Leader Dan".into()),
+                suspect_avatar_url: None,
+                suspect_account_age_hours: 3,
+                matched_benchmark_id: bm_id.clone(),
+                matched_benchmark_name: "LeaderDan".into(),
+                string_similarity_score: 0.95,
+                homoglyph_detected: false,
+                normalized_diff: "Trailing suffix".into(),
+                avatar_hamming_distance: None,
+                risk_tier: crate::models::incident::RiskTier::Elevated,
+            },
+            status: IncidentStatus::Pending,
+            resolution_notes: None,
+            operator_id: None,
+            resolved_at: None,
+        };
+        storage.record_incident(&inc).unwrap();
+
+        // 3. Test Action 16.3: Allow Known Alt [W]
+        let allow_res = resolve_incident(
+            inc_id.clone(),
+            IncidentStatus::Whitelisted,
+            Some("Verified secondary device for audio team".into()),
+            Some("LeadMod".into()),
+            Some(bm_id.clone()),
+        );
+        assert!(allow_res.is_ok(), "Allow Known Alt must succeed");
+
+        // Verify status updated to Whitelisted
+        let updated_inc = storage.get_incident(&inc_id).unwrap().unwrap();
+        assert_eq!(updated_inc.status, IncidentStatus::Whitelisted);
+        assert_eq!(updated_inc.operator_id.as_deref(), Some("LeadMod"));
+
+        // Verify benchmark tags updated to prevent future alerts
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            let tags_str: String = conn
+                .query_row(
+                    "SELECT tags FROM benchmarks WHERE id = ?1;",
+                    [&bm_id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert!(tags_str.contains(&format!("Whitelisted Alt: {}", suspect_id)));
+            assert!(tags_str.contains("Authorized Alt"));
+        }
+
+        // Verify 16.4: Audit log was written for Allow Known Alt
+        let logs = list_audit_logs(Some("guild_test".into()), Some(10)).unwrap();
+        let alt_log = logs
+            .iter()
+            .find(|l| l.incident_id.as_deref() == Some(&inc_id))
+            .unwrap();
+        assert_eq!(
+            alt_log.action,
+            crate::models::audit::ActionType::WhitelistAlternate
+        );
+        assert_eq!(alt_log.operator_id, "LeadMod");
+        assert_eq!(alt_log.target_user_id.as_deref(), Some(suspect_id));
+        assert!(alt_log.reason.contains("Verified secondary device"));
+
+        // 4. Test Action 16.3: Restrict Account [E]
+        let inc_restrict_id = format!(
+            "inc_rest_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let inc_restrict = TriageIncident {
+            id: inc_restrict_id.clone(),
+            ..inc.clone()
+        };
+        storage.record_incident(&inc_restrict).unwrap();
+
+        let restrict_res = resolve_incident(
+            inc_restrict_id.clone(),
+            IncidentStatus::Excluded,
+            Some("Quarantined suspicious account".into()),
+            Some("StaffElder".into()),
+            None,
+        );
+        assert!(restrict_res.is_ok(), "Restrict Account must succeed");
+        let restrict_inc = storage.get_incident(&inc_restrict_id).unwrap().unwrap();
+        assert_eq!(restrict_inc.status, IncidentStatus::Excluded);
+
+        // 5. Test Action 16.3: Ban Imposter [B]
+        let inc_ban_id = format!(
+            "inc_ban_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let inc_ban = TriageIncident {
+            id: inc_ban_id.clone(),
+            ..inc.clone()
+        };
+        storage.record_incident(&inc_ban).unwrap();
+
+        let ban_res = resolve_incident(
+            inc_ban_id.clone(),
+            IncidentStatus::Banned,
+            Some("Malicious DM phishing imposter banned".into()),
+            Some("LeadMod".into()),
+            None,
+        );
+        assert!(ban_res.is_ok(), "Ban Imposter must succeed");
+        let ban_inc = storage.get_incident(&inc_ban_id).unwrap().unwrap();
+        assert_eq!(ban_inc.status, IncidentStatus::Banned);
+
+        // 6. Test Action 16.3: Ignore Alert (Safe) [D]
+        let inc_dismiss_id = format!(
+            "inc_dism_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let inc_dismiss = TriageIncident {
+            id: inc_dismiss_id.clone(),
+            ..inc.clone()
+        };
+        storage.record_incident(&inc_dismiss).unwrap();
+
+        let dismiss_res = resolve_incident(
+            inc_dismiss_id.clone(),
+            IncidentStatus::Dismissed,
+            Some("Benign coincidental name similarity".into()),
+            Some("Steward".into()),
+            None,
+        );
+        assert!(dismiss_res.is_ok(), "Ignore Alert (Safe) must succeed");
+        let dismiss_inc = storage.get_incident(&inc_dismiss_id).unwrap().unwrap();
+        assert_eq!(dismiss_inc.status, IncidentStatus::Dismissed);
+    }
 }
+

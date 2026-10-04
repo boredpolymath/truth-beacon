@@ -272,11 +272,322 @@ impl StorageManager {
             remaining_db_bytes,
         })
     }
+
+    /// Records an immutable audit log entry into `audit_logs` (Phase 16.4).
+    pub fn record_audit_log(&self, entry: &crate::models::audit::AuditLogEntry) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        let meta_json = entry.metadata.as_ref().map(|m| m.to_string());
+        conn.execute(
+            "INSERT INTO audit_logs (
+                id, timestamp, action, guild_id, operator_id, target_user_id,
+                incident_id, reason, metadata_json
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);",
+            rusqlite::params![
+                entry.id,
+                entry.timestamp,
+                entry.action.as_str(),
+                entry.guild_id,
+                entry.operator_id,
+                entry.target_user_id,
+                entry.incident_id,
+                entry.reason,
+                meta_json,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Retrieves chronological audit log records ordered descending by timestamp (Phase 16.4).
+    pub fn list_audit_logs(
+        &self,
+        guild_id: Option<&str>,
+        limit: Option<usize>,
+    ) -> Result<Vec<crate::models::audit::AuditLogEntry>> {
+        let conn = self.conn.lock().unwrap();
+        let limit_val = limit.unwrap_or(100) as i64;
+        let mut entries = Vec::new();
+
+        if let Some(gid) = guild_id {
+            let mut stmt = conn.prepare(
+                "SELECT id, timestamp, action, guild_id, operator_id, target_user_id,
+                        incident_id, reason, metadata_json
+                 FROM audit_logs
+                 WHERE guild_id = ?1
+                 ORDER BY timestamp DESC
+                 LIMIT ?2;",
+            )?;
+            let rows = stmt.query_map(rusqlite::params![gid, limit_val], Self::row_to_audit_log)?;
+            for r in rows {
+                entries.push(r?);
+            }
+        } else {
+            let mut stmt = conn.prepare(
+                "SELECT id, timestamp, action, guild_id, operator_id, target_user_id,
+                        incident_id, reason, metadata_json
+                 FROM audit_logs
+                 ORDER BY timestamp DESC
+                 LIMIT ?1;",
+            )?;
+            let rows = stmt.query_map(rusqlite::params![limit_val], Self::row_to_audit_log)?;
+            for r in rows {
+                entries.push(r?);
+            }
+        }
+
+        Ok(entries)
+    }
+
+    fn row_to_audit_log(row: &rusqlite::Row) -> rusqlite::Result<crate::models::audit::AuditLogEntry> {
+        let action_str: String = row.get(2)?;
+        let meta_str: Option<String> = row.get(8)?;
+        let metadata = meta_str.and_then(|s| serde_json::from_str(&s).ok());
+
+        Ok(crate::models::audit::AuditLogEntry {
+            id: row.get(0)?,
+            timestamp: row.get(1)?,
+            action: crate::models::audit::ActionType::from_str_loose(&action_str),
+            guild_id: row.get(3)?,
+            operator_id: row.get(4)?,
+            target_user_id: row.get(5)?,
+            incident_id: row.get(6)?,
+            reason: row.get(7)?,
+            metadata,
+        })
+    }
+
+    /// Records or updates an identity incident in SQLite (Phase 16.1 & Phase 16.3).
+    pub fn record_incident(&self, incident: &crate::models::incident::TriageIncident) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        let status_str = match incident.status {
+            crate::models::incident::IncidentStatus::Dismissed => "dismissed",
+            crate::models::incident::IncidentStatus::Excluded => "excluded",
+            crate::models::incident::IncidentStatus::Banned => "banned",
+            crate::models::incident::IncidentStatus::Whitelisted => "whitelisted",
+            crate::models::incident::IncidentStatus::Pending => "pending",
+        };
+        let risk_str = format!("{:?}", incident.discrepancy.risk_tier).to_lowercase();
+        let homoglyph_int = if incident.discrepancy.homoglyph_detected { 1 } else { 0 };
+
+        conn.execute(
+            "INSERT OR REPLACE INTO incidents (
+                id, guild_id, timestamp, suspect_user_id, suspect_username, suspect_nickname,
+                suspect_avatar_url, suspect_account_age_hours, matched_benchmark_id, matched_benchmark_name,
+                string_similarity_score, homoglyph_detected, normalized_diff, avatar_hamming_distance,
+                risk_tier, status, resolution_notes, operator_id, resolved_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19);",
+            rusqlite::params![
+                incident.id,
+                incident.guild_id,
+                incident.timestamp,
+                incident.discrepancy.suspect_user_id,
+                incident.discrepancy.suspect_username,
+                incident.discrepancy.suspect_nickname,
+                incident.discrepancy.suspect_avatar_url,
+                incident.discrepancy.suspect_account_age_hours as i64,
+                incident.discrepancy.matched_benchmark_id,
+                incident.discrepancy.matched_benchmark_name,
+                incident.discrepancy.string_similarity_score,
+                homoglyph_int,
+                incident.discrepancy.normalized_diff,
+                incident.discrepancy.avatar_hamming_distance.map(|d| d as i64),
+                risk_str,
+                status_str,
+                incident.resolution_notes,
+                incident.operator_id,
+                incident.resolved_at,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Fetches a specific incident by ID.
+    pub fn get_incident(&self, incident_id: &str) -> Result<Option<crate::models::incident::TriageIncident>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, guild_id, timestamp, suspect_user_id, suspect_username, suspect_nickname,
+                    suspect_avatar_url, suspect_account_age_hours, matched_benchmark_id, matched_benchmark_name,
+                    string_similarity_score, homoglyph_detected, normalized_diff, avatar_hamming_distance,
+                    risk_tier, status, resolution_notes, operator_id, resolved_at
+             FROM incidents
+             WHERE id = ?1;",
+        )?;
+
+        let mut rows = stmt.query_map([incident_id], Self::row_to_incident)?;
+        match rows.next() {
+            Some(res) => Ok(Some(res?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Updates the status and resolution notes of an incident (Phase 16.3).
+    pub fn update_incident_status(
+        &self,
+        incident_id: &str,
+        status: crate::models::incident::IncidentStatus,
+        resolution_notes: Option<&str>,
+        operator_id: Option<&str>,
+        resolved_at: Option<i64>,
+    ) -> Result<bool> {
+        let conn = self.conn.lock().unwrap();
+        let status_str = match status {
+            crate::models::incident::IncidentStatus::Dismissed => "dismissed",
+            crate::models::incident::IncidentStatus::Excluded => "excluded",
+            crate::models::incident::IncidentStatus::Banned => "banned",
+            crate::models::incident::IncidentStatus::Whitelisted => "whitelisted",
+            crate::models::incident::IncidentStatus::Pending => "pending",
+        };
+
+        let updated_rows = conn.execute(
+            "UPDATE incidents
+             SET status = ?1, resolution_notes = ?2, operator_id = ?3, resolved_at = ?4
+             WHERE id = ?5;",
+            rusqlite::params![
+                status_str,
+                resolution_notes,
+                operator_id,
+                resolved_at,
+                incident_id
+            ],
+        )?;
+
+        Ok(updated_rows > 0)
+    }
+
+    /// Lists incidents filtered by guild and optional status (Phase 16.1 & Phase 16.3).
+    pub fn list_incidents(
+        &self,
+        guild_id: Option<&str>,
+        status_filter: Option<crate::models::incident::IncidentStatus>,
+    ) -> Result<Vec<crate::models::incident::TriageIncident>> {
+        let conn = self.conn.lock().unwrap();
+        let mut entries = Vec::new();
+
+        let status_str = status_filter.map(|s| match s {
+            crate::models::incident::IncidentStatus::Dismissed => "dismissed",
+            crate::models::incident::IncidentStatus::Excluded => "excluded",
+            crate::models::incident::IncidentStatus::Banned => "banned",
+            crate::models::incident::IncidentStatus::Whitelisted => "whitelisted",
+            crate::models::incident::IncidentStatus::Pending => "pending",
+        });
+
+        match (guild_id, status_str) {
+            (Some(gid), Some(st)) => {
+                let mut stmt = conn.prepare(
+                    "SELECT id, guild_id, timestamp, suspect_user_id, suspect_username, suspect_nickname,
+                            suspect_avatar_url, suspect_account_age_hours, matched_benchmark_id, matched_benchmark_name,
+                            string_similarity_score, homoglyph_detected, normalized_diff, avatar_hamming_distance,
+                            risk_tier, status, resolution_notes, operator_id, resolved_at
+                     FROM incidents
+                     WHERE guild_id = ?1 AND status = ?2
+                     ORDER BY timestamp DESC;",
+                )?;
+                let rows = stmt.query_map(rusqlite::params![gid, st], Self::row_to_incident)?;
+                for r in rows {
+                    entries.push(r?);
+                }
+            }
+            (Some(gid), None) => {
+                let mut stmt = conn.prepare(
+                    "SELECT id, guild_id, timestamp, suspect_user_id, suspect_username, suspect_nickname,
+                            suspect_avatar_url, suspect_account_age_hours, matched_benchmark_id, matched_benchmark_name,
+                            string_similarity_score, homoglyph_detected, normalized_diff, avatar_hamming_distance,
+                            risk_tier, status, resolution_notes, operator_id, resolved_at
+                     FROM incidents
+                     WHERE guild_id = ?1
+                     ORDER BY timestamp DESC;",
+                )?;
+                let rows = stmt.query_map(rusqlite::params![gid], Self::row_to_incident)?;
+                for r in rows {
+                    entries.push(r?);
+                }
+            }
+            (None, Some(st)) => {
+                let mut stmt = conn.prepare(
+                    "SELECT id, guild_id, timestamp, suspect_user_id, suspect_username, suspect_nickname,
+                            suspect_avatar_url, suspect_account_age_hours, matched_benchmark_id, matched_benchmark_name,
+                            string_similarity_score, homoglyph_detected, normalized_diff, avatar_hamming_distance,
+                            risk_tier, status, resolution_notes, operator_id, resolved_at
+                     FROM incidents
+                     WHERE status = ?1
+                     ORDER BY timestamp DESC;",
+                )?;
+                let rows = stmt.query_map(rusqlite::params![st], Self::row_to_incident)?;
+                for r in rows {
+                    entries.push(r?);
+                }
+            }
+            (None, None) => {
+                let mut stmt = conn.prepare(
+                    "SELECT id, guild_id, timestamp, suspect_user_id, suspect_username, suspect_nickname,
+                            suspect_avatar_url, suspect_account_age_hours, matched_benchmark_id, matched_benchmark_name,
+                            string_similarity_score, homoglyph_detected, normalized_diff, avatar_hamming_distance,
+                            risk_tier, status, resolution_notes, operator_id, resolved_at
+                     FROM incidents
+                     ORDER BY timestamp DESC;",
+                )?;
+                let rows = stmt.query_map([], Self::row_to_incident)?;
+                for r in rows {
+                    entries.push(r?);
+                }
+            }
+        }
+
+        Ok(entries)
+    }
+
+    fn row_to_incident(row: &rusqlite::Row) -> rusqlite::Result<crate::models::incident::TriageIncident> {
+        let risk_tier_str: String = row.get(14)?;
+        let status_str: String = row.get(15)?;
+        let homoglyph_int: i32 = row.get(11)?;
+        let age_hours: i64 = row.get(7)?;
+        let hamming: Option<u32> = row.get::<_, Option<i32>>(13)?.map(|h| h as u32);
+
+        let risk_tier = match risk_tier_str.to_lowercase().as_str() {
+            "critical" => crate::models::incident::RiskTier::Critical,
+            "elevated" => crate::models::incident::RiskTier::Elevated,
+            "notable" => crate::models::incident::RiskTier::Notable,
+            _ => crate::models::incident::RiskTier::Standard,
+        };
+
+        let status = match status_str.to_lowercase().as_str() {
+            "dismissed" => crate::models::incident::IncidentStatus::Dismissed,
+            "excluded" => crate::models::incident::IncidentStatus::Excluded,
+            "banned" => crate::models::incident::IncidentStatus::Banned,
+            "whitelisted" => crate::models::incident::IncidentStatus::Whitelisted,
+            _ => crate::models::incident::IncidentStatus::Pending,
+        };
+
+        Ok(crate::models::incident::TriageIncident {
+            id: row.get(0)?,
+            guild_id: row.get(1)?,
+            timestamp: row.get(2)?,
+            discrepancy: crate::models::incident::IdentityDiscrepancy {
+                suspect_user_id: row.get(3)?,
+                suspect_username: row.get(4)?,
+                suspect_nickname: row.get(5)?,
+                suspect_avatar_url: row.get(6)?,
+                suspect_account_age_hours: age_hours.max(0) as u64,
+                matched_benchmark_id: row.get(8)?,
+                matched_benchmark_name: row.get(9)?,
+                string_similarity_score: row.get(10)?,
+                homoglyph_detected: homoglyph_int != 0,
+                normalized_diff: row.get(12)?,
+                avatar_hamming_distance: hamming,
+                risk_tier,
+            },
+            status,
+            resolution_notes: row.get(16)?,
+            operator_id: row.get(17)?,
+            resolved_at: row.get(18)?,
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::audit::{ActionType, AuditLogEntry};
+    use crate::models::incident::{IdentityDiscrepancy, IncidentStatus, RiskTier, TriageIncident};
 
     #[test]
     fn test_storage_manager_init_and_eradicate() {
@@ -521,5 +832,126 @@ mod tests {
         let _ = std::fs::remove_file(&test_db_path);
         let _ = std::fs::remove_file(format!("{}-wal", test_db_path.display()));
         let _ = std::fs::remove_file(format!("{}-shm", test_db_path.display()));
+    }
+
+    #[test]
+    fn test_record_and_list_audit_logs_chronological() {
+        let storage = StorageManager::in_memory().unwrap();
+
+        let entry1 = AuditLogEntry {
+            id: "aud_01".into(),
+            timestamp: 1000,
+            action: ActionType::Dismiss,
+            guild_id: "guild_crossroads".into(),
+            operator_id: "StewardOne".into(),
+            target_user_id: Some("user_101".into()),
+            incident_id: Some("inc_101".into()),
+            reason: "Benign lookalike; no malicious intent".into(),
+            metadata: Some(serde_json::json!({"action": "dismiss"})),
+        };
+
+        let entry2 = AuditLogEntry {
+            id: "aud_02".into(),
+            timestamp: 2000,
+            action: ActionType::BanAndPurge,
+            guild_id: "guild_crossroads".into(),
+            operator_id: "StewardOne".into(),
+            target_user_id: Some("user_102".into()),
+            incident_id: Some("inc_102".into()),
+            reason: "Critical homoglyph imposter".into(),
+            metadata: Some(serde_json::json!({"prune_days": 7})),
+        };
+
+        storage.record_audit_log(&entry1).unwrap();
+        storage.record_audit_log(&entry2).unwrap();
+
+        // Must list in descending chronological order
+        let logs = storage.list_audit_logs(Some("guild_crossroads"), None).unwrap();
+        assert_eq!(logs.len(), 2);
+        assert_eq!(logs[0].id, "aud_02"); // newest first (timestamp 2000)
+        assert_eq!(logs[0].action, ActionType::BanAndPurge);
+        assert_eq!(logs[1].id, "aud_01"); // older second (timestamp 1000)
+        assert_eq!(logs[1].action, ActionType::Dismiss);
+    }
+
+    #[test]
+    fn test_record_get_update_and_list_incidents() {
+        let storage = StorageManager::in_memory().unwrap();
+
+        // 1. Create a benchmark first to satisfy foreign key constraint
+        {
+            let conn = storage.get_connection();
+            let locked_conn = conn.lock().unwrap();
+            locked_conn
+                .execute(
+                    "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at)
+                     VALUES ('bm_dan', 'guild_crossroads', 'u_dan', 'DanWard', 'Pastor', 1000, 1000);",
+                    [],
+                )
+                .unwrap();
+        }
+
+        let incident = TriageIncident {
+            id: "inc_dan_spoof".into(),
+            guild_id: "guild_crossroads".into(),
+            timestamp: 1500,
+            discrepancy: IdentityDiscrepancy {
+                suspect_user_id: "u_imposter".into(),
+                suspect_username: "DanШard".into(),
+                suspect_nickname: Some("Pastor Dan (Lead)".into()),
+                suspect_avatar_url: None,
+                suspect_account_age_hours: 2,
+                matched_benchmark_id: "bm_dan".into(),
+                matched_benchmark_name: "DanWard".into(),
+                string_similarity_score: 0.98,
+                homoglyph_detected: true,
+                normalized_diff: "Cyrillic Sha substituted for Latin W".into(),
+                avatar_hamming_distance: Some(1),
+                risk_tier: RiskTier::Critical,
+            },
+            status: IncidentStatus::Pending,
+            resolution_notes: None,
+            operator_id: None,
+            resolved_at: None,
+        };
+
+        storage.record_incident(&incident).unwrap();
+
+        // Retrieve incident
+        let fetched = storage.get_incident("inc_dan_spoof").unwrap().unwrap();
+        assert_eq!(fetched.discrepancy.suspect_username, "DanШard");
+        assert_eq!(fetched.status, IncidentStatus::Pending);
+
+        // Update status to Banned
+        let updated = storage
+            .update_incident_status(
+                "inc_dan_spoof",
+                IncidentStatus::Banned,
+                Some("Ban confirmed by operator"),
+                Some("LeadMod"),
+                Some(1600),
+            )
+            .unwrap();
+        assert!(updated);
+
+        let fetched_updated = storage.get_incident("inc_dan_spoof").unwrap().unwrap();
+        assert_eq!(fetched_updated.status, IncidentStatus::Banned);
+        assert_eq!(
+            fetched_updated.resolution_notes.as_deref(),
+            Some("Ban confirmed by operator")
+        );
+        assert_eq!(fetched_updated.operator_id.as_deref(), Some("LeadMod"));
+
+        // List filtered by status
+        let pending = storage
+            .list_incidents(Some("guild_crossroads"), Some(IncidentStatus::Pending))
+            .unwrap();
+        assert_eq!(pending.len(), 0);
+
+        let banned = storage
+            .list_incidents(Some("guild_crossroads"), Some(IncidentStatus::Banned))
+            .unwrap();
+        assert_eq!(banned.len(), 1);
+        assert_eq!(banned[0].id, "inc_dan_spoof");
     }
 }
