@@ -188,6 +188,75 @@ export async function invokeCommand(cmd, args = {}) {
       return true;
     }
 
+    case 'get_discord_config':
+      return {
+        has_token: true,
+        guild_id: "guild_crossroads_9921",
+        registered_guilds: ["guild_crossroads_9921"],
+        string_similarity_threshold: 0.85,
+        new_account_age_hours_threshold: 72,
+        avatar_hamming_threshold: 10,
+        privileged_intent_declared: true
+      };
+
+    case 'verify_bot_handshake': {
+      const { token, guild_id } = args;
+      if (!token || token.length < 15) {
+        throw { code: "VALIDATION_FAILED", message: "Invalid bot token format: Discord Bot tokens must contain 3 segments." };
+      }
+      return {
+        bot_id: "109827364512938475",
+        bot_username: "TruthBeacon Guard",
+        bot_discriminator: "0",
+        bot_avatar: null,
+        is_official_bot: true,
+        target_guild_id: guild_id || "guild_crossroads_9921",
+        target_guild_name: "Crossroads Community Sanctuary",
+        permissions: {
+          is_administrator: false,
+          has_kick_members: true,
+          has_ban_members: true,
+          has_moderate_members: true,
+          has_view_channel: true,
+          is_fully_authorized: true,
+          missing_permissions: []
+        },
+        verified_at: Math.floor(Date.now() / 1000)
+      };
+    }
+
+    case 'save_discord_config': {
+      const { guild_id, token } = args;
+      if (!guild_id?.trim()) {
+        throw { code: "VALIDATION_FAILED", message: "Server Guild ID cannot be empty" };
+      }
+      if (!token?.trim()) {
+        throw { code: "VALIDATION_FAILED", message: "Bot token cannot be empty" };
+      }
+      return {
+        bot_id: "109827364512938475",
+        bot_username: "TruthBeacon Guard",
+        bot_discriminator: "0",
+        bot_avatar: null,
+        is_official_bot: true,
+        target_guild_id: guild_id,
+        target_guild_name: "Crossroads Community Sanctuary",
+        permissions: {
+          is_administrator: false,
+          has_kick_members: true,
+          has_ban_members: true,
+          has_moderate_members: true,
+          has_view_channel: true,
+          is_fully_authorized: true,
+          missing_permissions: []
+        },
+        verified_at: Math.floor(Date.now() / 1000)
+      };
+    }
+
+    case 'disconnect_discord':
+      return true;
+
     default:
       console.warn(`[TruthBeacon Mock IPC] Unhandled command: ${cmd}`);
       return null;

@@ -15,6 +15,46 @@ const dotCircuit = document.getElementById('dot-circuit');
 const circuitStatusText = document.getElementById('circuit-status-text');
 const toastContainer = document.getElementById('desktop-toast-container');
 const btnTestToast = document.getElementById('btn-test-toast');
+const statusGateway = document.getElementById('status-gateway');
+
+// Discord Setup Elements
+const discordTokenInput = document.getElementById('discord-token-input');
+const discordGuildIdInput = document.getElementById('discord-guild-id-input');
+const btnToggleTokenVis = document.getElementById('btn-toggle-token-vis');
+const btnTestHandshake = document.getElementById('btn-test-handshake');
+const btnTestHandshakeText = document.getElementById('btn-test-handshake-text');
+const btnSaveDiscord = document.getElementById('btn-save-discord');
+const btnDisconnectDiscord = document.getElementById('btn-disconnect-discord');
+const btnSaveThresholds = document.getElementById('btn-save-thresholds');
+
+// Discord Hero Status Elements
+const discordHeroStatusDot = document.getElementById('discord-hero-status-dot');
+const discordHeroBadge = document.getElementById('discord-hero-badge');
+const discordHeroBotName = document.getElementById('discord-hero-bot-name');
+const discordHeroServerName = document.getElementById('discord-hero-server-name');
+const discordHeroGuildId = document.getElementById('discord-hero-guild-id');
+const discordBotAvatarImg = document.getElementById('discord-bot-avatar-img');
+const discordBotAvatarFallback = document.getElementById('discord-bot-avatar-fallback');
+
+// Diagnostics Elements
+const diagHeaderDot = document.getElementById('diag-header-dot');
+const diagHeaderTitle = document.getElementById('diag-header-title');
+const diagTimestamp = document.getElementById('diag-timestamp');
+const diagCheckFormat = document.getElementById('diag-check-format');
+const diagCheckAuth = document.getElementById('diag-check-auth');
+const diagCheckIntents = document.getElementById('diag-check-intents');
+const diagCheckMembership = document.getElementById('diag-check-membership');
+const diagCheckPermissions = document.getElementById('diag-check-permissions');
+
+// Threshold Controls & Badges
+const sliderSimilarity = document.getElementById('slider-similarity');
+const badgeSimilarity = document.getElementById('badge-similarity');
+const selectAccountAge = document.getElementById('select-account-age');
+const badgeAccountAge = document.getElementById('badge-account-age');
+const sliderAvatarHamming = document.getElementById('slider-avatar-hamming');
+const badgeAvatarHamming = document.getElementById('badge-avatar-hamming');
+const inputCircuitLimit = document.getElementById('input-circuit-limit');
+const badgeCircuitLimit = document.getElementById('badge-circuit-limit');
 
 // Modals & Controls
 const modalCreateBm = document.getElementById('modal-create-benchmark');
@@ -393,17 +433,33 @@ function updateView() {
   }
 }
 
+// Tab Switching Helper
+export function switchTab(targetTab) {
+  navTabs.forEach(t => t.classList.remove('active'));
+  tabPanes.forEach(p => p.classList.remove('active'));
+
+  const tabBtn = document.querySelector(`[data-tab="${targetTab}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
+  const pane = document.getElementById(`pane-${targetTab}`);
+  if (pane) pane.classList.add('active');
+  appState.setTab(targetTab);
+
+  if (targetTab === 'discord') {
+    loadDiscordConfig();
+  }
+}
+
 // Tab Switching Handler
 navTabs.forEach(tab => {
   tab.addEventListener('click', () => {
     const targetTab = tab.getAttribute('data-tab');
-    navTabs.forEach(t => t.classList.remove('active'));
-    tabPanes.forEach(p => p.classList.remove('active'));
-
-    tab.classList.add('active');
-    document.getElementById(`pane-${targetTab}`)?.classList.add('active');
-    appState.setTab(targetTab);
+    switchTab(targetTab);
   });
+});
+
+// Direct link from header status pill to discord configuration
+statusGateway?.addEventListener('click', () => {
+  switchTab('discord');
 });
 
 // Event Delegation for Triage Actions
@@ -566,17 +622,12 @@ window.addEventListener('keydown', e => {
     }
   }
 
-  // Number keys 1-3 switch tabs
-  if (['1', '2', '3'].includes(e.key)) {
-    const tabs = ['triage', 'vault', 'audit'];
+  // Number keys 1-5 switch tabs
+  if (['1', '2', '3', '4', '5'].includes(e.key)) {
+    const tabs = ['triage', 'vault', 'audit', 'discord', 'help'];
     const idx = parseInt(e.key, 10) - 1;
     if (tabs[idx]) {
-      const targetTab = tabs[idx];
-      navTabs.forEach(t => t.classList.remove('active'));
-      tabPanes.forEach(p => p.classList.remove('active'));
-      document.querySelector(`[data-tab="${targetTab}"]`)?.classList.add('active');
-      document.getElementById(`pane-${targetTab}`)?.classList.add('active');
-      appState.setTab(targetTab);
+      switchTab(tabs[idx]);
     }
   }
 });
@@ -792,6 +843,305 @@ if (typeof window !== 'undefined' && window.__TAURI__?.event?.listen) {
   });
 }
 
+// ==========================================================================
+// Discord Setup, Pre-flight Diagnostics & Parameters Controller
+// ==========================================================================
+
+function updateSimilarityBadge(val) {
+  if (!badgeSimilarity) return;
+  const num = parseInt(val, 10);
+  const label = num >= 92 ? 'Near Exact' : num >= 82 ? 'Standard' : 'Broad';
+  badgeSimilarity.textContent = `${num}% (${label})`;
+}
+
+function updateAccountAgeBadge(val) {
+  if (!badgeAccountAge) return;
+  const num = parseInt(val, 10);
+  if (num >= 720) {
+    badgeAccountAge.textContent = '30 Days';
+  } else if (num >= 168) {
+    badgeAccountAge.textContent = '7 Days';
+  } else {
+    badgeAccountAge.textContent = `${num} Hours`;
+  }
+}
+
+function updateAvatarHammingBadge(val) {
+  if (!badgeAvatarHamming) return;
+  const num = parseInt(val, 10);
+  const label = num <= 4 ? 'Pixel Clones Only' : num <= 10 ? 'Notable' : 'Loose';
+  badgeAvatarHamming.innerHTML = `&le; ${num} Bits (${label})`;
+}
+
+function updateCircuitLimitBadge(val) {
+  if (!badgeCircuitLimit) return;
+  badgeCircuitLimit.textContent = `${val} Actions / Min`;
+}
+
+// Live parameter slider badges
+sliderSimilarity?.addEventListener('input', e => {
+  updateSimilarityBadge(e.target.value);
+});
+
+selectAccountAge?.addEventListener('change', e => {
+  updateAccountAgeBadge(e.target.value);
+});
+
+sliderAvatarHamming?.addEventListener('input', e => {
+  updateAvatarHammingBadge(e.target.value);
+});
+
+inputCircuitLimit?.addEventListener('input', e => {
+  updateCircuitLimitBadge(e.target.value);
+});
+
+// Toggle password mask visibility
+btnToggleTokenVis?.addEventListener('click', () => {
+  if (!discordTokenInput) return;
+  const isPass = discordTokenInput.type === 'password';
+  discordTokenInput.type = isPass ? 'text' : 'password';
+  btnToggleTokenVis.innerHTML = isPass
+    ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+    : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+});
+
+// Footer button to open Discord setup from bottom of help screen
+document.getElementById('btn-help-go-discord')?.addEventListener('click', () => {
+  switchTab('discord');
+});
+
+// Pre-flight handshake diagnostic check
+btnTestHandshake?.addEventListener('click', async () => {
+  const token = discordTokenInput ? discordTokenInput.value.trim() : '';
+  const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : '';
+
+  btnTestHandshake.disabled = true;
+  if (btnTestHandshakeText) btnTestHandshakeText.textContent = 'Validating Gateway...';
+  if (diagHeaderDot) diagHeaderDot.className = 'diagnostic-status-indicator warning';
+  if (diagHeaderTitle) diagHeaderTitle.textContent = 'Pre-flight Verification Running...';
+
+  try {
+    const result = await invokeCommand('verify_bot_handshake', {
+      token: token.startsWith('••••') ? '' : token,
+      guild_id: guildId
+    });
+
+    renderHandshakeResult(result);
+  } catch (err) {
+    console.error('Handshake verification error:', err);
+    if (diagHeaderDot) diagHeaderDot.className = 'diagnostic-status-indicator danger';
+    if (diagHeaderTitle) diagHeaderTitle.textContent = 'Handshake Failed';
+  } finally {
+    btnTestHandshake.disabled = false;
+    if (btnTestHandshakeText) btnTestHandshakeText.textContent = 'Test Handshake & Permissions';
+  }
+});
+
+function setDiagItem(el, ok, okText, failText) {
+  if (!el) return;
+  const icon = el.querySelector('.diag-icon');
+  const text = el.querySelector('.diag-text');
+  if (icon) {
+    icon.className = `diag-icon ${ok ? 'success' : 'fail'}`;
+    icon.innerHTML = ok ? '&#10003;' : '&#10007;';
+  }
+  if (text) {
+    text.innerHTML = ok ? okText : `<strong style="color: var(--color-danger);">${failText}</strong>`;
+  }
+}
+
+function renderHandshakeResult(res) {
+  if (!res) return;
+  const passed = res.format_valid && res.gateway_authenticated && res.privileged_intents_active && res.guild_found && res.moderation_permissions_ok;
+
+  if (diagHeaderDot) diagHeaderDot.className = `diagnostic-status-indicator ${passed ? 'online' : 'danger'}`;
+  if (diagHeaderTitle) {
+    diagHeaderTitle.textContent = passed ? 'All 5 Pre-flight Checks Passed' : 'Verification Issue Detected';
+  }
+  if (diagTimestamp) {
+    diagTimestamp.textContent = `Tested ${new Date().toLocaleTimeString()}`;
+  }
+
+  setDiagItem(diagCheckFormat, res.format_valid, 'Token Format: <strong>Official 3-Part Bot Token</strong>', 'Token Format: Invalid or Malformed Token');
+  setDiagItem(diagCheckAuth, res.gateway_authenticated, 'Gateway Handshake: <strong>Authenticated with Discord v10</strong>', 'Gateway Handshake: Authentication Failed (401 Unauthorized)');
+  setDiagItem(diagCheckIntents, res.privileged_intents_active, 'Privileged Intent: <strong>Server Members Intent (GUILD_MEMBERS) Active</strong>', 'Privileged Intent: Missing GUILD_MEMBERS Intent (Enable in Dev Portal!)');
+  setDiagItem(diagCheckMembership, res.guild_found, `Server Membership: <strong>Bot Present in "${res.guild_name || 'Target Server'}"</strong>`, 'Server Membership: Bot Not Found in Target Server (Invite Bot First)');
+  setDiagItem(diagCheckPermissions, res.moderation_permissions_ok, 'Moderation Permissions: <strong>Kick, Ban, Moderate & View Channels Granted</strong>', 'Moderation Permissions: Missing Required Moderation Grants');
+
+  if (res.bot_name && discordHeroBotName) discordHeroBotName.textContent = res.bot_name;
+  if (res.guild_name && discordHeroServerName) discordHeroServerName.textContent = res.guild_name;
+}
+
+// Save Discord Pairing & Credentials
+btnSaveDiscord?.addEventListener('click', async () => {
+  const token = discordTokenInput ? discordTokenInput.value.trim() : '';
+  const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : '';
+  const similarity = sliderSimilarity ? parseInt(sliderSimilarity.value, 10) : 85;
+  const accountAge = selectAccountAge ? parseInt(selectAccountAge.value, 10) : 72;
+  const avatarHamming = sliderAvatarHamming ? parseInt(sliderAvatarHamming.value, 10) : 10;
+  const circuitLimit = inputCircuitLimit ? parseInt(inputCircuitLimit.value, 10) : 5;
+
+  btnSaveDiscord.disabled = true;
+  const origText = btnSaveDiscord.textContent;
+  btnSaveDiscord.textContent = 'Saving to Keychain...';
+
+  try {
+    const payload = {
+      token: token.startsWith('••••') ? '' : token,
+      guild_id: guildId,
+      thresholds: {
+        similarity: isNaN(similarity) ? 85 : similarity,
+        account_age_hours: isNaN(accountAge) ? 72 : accountAge,
+        avatar_hamming_distance: isNaN(avatarHamming) ? 10 : avatarHamming,
+        circuit_limit_per_minute: isNaN(circuitLimit) ? 5 : circuitLimit
+      }
+    };
+    await invokeCommand('save_discord_config', payload);
+    btnSaveDiscord.textContent = 'Connected & Saved!';
+    setTimeout(() => {
+      btnSaveDiscord.textContent = origText;
+      btnSaveDiscord.disabled = false;
+    }, 1500);
+
+    await loadDiscordConfig();
+  } catch (err) {
+    console.error('Save discord error:', err);
+    btnSaveDiscord.textContent = 'Failed to Save';
+    setTimeout(() => {
+      btnSaveDiscord.textContent = origText;
+      btnSaveDiscord.disabled = false;
+    }, 2000);
+  }
+});
+
+// Disconnect Discord
+btnDisconnectDiscord?.addEventListener('click', async () => {
+  if (!confirm('Are you sure you want to disconnect Discord and erase the bot token from your OS Keychain?')) {
+    return;
+  }
+  try {
+    await invokeCommand('disconnect_discord');
+    if (discordTokenInput) discordTokenInput.value = '';
+    await loadDiscordConfig();
+  } catch (err) {
+    console.error('Disconnect discord error:', err);
+  }
+});
+
+// Save Parameters only
+btnSaveThresholds?.addEventListener('click', async () => {
+  const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : '';
+  const similarity = sliderSimilarity ? parseInt(sliderSimilarity.value, 10) : 85;
+  const accountAge = selectAccountAge ? parseInt(selectAccountAge.value, 10) : 72;
+  const avatarHamming = sliderAvatarHamming ? parseInt(sliderAvatarHamming.value, 10) : 10;
+  const circuitLimit = inputCircuitLimit ? parseInt(inputCircuitLimit.value, 10) : 5;
+
+  btnSaveThresholds.disabled = true;
+  btnSaveThresholds.textContent = 'Saving...';
+  try {
+    await invokeCommand('save_discord_config', {
+      token: '',
+      guild_id: guildId,
+      thresholds: {
+        similarity: isNaN(similarity) ? 85 : similarity,
+        account_age_hours: isNaN(accountAge) ? 72 : accountAge,
+        avatar_hamming_distance: isNaN(avatarHamming) ? 10 : avatarHamming,
+        circuit_limit_per_minute: isNaN(circuitLimit) ? 5 : circuitLimit
+      }
+    });
+    btnSaveThresholds.textContent = 'Parameters Saved!';
+    setTimeout(() => {
+      btnSaveThresholds.textContent = 'Save Parameters';
+      btnSaveThresholds.disabled = false;
+    }, 1200);
+  } catch (err) {
+    console.error('Save thresholds error:', err);
+    btnSaveThresholds.textContent = 'Error';
+    btnSaveThresholds.disabled = false;
+  }
+});
+
+// Load Discord Configuration from Backend
+async function loadDiscordConfig() {
+  try {
+    const config = await invokeCommand('get_discord_config');
+    renderDiscordConfig(config);
+  } catch (err) {
+    console.error('Failed to load discord config:', err);
+  }
+}
+
+function renderDiscordConfig(config) {
+  if (!config) return;
+
+  if (discordHeroBotName) discordHeroBotName.textContent = config.bot_name || 'TruthBeacon Guard';
+  if (discordHeroServerName) discordHeroServerName.textContent = config.guild_name || 'Not Configured';
+  if (discordHeroGuildId) discordHeroGuildId.textContent = config.guild_id ? `ID: ${config.guild_id}` : 'No Server Set';
+
+  if (discordGuildIdInput && !discordGuildIdInput.matches(':focus')) {
+    discordGuildIdInput.value = config.guild_id || '';
+  }
+
+  if (discordTokenInput && !discordTokenInput.matches(':focus')) {
+    if (config.has_token) {
+      discordTokenInput.value = config.token_masked || '••••••••••••••••••••••••••••••••';
+    } else {
+      discordTokenInput.value = '';
+    }
+  }
+
+  if (config.connected) {
+    if (discordHeroStatusDot) discordHeroStatusDot.className = 'discord-status-indicator online';
+    if (discordHeroBadge) {
+      discordHeroBadge.className = 'discord-badge-active';
+      discordHeroBadge.textContent = 'CONNECTED';
+    }
+    if (statusGateway) {
+      statusGateway.innerHTML = `<span class="status-dot online"></span><span>Discord: <strong>Connected</strong></span>`;
+    }
+  } else {
+    if (discordHeroStatusDot) discordHeroStatusDot.className = 'discord-status-indicator offline';
+    if (discordHeroBadge) {
+      discordHeroBadge.className = 'discord-badge-active disconnected';
+      discordHeroBadge.textContent = 'DISCONNECTED';
+    }
+    if (statusGateway) {
+      statusGateway.innerHTML = `<span class="status-dot offline"></span><span>Discord: <strong>Disconnected</strong></span>`;
+    }
+  }
+
+  if (config.bot_avatar_url && discordBotAvatarImg && discordBotAvatarFallback) {
+    discordBotAvatarImg.src = config.bot_avatar_url;
+    discordBotAvatarImg.style.display = 'block';
+    discordBotAvatarFallback.style.display = 'none';
+  } else if (discordBotAvatarImg && discordBotAvatarFallback) {
+    discordBotAvatarImg.style.display = 'none';
+    discordBotAvatarFallback.style.display = 'flex';
+  }
+
+  if (config.thresholds) {
+    const t = config.thresholds;
+    if (sliderSimilarity && t.similarity !== undefined) {
+      sliderSimilarity.value = t.similarity;
+      updateSimilarityBadge(t.similarity);
+    }
+    if (selectAccountAge && t.account_age_hours !== undefined) {
+      selectAccountAge.value = t.account_age_hours;
+      updateAccountAgeBadge(t.account_age_hours);
+    }
+    if (sliderAvatarHamming && t.avatar_hamming_distance !== undefined) {
+      sliderAvatarHamming.value = t.avatar_hamming_distance;
+      updateAvatarHammingBadge(t.avatar_hamming_distance);
+    }
+    if (inputCircuitLimit && t.circuit_limit_per_minute !== undefined) {
+      inputCircuitLimit.value = t.circuit_limit_per_minute;
+      updateCircuitLimitBadge(t.circuit_limit_per_minute);
+    }
+  }
+}
+
 // Subscribe to state changes and initial render
 appState.subscribe(updateView);
 updateView();
+loadDiscordConfig();
+

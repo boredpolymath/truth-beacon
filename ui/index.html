@@ -53,6 +53,14 @@
         <span class="tab-channel-hash">#</span>
         <span>activity-log</span>
       </button>
+      <button class="nav-tab" id="tab-btn-discord" data-tab="discord">
+        <span class="tab-channel-hash">#</span>
+        <span>discord-setup</span>
+      </button>
+      <button class="nav-tab" id="tab-btn-help" data-tab="help">
+        <span class="tab-channel-hash">#</span>
+        <span>setup-guide</span>
+      </button>
     </div>
   </nav>
 
@@ -138,6 +146,390 @@
             <!-- Rendered dynamically by app.js -->
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- TAB 4: DISCORD CONNECTION & SETUP -->
+    <section class="tab-pane" id="pane-discord" aria-labelledby="tab-btn-discord">
+      <div class="triage-header-bar">
+        <div>
+          <h2 class="section-title">Discord Connection & Setup</h2>
+          <p class="section-caption">Connect your dedicated bot application, verify server permissions, and fine-tune safety parameters</p>
+        </div>
+      </div>
+
+      <!-- Discord Connection Hero Status Banner -->
+      <div class="discord-hero-card" id="discord-hero-status">
+        <div class="discord-hero-left">
+          <div class="discord-avatar-container" id="discord-bot-avatar-wrap">
+            <div class="discord-avatar-fallback" id="discord-bot-avatar-fallback">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+              </svg>
+            </div>
+            <img id="discord-bot-avatar-img" class="discord-bot-avatar" src="" alt="Bot Avatar" style="display: none;">
+            <span class="discord-status-indicator online" id="discord-hero-status-dot" title="Active"></span>
+          </div>
+          <div class="discord-hero-meta">
+            <div class="discord-hero-title-row">
+              <h3 class="discord-bot-name" id="discord-hero-bot-name">TruthBeacon Guard</h3>
+              <span class="discord-bot-tag">BOT</span>
+              <span class="discord-badge-active" id="discord-hero-badge">CONNECTED</span>
+            </div>
+            <p class="discord-hero-server-line">
+              Monitoring Server: <strong id="discord-hero-server-name">Crossroads Community Sanctuary</strong>
+              <span class="discord-snowflake-code" id="discord-hero-guild-id">ID: 999888777666555444</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="discord-hero-right">
+          <div class="enclave-security-pill" title="Protected by Hardware OS Keychain">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>OS Secure Enclave Active</span>
+          </div>
+          <p class="enclave-subtext">Zero Plaintext Storage • Apple Keychain / DPAPI Encrypted</p>
+        </div>
+      </div>
+
+      <!-- Two-Column Config Viewport -->
+      <div class="discord-config-grid">
+        <!-- LEFT COLUMN: Credentials & Live Validation -->
+        <div class="config-card">
+          <div class="config-card-header">
+            <div class="config-icon-wrapper">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div>
+              <h3 class="config-card-title">Bot Authentication & Server Pairing</h3>
+              <p class="config-card-desc">Enter your Discord Bot Token and target Community Server ID</p>
+            </div>
+          </div>
+
+          <form id="form-discord-credentials" onsubmit="return false;" class="config-form">
+            <div class="form-group">
+              <label for="discord-token-input" class="form-label">
+                Discord Bot Token *
+                <span class="form-label-hint">Found under "Bot" in the Discord Developer Portal</span>
+              </label>
+              <div class="secret-input-wrapper">
+                <input type="password" id="discord-token-input" class="form-input" placeholder="MTE5ODI3MzY0NTEyOTM4NDc1.G... (Paste your bot token)" autocomplete="off" spellcheck="false" required>
+                <button type="button" class="btn-input-icon" id="btn-toggle-token-vis" title="Show / Hide token" aria-label="Toggle token visibility">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <p class="form-field-security-note">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Tokens are stored exclusively in your local OS Keychain. Never sent to any cloud server.</span>
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label for="discord-guild-id-input" class="form-label">
+                Target Discord Server (Guild) ID *
+                <span class="form-label-hint">Right-click server icon in Discord &rarr; "Copy Server ID"</span>
+              </label>
+              <input type="text" id="discord-guild-id-input" class="form-input" placeholder="e.g. 999888777666555444" value="999888777666555444" spellcheck="false" required>
+            </div>
+
+            <!-- Action Buttons Strip -->
+            <div class="config-action-row">
+              <button type="button" class="btn btn-secondary" id="btn-test-handshake" style="display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span id="btn-test-handshake-text">Test Handshake & Permissions</span>
+              </button>
+              <button type="button" class="btn btn-primary" id="btn-save-discord">Save & Connect</button>
+              <button type="button" class="btn btn-dismiss" id="btn-disconnect-discord" title="Disconnect and erase stored token from OS Keychain">Disconnect</button>
+            </div>
+          </form>
+
+          <!-- Pre-flight Handshake Diagnostic Results Box -->
+          <div class="diagnostic-box" id="handshake-diagnostic-panel">
+            <div class="diagnostic-box-header">
+              <div class="diagnostic-status-indicator" id="diag-header-dot"></div>
+              <strong id="diag-header-title">Diagnostic Verification Status</strong>
+              <span class="diagnostic-timestamp" id="diag-timestamp">Ready for test</span>
+            </div>
+            <div class="diagnostic-checklist" id="diag-checklist">
+              <div class="diag-item" id="diag-check-format">
+                <span class="diag-icon success">&#10003;</span>
+                <span class="diag-text">Token Format: <strong>Official 3-Part Bot Token</strong></span>
+              </div>
+              <div class="diag-item" id="diag-check-auth">
+                <span class="diag-icon success">&#10003;</span>
+                <span class="diag-text">Gateway Handshake: <strong>Authenticated with Discord v10</strong></span>
+              </div>
+              <div class="diag-item" id="diag-check-intents">
+                <span class="diag-icon success">&#10003;</span>
+                <span class="diag-text">Privileged Intent: <strong>Server Members Intent (GUILD_MEMBERS) Active</strong></span>
+              </div>
+              <div class="diag-item" id="diag-check-membership">
+                <span class="diag-icon success">&#10003;</span>
+                <span class="diag-text">Server Membership: <strong>Bot is Present in Target Guild</strong></span>
+              </div>
+              <div class="diag-item" id="diag-check-permissions">
+                <span class="diag-icon success">&#10003;</span>
+                <span class="diag-text">Moderation Permissions: <strong>Kick, Ban, Moderate & View Channels Granted</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Detection Thresholds & Safety Limits -->
+        <div class="config-card">
+          <div class="config-card-header">
+            <div class="config-icon-wrapper icon-orange">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+            <div>
+              <h3 class="config-card-title">Detection & Safety Parameters</h3>
+              <p class="config-card-desc">Tune text similarity sensitivity and automated mass-action prevention</p>
+            </div>
+          </div>
+
+          <div class="config-form">
+            <!-- Parameter 1: String Sensitivity -->
+            <div class="threshold-control-group">
+              <div class="threshold-label-row">
+                <label for="slider-similarity" class="form-label" style="margin: 0;">Name Similarity Threshold</label>
+                <span class="threshold-badge" id="badge-similarity">85% (Standard)</span>
+              </div>
+              <input type="range" min="70" max="95" value="85" step="1" id="slider-similarity" class="threshold-slider">
+              <div class="threshold-tick-labels">
+                <span>70% (Broader)</span>
+                <span>85% (Balanced)</span>
+                <span>95% (Near Exact)</span>
+              </div>
+              <p class="form-label-hint">Cross-script homoglyphs (Cyrillic/Greek) and zero-width injections are flagged automatically regardless of threshold.</p>
+            </div>
+
+            <!-- Parameter 2: New Account Age Window -->
+            <div class="threshold-control-group">
+              <div class="threshold-label-row">
+                <label for="select-account-age" class="form-label" style="margin: 0;">Brand-New Account Alert Window</label>
+                <span class="threshold-badge" id="badge-account-age">72 Hours</span>
+              </div>
+              <select id="select-account-age" class="form-select">
+                <option value="24">24 Hours (First Day Only)</option>
+                <option value="48">48 Hours (First 2 Days)</option>
+                <option value="72" selected>72 Hours (3 Days - Recommended Standard)</option>
+                <option value="168">168 Hours (First Week / 7 Days)</option>
+                <option value="720">30 Days (Extended Newbie Window)</option>
+              </select>
+              <p class="form-label-hint">Accounts created within this window that mimic leaders are automatically escalated to Elevated or Critical.</p>
+            </div>
+
+            <!-- Parameter 3: Visual Avatar Clone Sensitivity -->
+            <div class="threshold-control-group">
+              <div class="threshold-label-row">
+                <label for="slider-avatar-hamming" class="form-label" style="margin: 0;">Visual Avatar Clone Tolerance (Hamming Distance)</label>
+                <span class="threshold-badge" id="badge-avatar-hamming">&le; 10 Bits (Notable)</span>
+              </div>
+              <input type="range" min="2" max="14" value="10" step="1" id="slider-avatar-hamming" class="threshold-slider">
+              <div class="threshold-tick-labels">
+                <span>&le; 4 (Pixel Clones Only)</span>
+                <span>&le; 10 (Rotations & Crops)</span>
+                <span>&le; 14 (Loose)</span>
+              </div>
+              <p class="form-label-hint">64-bit DCT perceptual hashing captures cropped, rotated, or color-shifted clones safely in memory.</p>
+            </div>
+
+            <!-- Parameter 4: Circuit Breaker Limit -->
+            <div class="threshold-control-group">
+              <div class="threshold-label-row">
+                <label for="input-circuit-limit" class="form-label" style="margin: 0;">Safety Brake: Max Actions per Minute</label>
+                <span class="threshold-badge" id="badge-circuit-limit">5 Actions / Min</span>
+              </div>
+              <input type="number" min="2" max="20" value="5" id="input-circuit-limit" class="form-input" style="max-width: 140px;">
+              <p class="form-label-hint">Automatically pauses actions if exceeded, preventing accidental mass-bans or operator error.</p>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="btn-save-thresholds" style="align-self: flex-start; margin-top: 6px;">Save Parameters</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- End of Two-Column Config Viewport -->
+    </section>
+
+    <!-- TAB 5: DEDICATED SETUP GUIDE & FAQ -->
+    <section class="tab-pane" id="pane-help" aria-labelledby="tab-btn-help">
+      <div class="triage-header-bar">
+        <div>
+          <h2 class="section-title">Discord Bot Setup Guide & Troubleshooting</h2>
+          <p class="section-caption">Comprehensive walkthrough, permissions checklist, and answers to common configuration questions</p>
+        </div>
+      </div>
+
+      <!-- Quick Setup Overview Hero Card -->
+      <div class="help-overview-banner">
+        <div class="help-overview-left">
+          <div class="help-hero-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 700; color: #ffffff; margin-bottom: 4px;">Private & Sovereign Discord Integration</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; line-height: 1.45;">TruthBeacon does not require third-party cloud hosting or bot sharing. Follow these 4 steps to configure your own private bot application running securely on your local workstation.</p>
+          </div>
+        </div>
+        <div class="help-overview-right">
+          <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" class="btn btn-purple-portal" id="link-discord-portal-banner" title="Open Discord Developer Portal in your browser">
+            <span>Discord Dev Portal</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- STEP-BY-STEP SETUP GUIDE ACCORDION -->
+      <div class="discord-guide-container" id="help-setup-guide">
+        <div class="guide-header">
+          <div class="guide-header-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <h3>Core 4-Step Setup Walkthrough</h3>
+          </div>
+          <span class="guide-header-subtitle">Estimated time: ~3 minutes. You only need to perform this setup once.</span>
+        </div>
+
+        <div class="guide-accordion-items">
+          <!-- STEP 1 -->
+          <div class="guide-step-card">
+            <div class="step-badge">1</div>
+            <div class="step-content">
+              <h4>Create an Application in the Discord Developer Portal</h4>
+              <p>TruthBeacon operates locally on your machine using your own private Discord Bot. You do not share access with any third parties.</p>
+              <ol class="step-instructions-list">
+                <li>Navigate to the official <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" class="link-discord">Discord Developer Portal &nearr;</a> and log in with your Discord account.</li>
+                <li>Click the blue <strong>"New Application"</strong> button in the upper-right corner.</li>
+                <li>Give your application a clear name (for example: <code>TruthBeacon Guard</code> or <code>Community Guard</code>) and agree to Discord's Developer Terms.</li>
+                <li>In the left sidebar, click <strong>"Bot"</strong>.</li>
+                <li>Click <strong>"Reset Token"</strong> (and enter your 2FA code if prompted). Click <strong>"Copy"</strong> to copy the bot token. Keep this safe!</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- STEP 2 -->
+          <div class="guide-step-card step-highlight-card">
+            <div class="step-badge step-badge-alert">2</div>
+            <div class="step-content">
+              <div class="step-title-row">
+                <h4>Enable Privileged Gateway Intents (CRITICAL)</h4>
+                <span class="badge-required">REQUIRED</span>
+              </div>
+              <p>Discord requires explicit authorization for bots to receive member join and profile update events. <strong>Without this step, Discord's Gateway will reject the connection with Opcode 4014 / Disallowed Intents.</strong></p>
+              <div class="guide-callout-warning">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div>
+                  <strong>How to enable:</strong> On the same <strong>"Bot"</strong> page, scroll down to the <strong>"Privileged Gateway Intents"</strong> section. Toggle <strong>"SERVER MEMBERS INTENT"</strong> to <strong>ON</strong> (green). Then click <strong>"Save Changes"</strong> at the bottom of the page.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3 -->
+          <div class="guide-step-card">
+            <div class="step-badge">3</div>
+            <div class="step-content">
+              <h4>Generate Bot Invite URL & Add to Your Server</h4>
+              <p>Generate an official Discord OAuth2 invite link to bring your bot into your church or community server with necessary moderation privileges:</p>
+              <ol class="step-instructions-list">
+                <li>In the left sidebar of the Developer Portal, go to <strong>"OAuth2" &rarr; "URL Generator"</strong>.</li>
+                <li>Under <strong>Scopes</strong>, check only: <code>bot</code>.</li>
+                <li>Under <strong>Bot Permissions</strong>, check:
+                  <div class="perm-chips-grid">
+                    <span class="perm-chip">&#10003; View Channels</span>
+                    <span class="perm-chip">&#10003; Moderate Members (Timeout)</span>
+                    <span class="perm-chip">&#10003; Kick Members</span>
+                    <span class="perm-chip">&#10003; Ban Members</span>
+                  </div>
+                  <em>(Or check <code>Administrator</code> if you prefer a single master grant).</em>
+                </li>
+                <li>Copy the generated URL at the bottom, paste it into your browser, choose your server from the dropdown, and click <strong>Authorize</strong>.</li>
+                <li><strong>Role Hierarchy:</strong> In your Discord Server Settings &rarr; Roles, ensure the bot's role is positioned <strong>higher</strong> than newcomer and general member roles so it has the authority to act.</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- STEP 4 -->
+          <div class="guide-step-card">
+            <div class="step-badge">4</div>
+            <div class="step-content">
+              <h4>Find & Copy Your Discord Server ID</h4>
+              <p>TruthBeacon needs to know which server it is designated to protect:</p>
+              <ol class="step-instructions-list">
+                <li>In your desktop Discord client, open <strong>User Settings</strong> (the gear icon near your name).</li>
+                <li>Go to <strong>Advanced</strong> (under App Settings) and toggle <strong>"Developer Mode"</strong> to <strong>ON</strong>.</li>
+                <li>Close settings. Right-click your server's icon in the server list on the left side of Discord.</li>
+                <li>Click <strong>"Copy Server ID"</strong> at the bottom of the right-click menu.</li>
+                <li>Paste that 18-to-19 digit number into the <em>Target Discord Server (Guild) ID</em> field in Discord Setup and click <strong>Test Handshake & Permissions</strong>.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ & TROUBLESHOOTING GRID -->
+      <div class="help-faq-container">
+        <div class="guide-header">
+          <div class="guide-header-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <h3>Frequently Asked Questions & Troubleshooting</h3>
+          </div>
+          <span class="guide-header-subtitle">Common questions, edge cases, and role hierarchy guidelines</span>
+        </div>
+
+        <div class="help-faq-grid">
+          <div class="help-faq-card">
+            <div class="faq-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="faq-content">
+              <h4>Why does pre-flight check say "Missing Privileged Intent"?</h4>
+              <p>Discord requires explicit authorization for bots that receive member join events. Open your Developer Portal application, navigate to the <strong>Bot</strong> tab, scroll down to <strong>Privileged Gateway Intents</strong>, and ensure <strong>SERVER MEMBERS INTENT</strong> is enabled.</p>
+            </div>
+          </div>
+
+          <div class="help-faq-card">
+            <div class="faq-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            </div>
+            <div class="faq-content">
+              <h4>Why does a "Ban Imposter" action fail with 403 Forbidden?</h4>
+              <p>Discord enforces a strict <strong>Role Hierarchy</strong>. A bot cannot moderate any account whose highest role is equal to or higher than the bot's own role. In Discord <em>Server Settings &rarr; Roles</em>, drag your bot's role near the top of the list.</p>
+            </div>
+          </div>
+
+          <div class="help-faq-card">
+            <div class="faq-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div class="faq-content">
+              <h4>Is our Discord Bot Token ever transmitted to a cloud server?</h4>
+              <p>No. TruthBeacon has a <strong>zero-cloud-tracking, 100% sovereign policy</strong>. Your token is encrypted directly into your operating system's hardware Keychain (Apple Keychain on macOS, DPAPI on Windows). It is never sent to any external telemetry or logging service.</p>
+            </div>
+          </div>
+
+          <div class="help-faq-card">
+            <div class="faq-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div class="faq-content">
+              <h4>What is the "Automatic Safety Brake" (Circuit Breaker)?</h4>
+              <p>To prevent accidental mass moderation or runaway scripts, the Circuit Breaker trips if more than 5 moderation actions occur within 60 seconds. It puts the daemon in a temporary safety pause so operators can review the queue before resuming.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER CALLOUT ACTION BANNER -->
+      <div class="help-footer-banner">
+        <div>
+          <h4 style="color: var(--text-header); margin-bottom: 4px; font-size: 0.95rem;">Ready to pair your Discord Bot?</h4>
+          <p style="color: var(--text-secondary); margin: 0; font-size: 0.82rem;">Head over to Discord Setup to test your handshake and enter your credentials.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-help-go-discord" style="padding: 8px 18px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px;">
+          <span>Open Discord Setup</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
       </div>
     </section>
   </main>

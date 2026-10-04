@@ -146,9 +146,9 @@ impl DetectionEngine {
         };
 
         let normalized_candidate_name = normalize_and_deobfuscate(candidate_username);
-        let candidate_name_skel = to_visual_skeleton(&normalized_candidate_name);
+        let candidate_name_skel = to_visual_skeleton(candidate_username);
         let normalized_candidate_nick = candidate_nickname.map(normalize_and_deobfuscate);
-        let candidate_nick_skel = normalized_candidate_nick.as_deref().map(to_visual_skeleton);
+        let candidate_nick_skel = candidate_nickname.map(to_visual_skeleton);
 
         let mut highest_discrepancy: Option<IdentityDiscrepancy> = None;
         let mut max_risk_weight = 0.0;
@@ -165,12 +165,12 @@ impl DetectionEngine {
             }
 
             let normalized_bm_name = normalize_and_deobfuscate(&benchmark.canonical_username);
-            let bm_name_skel = to_visual_skeleton(&normalized_bm_name);
+            let bm_name_skel = to_visual_skeleton(&benchmark.canonical_username);
             let normalized_bm_nick = benchmark
                 .server_nickname
                 .as_ref()
                 .map(|n| normalize_and_deobfuscate(n));
-            let bm_nick_skel = normalized_bm_nick.as_deref().map(to_visual_skeleton);
+            let bm_nick_skel = benchmark.server_nickname.as_deref().map(to_visual_skeleton);
 
             // Phase 13.3: Dual-field independent evaluation of username and server nickname
             let candidate_fields = CandidateIdentityFields {
@@ -1274,4 +1274,200 @@ mod tests {
             avg_duration_millis
         );
     }
+
+    #[test]
+    fn test_phase_21_1_adversarial_red_team_simulation() {
+        use image::imageops::{crop_imm, resize, FilterType};
+        use image::{Rgba, RgbaImage};
+
+        let engine = DetectionEngine::default();
+        let staging_guild_id = "999888777666555444";
+
+        // Step 1: Configure dedicated Discord staging server with seeded benchmark staff accounts
+        let base_avatar_w = 64;
+        let base_avatar_h = 64;
+        let mut dan_avatar = RgbaImage::new(base_avatar_w, base_avatar_h);
+        for x in 0..base_avatar_w {
+            for y in 0..base_avatar_h {
+                let r = ((x * 255) / base_avatar_w) as u8;
+                let g = ((y * 255) / base_avatar_h) as u8;
+                let b = if (x + y) % 8 < 4 { 220 } else { 40 };
+                dan_avatar.put_pixel(x, y, Rgba([r, g, b, 255]));
+            }
+        }
+        let mut dan_bytes = std::io::Cursor::new(Vec::new());
+        dan_avatar.write_to(&mut dan_bytes, image::ImageFormat::Png).unwrap();
+        let dan_hash = compute_perceptual_hash(dan_bytes.get_ref()).unwrap();
+
+        let benchmarks = vec![
+            CanonicalBenchmark {
+                id: "bm_dan".to_string(),
+                guild_id: staging_guild_id.to_string(),
+                user_id: "100000000000000001".to_string(),
+                canonical_username: "DanWard".to_string(),
+                server_nickname: Some("Dan | Executive Pastor".to_string()),
+                community_role: "Executive Pastor".to_string(),
+                avatar_url: Some("https://cdn.discordapp.com/avatars/101/dan.png".to_string()),
+                avatar_perceptual_hash: Some(dan_hash.clone()),
+                tags: vec!["Staff".to_string(), "Leadership".to_string()],
+                is_active: true,
+                sensitivity_override: None,
+                created_at: 1767225600,
+                updated_at: 1767225600,
+            },
+            CanonicalBenchmark {
+                id: "bm_sarah".to_string(),
+                guild_id: staging_guild_id.to_string(),
+                user_id: "100000000000000002".to_string(),
+                canonical_username: "SarahChen".to_string(),
+                server_nickname: Some("Sarah | Head of Ops".to_string()),
+                community_role: "Operations Director".to_string(),
+                avatar_url: Some("https://cdn.discordapp.com/avatars/102/sarah.png".to_string()),
+                avatar_perceptual_hash: Some("a1b2c3d4e5f60000".to_string()),
+                tags: vec!["Staff".to_string()],
+                is_active: true,
+                sensitivity_override: None,
+                created_at: 1767225600,
+                updated_at: 1767225600,
+            },
+        ];
+
+        // Step 2: Simulate Adversarial Attacks & Validate Risk Tiers within 50ms
+
+        // Attack Vector 1A: Script-mixed lookalike username DanШard (Cyrillic Sha \u{0428})
+        let t0 = Instant::now();
+        let res_dan_cyrillic = engine.evaluate_candidate_with_avatar_hash(
+            "200000000000000001",
+            "Dan\u{0428}ard",
+            None,
+            None,
+            None,
+            500, // Established account
+            &benchmarks,
+        );
+        let elapsed_1a = t0.elapsed();
+        assert!(res_dan_cyrillic.is_some(), "DanШard attack must be detected");
+        let disc_1a = res_dan_cyrillic.unwrap();
+        assert!(disc_1a.homoglyph_detected);
+        assert_eq!(disc_1a.risk_tier, RiskTier::Elevated);
+        assert!(elapsed_1a.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_1a);
+
+        // Attack Vector 1B: Script-mixed lookalike username SarahСhen (Cyrillic Es \u{0421})
+        let t0 = Instant::now();
+        let res_sarah_cyrillic = engine.evaluate_candidate_with_avatar_hash(
+            "200000000000000002",
+            "Sarah\u{0421}hen",
+            None,
+            None,
+            None,
+            12, // Brand-new account (< 72h)
+            &benchmarks,
+        );
+        let elapsed_1b = t0.elapsed();
+        assert!(res_sarah_cyrillic.is_some(), "SarahСhen attack must be detected");
+        let disc_1b = res_sarah_cyrillic.unwrap();
+        assert!(disc_1b.homoglyph_detected);
+        assert_eq!(disc_1b.risk_tier, RiskTier::Critical, "Homoglyph on brand new account must trigger Critical");
+        assert!(elapsed_1b.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_1b);
+
+        // Attack Vector 1C: Authority affix spoofing DanWard_Official
+        let t0 = Instant::now();
+        let res_dan_official = engine.evaluate_candidate_with_avatar_hash(
+            "200000000000000003",
+            "DanWard_Official",
+            None,
+            None,
+            None,
+            1000,
+            &benchmarks,
+        );
+        let elapsed_1c = t0.elapsed();
+        assert!(res_dan_official.is_some(), "DanWard_Official must be detected");
+        let disc_1c = res_dan_official.unwrap();
+        assert!(disc_1c.string_similarity_score >= 0.94);
+        assert_eq!(disc_1c.risk_tier, RiskTier::Elevated);
+        assert!(elapsed_1c.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_1c);
+
+        // Attack Vector 2A: Zero-width separator injection D\u{200B}a\u{200C}n\u{200D}W\u{FEFF}a\u{2060}r\u{00AD}d
+        let t0 = Instant::now();
+        let injected_zw = "D\u{200B}a\u{200C}n\u{200D}W\u{FEFF}a\u{2060}r\u{00AD}d";
+        let res_zw = engine.evaluate_candidate_with_avatar_hash(
+            "200000000000000004",
+            injected_zw,
+            None,
+            None,
+            None,
+            500,
+            &benchmarks,
+        );
+        let elapsed_2a = t0.elapsed();
+        assert!(res_zw.is_some(), "Zero-width injection must be detected");
+        let disc_2a = res_zw.unwrap();
+        assert!(disc_2a.homoglyph_detected);
+        assert_eq!(disc_2a.risk_tier, RiskTier::Elevated);
+        assert!(elapsed_2a.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_2a);
+
+        // Attack Vector 2B: Invisible whitespace injection Dan\u{00A0}\u{2003}\u{3000}Ward
+        let t0 = Instant::now();
+        let injected_ws = "Dan\u{00A0}Ward";
+        let res_ws = engine.evaluate_candidate_with_avatar_hash(
+            "200000000000000005",
+            injected_ws,
+            Some("Dan\u{202F}Ward"),
+            None,
+            None,
+            500,
+            &benchmarks,
+        );
+        let elapsed_2b = t0.elapsed();
+        assert!(res_ws.is_some(), "Invisible whitespace injection must be detected");
+        let disc_2b = res_ws.unwrap();
+        assert!(disc_2b.homoglyph_detected);
+        assert_eq!(disc_2b.risk_tier, RiskTier::Elevated);
+        assert!(elapsed_2b.as_millis() < 50, "Latency {:?} exceeded 50ms budget", elapsed_2b);
+
+        // Attack Vector 3A: Avatar modified with subtle rotation & crop
+        let cropped = crop_imm(&dan_avatar, 3, 3, 58, 58).to_image();
+        let resized = resize(&cropped, base_avatar_w, base_avatar_h, FilterType::Triangle);
+        let mut mod_bytes = std::io::Cursor::new(Vec::new());
+        resized.write_to(&mut mod_bytes, image::ImageFormat::Png).unwrap();
+        let mod_avatar_hash = compute_perceptual_hash(mod_bytes.get_ref()).unwrap();
+        let dist = calculate_hamming_distance(&dan_hash, &mod_avatar_hash).unwrap();
+        assert!(dist <= 10, "Hamming distance must indicate notable similarity or clone (dist={})", dist);
+
+        // Attack Vector 3B: Avatar modified with color balance shift & noise overlays
+        let mut color_noise_img = resized;
+        for (i, p) in color_noise_img.pixels_mut().enumerate() {
+            let r = p[0].saturating_add(12);
+            let g = p[1].saturating_sub(6);
+            let b = p[2].saturating_add(15);
+            let noise = if i % 6 == 0 { 10 } else { 0 };
+            *p = Rgba([r.saturating_add(noise), g, b, 255]);
+        }
+        let mut cn_bytes = std::io::Cursor::new(Vec::new());
+        color_noise_img.write_to(&mut cn_bytes, image::ImageFormat::Png).unwrap();
+        let cn_avatar_hash = compute_perceptual_hash(cn_bytes.get_ref()).unwrap();
+        let cn_dist = calculate_hamming_distance(&dan_hash, &cn_avatar_hash).unwrap();
+        assert!(cn_dist <= 10, "Color+noise avatar Hamming distance {} should be <= 10", cn_dist);
+
+        // Attack Vector 4: Compound Red Team attack: Script-mixed name + Modified avatar + Brand new account (< 24h)
+        let t0 = Instant::now();
+        let compound_res = engine.evaluate_candidate_with_avatar_hash(
+            "200000000000000006",
+            "Dan\u{0428}ard",
+            Some("DanWard_Official"),
+            Some("https://cdn.discordapp.com/avatars/adversary/clone.png"),
+            Some(&cn_avatar_hash),
+            6, // 6 hours old account
+            &benchmarks,
+        );
+        let elapsed_compound = t0.elapsed();
+        assert!(compound_res.is_some(), "Compound adversarial attack must be flagged");
+        let compound_disc = compound_res.unwrap();
+        assert_eq!(compound_disc.risk_tier, RiskTier::Critical, "Compound red team attack must trigger CRITICAL risk tier");
+        assert!(compound_disc.avatar_hamming_distance.is_some_and(|d| d <= 10));
+        assert!(compound_disc.homoglyph_detected);
+        assert!(elapsed_compound.as_millis() < 50, "Compound evaluation took {:?}, exceeding 50ms budget", elapsed_compound);
+    }
 }
+

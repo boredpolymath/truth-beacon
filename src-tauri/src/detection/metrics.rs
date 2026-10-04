@@ -78,14 +78,75 @@ pub struct MultiFieldSimilarityResult {
     pub top_metrics: StringSimilarityResult,
 }
 
-/// Evaluates string distance and similarity metrics between two normalized string fields.
-///
-/// Computes:
+/// Strips common authority/impersonator spoofing affixes (e.g. `_official`, `_staff`, `_admin`, `official_`, `real_`, etc.)
+pub fn strip_authority_affixes(input: &str) -> Option<&str> {
+    let lower = input.trim();
+    const SUFFIXES: &[&str] = &[
+        "_official", "-official", ".official", " official", "official",
+        "_staff", "-staff", ".staff", " staff", "staff",
+        "_admin", "-admin", ".admin", " admin", "admin",
+        "_mod", "-mod", ".mod", " mod",
+        "_real", "-real", ".real", " real",
+        "_support", "-support", ".support", " support",
+        "_verified", "-verified", ".verified", " verified",
+        "_bot", "-bot", ".bot", " bot",
+    ];
+    const PREFIXES: &[&str] = &[
+        "official_", "official-", "official.", "official ",
+        "real_", "real-", "real.", "real ",
+        "staff_", "staff-", "staff.", "staff ",
+        "admin_", "admin-", "admin.", "admin ",
+    ];
+
+    for &sfx in SUFFIXES {
+        if let Some(stripped) = lower.strip_suffix(sfx) {
+            let s = stripped.trim_end_matches(['_', '-', '.', ' ']);
+            if !s.is_empty() {
+                return Some(s);
+            }
+        }
+    }
+    for &pfx in PREFIXES {
+        if let Some(stripped) = lower.strip_prefix(pfx) {
+            let s = stripped.trim_start_matches(['_', '-', '.', ' ']);
+            if !s.is_empty() {
+                return Some(s);
+            }
+        }
+    }
+    None
+}
+
+/// Evaluates string distance and similarity metrics between two normalized string fields,
+/// incorporating authority affix spoofing detection.
+pub fn evaluate_string_metrics(candidate: &str, benchmark: &str) -> StringSimilarityResult {
+    let base_res = evaluate_string_metrics_raw(candidate, benchmark);
+
+    // Check authority/impersonation affix spoofing (e.g. `DanWard_Official` vs `DanWard`)
+    if let Some(stripped_cand) = strip_authority_affixes(candidate) {
+        let stripped_res = evaluate_string_metrics_raw(stripped_cand, benchmark);
+        // If the core identity is an exact or near-identical match (>= 0.88),
+        // elevate candidate composite score to reflect authoritative impersonation
+        if stripped_res.composite_score >= 0.88 {
+            let elevated = stripped_res.composite_score.max(0.94);
+            return StringSimilarityResult {
+                jaro_winkler_score: base_res.jaro_winkler_score.max(stripped_res.jaro_winkler_score),
+                damerau_distance: base_res.damerau_distance,
+                normalized_damerau_score: base_res.normalized_damerau_score.max(stripped_res.normalized_damerau_score),
+                composite_score: (elevated * 10000.0).round() / 10000.0,
+            };
+        }
+    }
+
+    base_res
+}
+
+/// Raw string distance and similarity metric evaluator:
 /// 1. Jaro-Winkler similarity: `jw` in `[0.0, 1.0]`.
 /// 2. Damerau-Levenshtein edit distance: `damerau` (counting transpositions as 1 edit).
 /// 3. Normalized Damerau score: `1.0 - (damerau / max_len)`.
 /// 4. Composite weighted score: `(jw * 0.70) + (damerau_normalized * 0.30)`.
-pub fn evaluate_string_metrics(candidate: &str, benchmark: &str) -> StringSimilarityResult {
+pub fn evaluate_string_metrics_raw(candidate: &str, benchmark: &str) -> StringSimilarityResult {
     if candidate.is_empty() && benchmark.is_empty() {
         return StringSimilarityResult {
             jaro_winkler_score: 1.0,
@@ -348,4 +409,20 @@ mod tests {
         assert_eq!(empty.composite_score, 1.0);
         assert_eq!(empty.damerau_distance, 0);
     }
+
+    #[test]
+    fn test_adversarial_authority_affix_spoofing() {
+        // DanWard_Official vs DanWard (should trigger high composite score >= 0.94)
+        let res = evaluate_string_metrics("danward_official", "danward");
+        assert!(res.composite_score >= 0.94);
+
+        // OfficialDanWard vs DanWard
+        let res_prefix = evaluate_string_metrics("official_danward", "danward");
+        assert!(res_prefix.composite_score >= 0.94);
+
+        // Unrelated string ending with _official should not be boosted
+        let unrelated = evaluate_string_metrics("randomgaming_official", "danward");
+        assert!(unrelated.composite_score < 0.50);
+    }
 }
+

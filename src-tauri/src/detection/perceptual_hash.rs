@@ -286,4 +286,120 @@ mod tests {
         let res = compute_perceptual_hash(&corrupt_bytes);
         assert!(res.is_err());
     }
+
+    #[test]
+    fn test_adversarial_avatar_perturbations_subtle_rotation_crop_color_noise() {
+        use image::imageops::{crop_imm, resize, FilterType};
+        use image::{Rgba, RgbaImage};
+
+        // 1. Generate base 64x64 staff avatar image
+        let width = 64;
+        let height = 64;
+        let mut base_img = RgbaImage::new(width, height);
+        for x in 0..width {
+            for y in 0..height {
+                let r = ((x * 255) / width) as u8;
+                let g = ((y * 255) / height) as u8;
+                let b = if (x + y) % 8 < 4 { 200 } else { 50 };
+                base_img.put_pixel(x, y, Rgba([r, g, b, 255]));
+            }
+        }
+
+        let mut base_bytes = std::io::Cursor::new(Vec::new());
+        base_img.write_to(&mut base_bytes, image::ImageFormat::Png).unwrap();
+        let base_hash = compute_perceptual_hash(base_bytes.get_ref()).unwrap();
+
+        // 2. Subtle rotation simulation (subtle coordinate shear / 2-3 degree perturbation)
+        let mut rotated_img = RgbaImage::new(width, height);
+        for x in 0..width {
+            for y in 0..height {
+                let shift_x = (y as f64 * 0.04).round() as i32;
+                let src_x = ((x as i32 - shift_x).clamp(0, width as i32 - 1)) as u32;
+                rotated_img.put_pixel(x, y, *base_img.get_pixel(src_x, y));
+            }
+        }
+        let mut rot_bytes = std::io::Cursor::new(Vec::new());
+        rotated_img.write_to(&mut rot_bytes, image::ImageFormat::Png).unwrap();
+        let rot_hash = compute_perceptual_hash(rot_bytes.get_ref()).unwrap();
+        let rot_dist = calculate_hamming_distance(&base_hash, &rot_hash).unwrap();
+        assert!(
+            rot_dist <= 10,
+            "Rotated avatar Hamming distance {} should be <= 10",
+            rot_dist
+        );
+
+        // 3. Slight cropping (crop 4px border: 64x64 -> 56x56 -> resized back to 64x64)
+        let cropped_view = crop_imm(&base_img, 4, 4, 56, 56).to_image();
+        let cropped_resized = resize(&cropped_view, width, height, FilterType::Triangle);
+        let mut crop_bytes = std::io::Cursor::new(Vec::new());
+        cropped_resized.write_to(&mut crop_bytes, image::ImageFormat::Png).unwrap();
+        let crop_hash = compute_perceptual_hash(crop_bytes.get_ref()).unwrap();
+        let crop_dist = calculate_hamming_distance(&base_hash, &crop_hash).unwrap();
+        assert!(
+            crop_dist <= 10,
+            "Cropped avatar Hamming distance {} should be <= 10",
+            crop_dist
+        );
+
+        // 4. Color balance shifts (+15 Red, -10 Green, +20 Blue)
+        let mut color_img = base_img.clone();
+        for pixel in color_img.pixels_mut() {
+            let r = pixel[0].saturating_add(15);
+            let g = pixel[1].saturating_sub(10);
+            let b = pixel[2].saturating_add(20);
+            *pixel = Rgba([r, g, b, 255]);
+        }
+        let mut color_bytes = std::io::Cursor::new(Vec::new());
+        color_img.write_to(&mut color_bytes, image::ImageFormat::Png).unwrap();
+        let color_hash = compute_perceptual_hash(color_bytes.get_ref()).unwrap();
+        let color_dist = calculate_hamming_distance(&base_hash, &color_hash).unwrap();
+        assert!(
+            color_dist <= 8,
+            "Color shifted avatar Hamming distance {} should be <= 8",
+            color_dist
+        );
+
+        // 5. Noise overlays (jittering 20% of pixels with subtle noise)
+        let mut noise_img = base_img.clone();
+        for (i, pixel) in noise_img.pixels_mut().enumerate() {
+            if i % 5 == 0 {
+                let delta = if i % 2 == 0 { 20 } else { 236 };
+                let r = pixel[0].wrapping_add(delta);
+                let g = pixel[1].wrapping_add(delta);
+                let b = pixel[2].wrapping_add(delta);
+                *pixel = Rgba([r, g, b, 255]);
+            }
+        }
+        let mut noise_bytes = std::io::Cursor::new(Vec::new());
+        noise_img.write_to(&mut noise_bytes, image::ImageFormat::Png).unwrap();
+        let noise_hash = compute_perceptual_hash(noise_bytes.get_ref()).unwrap();
+        let noise_dist = calculate_hamming_distance(&base_hash, &noise_hash).unwrap();
+        assert!(
+            noise_dist <= 8,
+            "Noise overlay avatar Hamming distance {} should be <= 8",
+            noise_dist
+        );
+
+        // 6. Compound perturbations: rotation + slight crop + color shift + noise
+        let mut compound_img = cropped_resized;
+        for (i, pixel) in compound_img.pixels_mut().enumerate() {
+            let r = pixel[0].saturating_add(10);
+            let g = pixel[1].saturating_sub(8);
+            let b = pixel[2].saturating_add(15);
+            let noise = if i % 7 == 0 { 15 } else { 0 };
+            *pixel = Rgba([r.saturating_add(noise), g, b, 255]);
+        }
+        let mut compound_bytes = std::io::Cursor::new(Vec::new());
+        compound_img.write_to(&mut compound_bytes, image::ImageFormat::Png).unwrap();
+        let compound_hash = compute_perceptual_hash(compound_bytes.get_ref()).unwrap();
+        let compound_dist = calculate_hamming_distance(&base_hash, &compound_hash).unwrap();
+        assert!(
+            compound_dist <= 10,
+            "Compound perturbed avatar Hamming distance {} should be <= 10",
+            compound_dist
+        );
+        let comparison = compare_perceptual_hashes(&base_hash, &compound_hash).unwrap();
+        assert!(comparison.is_notable_similarity);
+    }
 }
+

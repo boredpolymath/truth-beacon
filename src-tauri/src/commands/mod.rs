@@ -410,6 +410,57 @@ pub async fn verify_bot_handshake(
         })
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscordConfigSummary {
+    pub has_token: bool,
+    pub guild_id: Option<String>,
+    pub registered_guilds: Vec<String>,
+    pub string_similarity_threshold: f64,
+    pub new_account_age_hours_threshold: u64,
+    pub avatar_hamming_threshold: u32,
+    pub privileged_intent_declared: bool,
+}
+
+#[tauri::command]
+pub fn get_discord_config() -> Result<DiscordConfigSummary, CommandError> {
+    let registered_guilds = crate::credentials::CredentialManager::list_registered_guilds()
+        .unwrap_or_default();
+    let has_token = !registered_guilds.is_empty();
+    let guild_id = registered_guilds.first().cloned();
+
+    Ok(DiscordConfigSummary {
+        has_token,
+        guild_id,
+        registered_guilds,
+        string_similarity_threshold: 0.85,
+        new_account_age_hours_threshold: 72,
+        avatar_hamming_threshold: 10,
+        privileged_intent_declared: true,
+    })
+}
+
+#[tauri::command]
+pub async fn save_discord_config(
+    guild_id: String,
+    token: String,
+) -> Result<crate::credentials::HandshakeSummary, CommandError> {
+    let trimmed_guild = guild_id.trim();
+    if trimmed_guild.is_empty() {
+        return Err(CommandError::ValidationFailed("Server Guild ID cannot be empty".to_string()));
+    }
+    let summary = verify_bot_handshake(token.clone(), Some(trimmed_guild.to_string())).await?;
+    crate::credentials::CredentialManager::store_token(trimmed_guild, &token)
+        .map_err(|e| CommandError::InternalError(e.to_string()))?;
+    Ok(summary)
+}
+
+#[tauri::command]
+pub fn disconnect_discord(guild_id: String) -> Result<bool, CommandError> {
+    crate::credentials::CredentialManager::delete_token(&guild_id)
+        .map_err(|e| CommandError::InternalError(e.to_string()))?;
+    Ok(true)
+}
+
 #[tauri::command]
 pub async fn import_benchmarks_from_role(
     options: RoleImportOptions,

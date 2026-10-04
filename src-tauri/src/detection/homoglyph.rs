@@ -72,11 +72,61 @@ impl HomoglyphMatchResult {
     }
 }
 
+/// Maps visually confusable cross-script characters (UTS #39) directly to their Latin visual twin.
+/// This prevents phonetic transliteration from breaking visual lookalike detection
+/// (e.g. Cyrillic 'Ш' looks like 'w' not 'sh', 'С' looks like 'c' not 's', 'В' looks like 'b' not 'v').
+pub fn map_visual_confusables(input: &str) -> String {
+    let mut mapped = String::with_capacity(input.len());
+    for ch in input.chars() {
+        let replacement = match ch {
+            // Cyrillic lookalikes
+            '\u{0428}' | '\u{0448}' => 'w', // Cyrillic Sha (Ш, ш) looks like w
+            '\u{0421}' | '\u{0441}' => 'c', // Cyrillic Es (С, с) looks like c
+            '\u{0412}' => 'b',             // Cyrillic Ve (В) looks like B
+            '\u{041D}' => 'h',             // Cyrillic En (Н) looks like H
+            '\u{0420}' | '\u{0440}' => 'p', // Cyrillic Er (Р, р) looks like p
+            '\u{0425}' | '\u{0445}' => 'x', // Cyrillic Kha (Х, х) looks like x
+            '\u{0423}' | '\u{0443}' => 'y', // Cyrillic U (У, у) looks like y
+            '\u{0410}' | '\u{0430}' => 'a', // Cyrillic A (А, а) looks like a
+            '\u{0415}' | '\u{0435}' => 'e', // Cyrillic Ie (Е, е) looks like e
+            '\u{041E}' | '\u{043E}' => 'o', // Cyrillic O (О, о) looks like o
+            '\u{0422}' | '\u{0442}' => 't', // Cyrillic Te (Т, т) looks like t
+            '\u{041C}' | '\u{043C}' => 'm', // Cyrillic Em (М, м) looks like m
+            '\u{041A}' | '\u{043A}' => 'k', // Cyrillic Ka (К, к) looks like k
+            '\u{0417}' | '\u{0437}' => '3', // Cyrillic Ze (З, з) looks like 3
+            '\u{0406}' | '\u{0456}' => 'i', // Cyrillic I (І, і) looks like i
+            '\u{0408}' | '\u{0458}' => 'j', // Cyrillic Je (Ј, ј) looks like j
+            '\u{0405}' | '\u{0455}' => 's', // Cyrillic Dze (Ѕ, ѕ) looks like s
+
+            // Greek lookalikes
+            '\u{0391}' | '\u{03B1}' => 'a', // Alpha
+            '\u{0392}' | '\u{03B2}' => 'b', // Beta
+            '\u{0395}' | '\u{03B5}' => 'e', // Epsilon
+            '\u{0396}' => 'z',             // Zeta
+            '\u{0397}' => 'h',             // Eta looks like H
+            '\u{0399}' | '\u{03B9}' => 'i', // Iota
+            '\u{039A}' | '\u{03BA}' => 'k', // Kappa
+            '\u{039C}' => 'm',             // Mu looks like M
+            '\u{039D}' | '\u{03BD}' => 'v', // Nu looks like v
+            '\u{039F}' | '\u{03BF}' => 'o', // Omicron
+            '\u{03A1}' | '\u{03C1}' => 'p', // Rho looks like p
+            '\u{03A4}' | '\u{03C4}' => 't', // Tau
+            '\u{03A5}' | '\u{03C5}' => 'y', // Upsilon looks like Y/y
+            '\u{03A7}' | '\u{03C7}' => 'x', // Chi looks like x
+            other => other,
+        };
+        mapped.push(replacement);
+    }
+    mapped
+}
+
 /// Transforms an input string into a canonical visual skeleton by reducing digraphs
 /// and mapping visually confusable characters into canonical equivalence classes.
 pub fn to_visual_skeleton(input: &str) -> String {
-    // 1. First normalize Unicode and lowercase
-    let lower = normalize_and_deobfuscate(input);
+    // 1. Strip zero-width, bidi, control chars and map visual confusables before phonetic deunicode
+    let stripped = crate::detection::unicode::strip_deobfuscate_unicode(input);
+    let visually_mapped = map_visual_confusables(&stripped);
+    let lower = deunicode::deunicode(&visually_mapped).trim().to_lowercase();
 
     // 2. Reduce common visual digraphs
     // "rn" -> "m", "vv" -> "w", "cl" -> "d", "nn" -> "m", "cj" -> "g", "ol" -> "d", "lo" -> "b"
@@ -182,6 +232,39 @@ pub fn detect_visual_substitutions(candidate: &str, target: &str) -> Vec<String>
         subs.push("+ <-> t".to_string());
     }
 
+    // Check script-mixed Cyrillic / Greek visual lookalikes
+    if (candidate.contains('\u{0428}') || candidate.contains('\u{0448}'))
+        && (tgt_lower.contains('w') || tgt_lower.contains('m'))
+    {
+        subs.push("Ш <-> w".to_string());
+    }
+    if (candidate.contains('\u{0421}') || candidate.contains('\u{0441}')) && tgt_lower.contains('c') {
+        subs.push("С <-> c".to_string());
+    }
+    if (candidate.contains('\u{0412}') || candidate.contains('\u{0432}')) && tgt_lower.contains('b') {
+        subs.push("В <-> b".to_string());
+    }
+    if (candidate.contains('\u{041D}') || candidate.contains('\u{043D}')) && tgt_lower.contains('h') {
+        subs.push("Н <-> h".to_string());
+    }
+    if (candidate.contains('\u{0420}') || candidate.contains('\u{0440}')) && tgt_lower.contains('p') {
+        subs.push("Р <-> p".to_string());
+    }
+    if (candidate.contains('\u{0425}') || candidate.contains('\u{0445}')) && tgt_lower.contains('x') {
+        subs.push("Х <-> x".to_string());
+    }
+    if (candidate.contains('\u{0423}') || candidate.contains('\u{0443}')) && tgt_lower.contains('y') {
+        subs.push("У <-> y".to_string());
+    }
+
+    // Check zero-width and invisible whitespace separator injections
+    if candidate.chars().any(crate::detection::unicode::is_zero_width) {
+        subs.push("Zero-width separator injection".to_string());
+    }
+    if candidate.chars().any(crate::detection::unicode::is_invisible_whitespace) {
+        subs.push("Invisible whitespace injection".to_string());
+    }
+
     // Check cross-script lookalikes (Cyrillic / Greek / Mathematical symbols)
     let has_cross_script = candidate.chars().any(|c| {
         ('\u{0400}'..='\u{04FF}').contains(&c) // Cyrillic
@@ -200,8 +283,8 @@ pub fn detect_visual_substitutions(candidate: &str, target: &str) -> Vec<String>
 pub fn evaluate_homoglyph_spoof(candidate: &str, target: &str) -> HomoglyphMatchResult {
     let cand_norm = normalize_and_deobfuscate(candidate);
     let tgt_norm = normalize_and_deobfuscate(target);
-    let cand_skel = to_visual_skeleton(&cand_norm);
-    let tgt_skel = to_visual_skeleton(&tgt_norm);
+    let cand_skel = to_visual_skeleton(candidate);
+    let tgt_skel = to_visual_skeleton(target);
 
     evaluate_homoglyph_spoof_with_precomputed(
         candidate, target, &cand_norm, &tgt_norm, &cand_skel, &tgt_skel,
@@ -226,12 +309,17 @@ pub fn evaluate_homoglyph_spoof_with_precomputed(
     // 1. Check Script Transliteration Match:
     // Candidate differs from target in raw form, but after Unicode deobfuscation and script transliteration
     // (e.g. Cyrillic/Greek/Math lookalikes), they are strictly identical.
-    let script_match = cand_norm == tgt_norm && candidate != cand_norm;
+    let script_match = (cand_norm == tgt_norm || cand_norm.replace(' ', "") == tgt_norm.replace(' ', ""))
+        && candidate != cand_norm;
 
     // 2. Check Visual Confusable Skeleton Match:
     // When digraphs and leetspeak / font lookalikes are reduced to canonical skeleton,
-    // they match identically.
-    let skeleton_match = cand_skel == tgt_skel && !cand_skel.is_empty();
+    // they match identically (including when spaces/separators are injected).
+    let cand_skel_nospace = cand_skel.replace(' ', "");
+    let tgt_skel_nospace = tgt_skel.replace(' ', "");
+    let skeleton_match = (cand_skel == tgt_skel
+        || (!cand_skel_nospace.is_empty() && cand_skel_nospace == tgt_skel_nospace))
+        && !cand_skel.is_empty();
 
     // Fast path: If neither matches, exit immediately without expensive substitution scans
     if !script_match && !skeleton_match {
@@ -436,4 +524,33 @@ mod tests {
         assert!(!result_case.is_homoglyph_match);
         assert_eq!(result_case.category, HomoglyphCategory::None);
     }
+
+    #[test]
+    fn test_adversarial_script_mixed_cyrillic_lookalikes() {
+        // DanШard vs DanWard (Cyrillic 'Ш' U+0428 vs Latin 'W')
+        let result_dan = evaluate_homoglyph_spoof("Dan\u{0428}ard", "DanWard");
+        assert!(result_dan.is_homoglyph_match);
+        assert!(result_dan.substitutions_detected.contains(&"Ш <-> w".to_string()));
+
+        // SarahСhen vs SarahChen (Cyrillic 'С' U+0421 vs Latin 'C')
+        let result_sarah = evaluate_homoglyph_spoof("Sarah\u{0421}hen", "SarahChen");
+        assert!(result_sarah.is_homoglyph_match);
+        assert!(result_sarah.substitutions_detected.contains(&"С <-> c".to_string()));
+    }
+
+    #[test]
+    fn test_adversarial_zero_width_and_invisible_whitespace_injections() {
+        // Zero-width characters injected: D\u{200B}a\u{200C}n\u{200D}W\u{FEFF}a\u{2060}r\u{00AD}d vs DanWard
+        let injected_zw = "D\u{200B}a\u{200C}n\u{200D}W\u{FEFF}a\u{2060}r\u{00AD}d";
+        let result_zw = evaluate_homoglyph_spoof(injected_zw, "DanWard");
+        assert!(result_zw.is_homoglyph_match);
+        assert!(result_zw.substitutions_detected.contains(&"Zero-width separator injection".to_string()));
+
+        // Invisible whitespace injected: Dan\u{00A0}\u{2003}\u{3000}Ward vs DanWard
+        let injected_ws = "Dan\u{00A0}Ward";
+        let result_ws = evaluate_homoglyph_spoof(injected_ws, "Dan Ward");
+        assert!(result_ws.is_homoglyph_match);
+        assert!(result_ws.substitutions_detected.contains(&"Invisible whitespace injection".to_string()));
+    }
 }
+
