@@ -1,0 +1,145 @@
+name: Release Packaging
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version tag (e.g. v0.1.0)"
+        required: false
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  validate-specs:
+    name: Validate Packaging Specifications
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install pillow
+
+      - name: Verify Packaging Pipeline Specs
+        run: python3 scripts/verify_packaging_pipeline.py
+
+  build-macos-universal:
+    name: Build macOS Universal 2 (.dmg & .app)
+    needs: validate-specs
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install pillow
+
+      - name: Install Rust targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0.0" --locked
+
+      - name: Build Universal 2 Binary & Package DMG
+        run: ./scripts/build_macos_universal.sh
+
+      - name: Upload macOS Bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: truthbeacon-macos-universal
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+            src-tauri/target/universal-apple-darwin/release/truth-beacon
+
+  build-windows:
+    name: Build Windows 64-bit (WiX MSI, NSIS EXE, Portable)
+    needs: validate-specs
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install pillow
+
+      - name: Install Rust target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0.0" --locked
+
+      - name: Build Windows Installers & Portable Executable
+        shell: pwsh
+        run: ./scripts/build_windows_bundle.ps1 -SkipSign
+
+      - name: Upload Windows Bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: truthbeacon-windows-x64
+          path: |
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/portable/*.exe
+
+  build-linux:
+    name: Build Linux 64-bit (Debian .deb & AppImage)
+    needs: validate-specs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies & desktop validator
+        run: |
+          pip install pillow
+          sudo apt-get update
+          sudo apt-get install -y desktop-file-utils libwebkit2gtk-4.1-dev libappindicator3-dev libsecret-1-dev libxdo-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0.0" --locked
+
+      - name: Build Linux Bundles
+        run: ./scripts/build_linux_bundle.sh
+
+      - name: Upload Linux Bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: truthbeacon-linux-x86_64
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage

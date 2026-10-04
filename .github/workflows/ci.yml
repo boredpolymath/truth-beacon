@@ -61,6 +61,9 @@ jobs:
       - name: License & Asset Integrity Audit (Python)
         run: python3 scripts/audit_licenses.py
 
+      - name: Verify Packaging Pipeline Specifications
+        run: python3 scripts/verify_packaging_pipeline.py
+
   matrix-test:
     name: Build & Test (${{ matrix.os }})
     needs: lint-and-audit

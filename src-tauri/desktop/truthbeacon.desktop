@@ -1,0 +1,17 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=TruthBeacon
+GenericName=Impersonation Protection Console
+Comment=Desktop Identity Ground-Truth & Community Impersonation Prevention Console
+Exec=truth-beacon %u
+Icon=truth-beacon
+Terminal=false
+Categories=Utility;Security;Network;
+StartupWMClass=truth-beacon
+Keywords=Discord;Security;Impersonation;Protection;Community;Moderation;
+Actions=Open;
+
+[Desktop Action Open]
+Name=Open TruthBeacon
+Exec=truth-beacon
