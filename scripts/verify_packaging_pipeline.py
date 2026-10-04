@@ -15,7 +15,7 @@ Validates:
 import os
 import sys
 import json
-from PIL import Image
+import struct
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SRC_TAURI = os.path.join(ROOT_DIR, "src-tauri")
@@ -73,10 +73,22 @@ def test_installer_assets():
     for filename, exp_w, exp_h, exp_format in assets:
         p = os.path.join(ICONS_DIR, filename)
         assert os.path.exists(p), f"Asset {filename} does not exist at {p}"
-        with Image.open(p) as img:
-            assert img.size == (exp_w, exp_h), f"{filename} dimensions {img.size} != expected ({exp_w}, {exp_h})"
-            assert img.format == exp_format, f"{filename} format {img.format} != expected {exp_format}"
-            print(f"  ✓ {filename}: {img.size[0]}x{img.size[1]} {img.format} OK")
+        with open(p, "rb") as f:
+            header = f.read(32)
+            if header.startswith(b"\x89PNG\r\n\x1a\n"):
+                w, h = struct.unpack(">II", header[16:24])
+                img_fmt = "PNG"
+            elif header.startswith(b"BM"):
+                f.seek(18)
+                w, h = struct.unpack("<ii", f.read(8))
+                h = abs(h)
+                img_fmt = "BMP"
+            else:
+                raise ValueError(f"Unrecognized image signature in {p}")
+        
+        assert (w, h) == (exp_w, exp_h), f"{filename} dimensions ({w}, {h}) != expected ({exp_w}, {exp_h})"
+        assert img_fmt == exp_format, f"{filename} format {img_fmt} != expected {exp_format}"
+        print(f"  ✓ {filename}: {w}x{h} {img_fmt} OK")
 
 def test_desktop_entry():
     print("==> [3/5] Validating Freedesktop Desktop Entry...")
