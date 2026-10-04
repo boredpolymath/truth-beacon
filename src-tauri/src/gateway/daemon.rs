@@ -242,4 +242,100 @@ mod tests {
             assert_eq!(b.attempt_count(), 1);
         }
     }
+
+    #[tokio::test]
+    async fn test_standby_idle_memory_footprint_under_30mb() {
+        let (tx, _rx) = mpsc::channel(100);
+        let config = GatewayConfig::default();
+        let (daemon, _session) = DiscordGatewayDaemon::new(config, tx);
+
+        // Enter idle monitoring state with power assertion
+        daemon
+            .acquire_power_assertion("Test Standby Idle Monitoring")
+            .await;
+
+        let mem_report = daemon.get_memory_report();
+        println!(
+            "[Standby Memory Test] Resident Memory: {:.2} MB ({} bytes) | Budget: {:.2} MB",
+            mem_report.resident_mb,
+            mem_report.resident_bytes,
+            mem_report.budget_bytes as f64 / (1024.0 * 1024.0)
+        );
+
+        assert!(
+            mem_report.budget_bytes == MAX_BACKGROUND_IDLE_RAM_BYTES,
+            "Daemon budget must enforce 30 MB threshold"
+        );
+        assert!(
+            mem_report.is_within_budget,
+            "Physical RAM consumption ({:.2} MB) must remain strictly under 30 MB during idle monitoring",
+            mem_report.resident_mb
+        );
+
+        daemon.release_power_assertion().await;
+    }
+
+    #[tokio::test]
+    async fn test_cold_launch_startup_to_listening_under_2500ms() {
+        let start = std::time::Instant::now();
+
+        // 1. Cold storage initialization
+        let temp_dir = std::env::temp_dir();
+        let db_path = temp_dir.join(format!(
+            "truthbeacon_cold_bench_{}.db",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        ));
+        let storage = Arc::new(crate::storage::StorageManager::init(&db_path).unwrap());
+
+        // 2. Cold vault manager & benchmark cache hydration
+        let vault = Arc::new(crate::vault::VaultManager::new(storage.clone()).unwrap());
+        let _ = vault.create_benchmark(
+            crate::models::benchmark::CreateBenchmarkInput {
+                guild_id: "guild_123".to_string(),
+                user_id: "999888777".to_string(),
+                canonical_username: "PastorDan".to_string(),
+                server_nickname: Some("Pastor Dan".to_string()),
+                community_role: "Core Staff".to_string(),
+                avatar_url: None,
+                tags: vec!["Core Staff".to_string()],
+                sensitivity_override: None,
+            },
+            None,
+        );
+
+        // 3. Cold detection engine initialization
+        let _engine = Arc::new(crate::detection::DetectionEngine::default());
+
+        // 4. Cold gateway daemon initialization & channel allocation
+        let (tx, _rx) = mpsc::channel(100);
+        let config = GatewayConfig::default();
+        let (daemon, session) = DiscordGatewayDaemon::new(config, tx);
+
+        // 5. Reach ready/listening state
+        {
+            let mut sess_id = session.session_id.write().await;
+            *sess_id = Some("bench_session_ready".to_string());
+        }
+        session.last_sequence.store(1, Ordering::SeqCst);
+        daemon
+            .acquire_power_assertion("Cold Launch Benchmark")
+            .await;
+
+        let elapsed = start.elapsed();
+        let elapsed_millis = elapsed.as_millis();
+        println!(
+            "[Cold Launch Benchmark] Startup to listening state completed in {}ms ({:.4}s)",
+            elapsed_millis,
+            elapsed.as_secs_f64()
+        );
+
+        daemon.release_power_assertion().await;
+        let _ = std::fs::remove_file(&db_path);
+
+        assert!(
+            elapsed_millis < 2500,
+            "Binary startup to listening state must complete in < 2.5 seconds (took {}ms)",
+            elapsed_millis
+        );
+    }
 }
