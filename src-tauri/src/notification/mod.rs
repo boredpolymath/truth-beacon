@@ -1,11 +1,13 @@
 use crate::models::incident::RiskTier;
 use crate::models::IncidentStatus;
 use serde::{Deserialize, Serialize};
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 use std::process::Command;
 use tauri::Emitter;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum NotificationError {
     #[error("OS notification error: {0}")]
     OsError(String),
@@ -95,7 +97,12 @@ pub fn dispatch_native_notification(
         dispatch_windows_notification(payload)?;
     }
 
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[cfg(target_os = "linux")]
+    {
+        dispatch_linux_notification(payload)?;
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     {
         log::info!(
             "[TruthBeacon Desktop Notification] [{:?}] Suspect @{} flagged against @{}",
@@ -184,6 +191,39 @@ fn dispatch_windows_notification(payload: &NotificationPayload) -> Result<(), No
     let _ = Command::new("powershell")
         .arg("-Command")
         .arg(&ps_script)
+        .spawn();
+
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn dispatch_linux_notification(payload: &NotificationPayload) -> Result<(), NotificationError> {
+    let title = match payload.risk_tier {
+        RiskTier::Critical => "TruthBeacon Alert: Critical Imposter Flagged",
+        RiskTier::Elevated => "TruthBeacon Alert: Elevated Discrepancy",
+        _ => "TruthBeacon Notification",
+    };
+
+    let urgency = match payload.risk_tier {
+        RiskTier::Critical => "critical",
+        _ => "normal",
+    };
+
+    let body = format!(
+        "Suspect @{} matches @{} ({:.0}%): {}",
+        payload.suspect_username,
+        payload.matched_benchmark_name,
+        payload.similarity_score * 100.0,
+        payload.reason
+    );
+
+    let _ = Command::new("notify-send")
+        .arg("--urgency")
+        .arg(urgency)
+        .arg("--app-name")
+        .arg("TruthBeacon")
+        .arg(title)
+        .arg(&body)
         .spawn();
 
     Ok(())

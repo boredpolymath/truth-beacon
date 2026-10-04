@@ -1214,7 +1214,18 @@ mod tests {
         let candidate_avatar_hash = Some("d4c3b2a10000fffe"); // 1 bit diff from benchmark hash
         let candidate_age_hours = 2; // Brand new account
 
-        // Measure a cold single payload execution time
+        // Warm up lazy regexes and skeleton tables
+        let _ = engine.evaluate_candidate_with_avatar_hash(
+            candidate_id,
+            candidate_username,
+            candidate_nickname,
+            None,
+            candidate_avatar_hash,
+            candidate_age_hours,
+            &benchmarks,
+        );
+
+        // Measure a single payload execution time
         let single_start = Instant::now();
         let discrepancy = engine.evaluate_candidate_with_avatar_hash(
             candidate_id,
