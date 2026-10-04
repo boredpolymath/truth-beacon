@@ -144,7 +144,10 @@ fn dispatch_macos_notification(payload: &NotificationPayload) -> Result<(), Noti
 
     if !output.status.success() {
         let err_msg = String::from_utf8_lossy(&output.stderr);
-        log::warn!("osascript notification returned non-zero status: {}", err_msg);
+        log::warn!(
+            "osascript notification returned non-zero status: {}",
+            err_msg
+        );
     }
 
     Ok(())
@@ -161,7 +164,10 @@ fn dispatch_windows_notification(payload: &NotificationPayload) -> Result<(), No
     let clean_title = payload.suspect_username.replace('"', "`\"");
     let clean_body = format!(
         "Suspect @{} matches @{} ({:.0}%). {}",
-        clean_title, payload.matched_benchmark_name, payload.similarity_score * 100.0, payload.reason
+        clean_title,
+        payload.matched_benchmark_name,
+        payload.similarity_score * 100.0,
+        payload.reason
     );
 
     let ps_script = format!(

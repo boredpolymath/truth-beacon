@@ -66,4 +66,3 @@ pub struct AuditLogEntry {
     pub reason: String,
     pub metadata: Option<serde_json::Value>,
 }
-

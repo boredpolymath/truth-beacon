@@ -9,8 +9,8 @@ pub mod vault;
 
 use commands::*;
 
-pub mod tray;
 pub mod notification;
+pub mod tray;
 
 pub fn run() {
     tauri::Builder::default()

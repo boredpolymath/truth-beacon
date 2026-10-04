@@ -337,7 +337,9 @@ impl StorageManager {
         Ok(entries)
     }
 
-    fn row_to_audit_log(row: &rusqlite::Row) -> rusqlite::Result<crate::models::audit::AuditLogEntry> {
+    fn row_to_audit_log(
+        row: &rusqlite::Row,
+    ) -> rusqlite::Result<crate::models::audit::AuditLogEntry> {
         let action_str: String = row.get(2)?;
         let meta_str: Option<String> = row.get(8)?;
         let metadata = meta_str.and_then(|s| serde_json::from_str(&s).ok());
@@ -356,7 +358,10 @@ impl StorageManager {
     }
 
     /// Records or updates an identity incident in SQLite (Phase 16.1 & Phase 16.3).
-    pub fn record_incident(&self, incident: &crate::models::incident::TriageIncident) -> Result<()> {
+    pub fn record_incident(
+        &self,
+        incident: &crate::models::incident::TriageIncident,
+    ) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         let status_str = match incident.status {
             crate::models::incident::IncidentStatus::Dismissed => "dismissed",
@@ -366,7 +371,11 @@ impl StorageManager {
             crate::models::incident::IncidentStatus::Pending => "pending",
         };
         let risk_str = format!("{:?}", incident.discrepancy.risk_tier).to_lowercase();
-        let homoglyph_int = if incident.discrepancy.homoglyph_detected { 1 } else { 0 };
+        let homoglyph_int = if incident.discrepancy.homoglyph_detected {
+            1
+        } else {
+            0
+        };
 
         conn.execute(
             "INSERT OR REPLACE INTO incidents (
@@ -401,7 +410,10 @@ impl StorageManager {
     }
 
     /// Fetches a specific incident by ID.
-    pub fn get_incident(&self, incident_id: &str) -> Result<Option<crate::models::incident::TriageIncident>> {
+    pub fn get_incident(
+        &self,
+        incident_id: &str,
+    ) -> Result<Option<crate::models::incident::TriageIncident>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT id, guild_id, timestamp, suspect_user_id, suspect_username, suspect_nickname,
@@ -535,7 +547,9 @@ impl StorageManager {
         Ok(entries)
     }
 
-    fn row_to_incident(row: &rusqlite::Row) -> rusqlite::Result<crate::models::incident::TriageIncident> {
+    fn row_to_incident(
+        row: &rusqlite::Row,
+    ) -> rusqlite::Result<crate::models::incident::TriageIncident> {
         let risk_tier_str: String = row.get(14)?;
         let status_str: String = row.get(15)?;
         let homoglyph_int: i32 = row.get(11)?;
@@ -866,7 +880,9 @@ mod tests {
         storage.record_audit_log(&entry2).unwrap();
 
         // Must list in descending chronological order
-        let logs = storage.list_audit_logs(Some("guild_crossroads"), None).unwrap();
+        let logs = storage
+            .list_audit_logs(Some("guild_crossroads"), None)
+            .unwrap();
         assert_eq!(logs.len(), 2);
         assert_eq!(logs[0].id, "aud_02"); // newest first (timestamp 2000)
         assert_eq!(logs[0].action, ActionType::BanAndPurge);

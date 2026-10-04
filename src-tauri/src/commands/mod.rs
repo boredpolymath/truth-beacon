@@ -150,11 +150,10 @@ pub fn resolve_incident(
     // 1. Safety Circuit Breaker check for mitigation actions (Phase 16.3: Ban / Restrict)
     if matches!(status, IncidentStatus::Banned | IncidentStatus::Excluded) {
         let breaker = crate::circuit_breaker::get_global_circuit_breaker();
-        let acquired = breaker.try_acquire_mitigation(
-            crate::circuit_breaker::MitigationOrigin::Manual {
+        let acquired =
+            breaker.try_acquire_mitigation(crate::circuit_breaker::MitigationOrigin::Manual {
                 operator_confirmed: true,
-            },
-        );
+            });
         if acquired.is_err() {
             return Err(CommandError::CircuitBreakerTripped);
         }
@@ -220,8 +219,7 @@ pub fn resolve_incident(
                     tags.push("Authorized Alt".to_string());
                 }
 
-                let tags_json =
-                    serde_json::to_string(&tags).unwrap_or_else(|_| "[]".to_string());
+                let tags_json = serde_json::to_string(&tags).unwrap_or_else(|_| "[]".to_string());
                 let _ = conn.execute(
                     "UPDATE benchmarks SET tags = ?1, updated_at = ?2 WHERE id = ?3;",
                     rusqlite::params![tags_json, now, bm_id],
@@ -292,7 +290,6 @@ pub fn list_audit_logs(
         .list_audit_logs(gid, limit)
         .map_err(|e| CommandError::DatabaseError(e.to_string()))
 }
-
 
 #[tauri::command]
 pub fn reset_circuit_breaker() -> Result<bool, CommandError> {
@@ -734,4 +731,3 @@ mod tests {
         assert_eq!(dismiss_inc.status, IncidentStatus::Dismissed);
     }
 }
-
