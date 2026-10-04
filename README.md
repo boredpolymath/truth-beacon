@@ -321,6 +321,7 @@ TruthBeacon delivers first-class, native desktop installers across all major ope
 ```
 truth-beacon/
 ├── README.md                      # Project overview and getting started guide
+├── RELEASE_NOTES.md               # Version 0.1.0 release notes & distribution summary
 ├── truthbeacon.config.json        # Custom detection thresholds and safety limits
 ├── .github/                       # GitHub Actions CI/CD workflows
 │   └── workflows/
@@ -337,11 +338,20 @@ truth-beacon/
 │   ├── 07-high-level-architecture-and-ipc-contract.md   # Asynchronous model & IPC contract
 │   ├── 08-local-storage-architecture-and-migration-strategy.md # SQLite schema & migrations
 │   └── 09-cross-platform-packaging-and-release-staging.md # Build bundling & packaging specification
+├── release/                       # Staged production release binaries & verification artifacts
+│   ├── TruthBeacon_0.1.0_universal.dmg     # Universal 2 drag-and-drop installer
+│   ├── TruthBeacon_0.1.0_macos_universal.zip # Standalone universal application bundle
+│   ├── truth-beacon-universal              # Standalone fat binary (x86_64 + arm64)
+│   ├── RELEASE_MANIFEST.md                 # Production build metadata & dependency audit
+│   ├── RELEASE_NOTES.md                    # Platform release documentation
+│   └── SHA256SUMS.txt                      # Cryptographic release checksums
 ├── scripts/                       # Engineering & release verification scripts
 │   ├── audit_licenses.py          # Automatic open-source license compliance auditor
 │   ├── benchmark_standby_and_launch.py # Memory footprint & launch latency benchmark
 │   ├── red_team_adversarial_simulation.py # Automated adversarial attack drill
 │   ├── generate_installer_assets.py # Generates branded DMG canvas & Windows BMPs
+│   ├── package_macos_dmg.py       # DMG disk image builder with custom geometry & .DS_Store
+│   ├── render_installer_previews.py # Renders cross-platform installer visual proof previews
 │   ├── build_macos_universal.sh   # Builds Universal 2 lipo binary & branded .dmg
 │   ├── build_windows_bundle.ps1   # Builds Windows WiX, NSIS & portable .exe
 │   ├── build_linux_bundle.sh      # Validates desktop file & packages deb/AppImage
@@ -349,8 +359,9 @@ truth-beacon/
 ├── src-tauri/                     # Native Rust core backend
 │   ├── Cargo.toml                 # Rust dependencies and package metadata
 │   ├── tauri.conf.json            # Tauri v2 bundle, window & security configuration
-│   ├── desktop/                   # Linux desktop integration
-│   │   └── truthbeacon.desktop    # Freedesktop specification-compliant desktop entry
+│   ├── desktop/                   # Linux desktop integration & metadata
+│   │   ├── truthbeacon.desktop    # Freedesktop specification-compliant desktop entry
+│   │   └── org.orangeheartindustries.truthbeacon.metainfo.xml # Freedesktop AppStream metadata
 │   ├── icons/                     # Multi-resolution icons & branded installer artwork
 │   │   ├── dmg-background.png     # Custom Orange Heart DMG layout (660x400)
 │   │   ├── nsis-header.bmp        # NSIS installer header image (150x57)
@@ -361,7 +372,7 @@ truth-beacon/
 │   └── src/
 │       ├── main.rs                # Application entry point
 │       ├── circuit_breaker/       # Runaway moderation safety brake
-│       ├── commands/              # Typed IPC command handlers
+│       ├── commands/              # Typed IPC command handlers (21 commands)
 │       ├── credentials/           # Secure OS Keychain manager
 │       ├── detection/             # Multi-vector heuristic detection engine
 │       ├── gateway/               # Real-time Discord Gateway v10 client

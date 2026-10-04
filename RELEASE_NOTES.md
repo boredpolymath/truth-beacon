@@ -68,3 +68,18 @@ TruthBeacon continuously inspects live Discord member events in real-time, detec
 3. Open TruthBeacon from `/Applications` or Spotlight.
 4. On initial launch, navigate to **Settings** and supply your Discord Bot Token and Guild ID.
 5. In **Benchmark Vault**, import verified server leaders to establish ground-truth protection.
+<<<<<<< HEAD
+=======
+
+#### Windows:
+1. Run `TruthBeacon_0.1.0_x64-setup.exe` (or deploy `TruthBeacon_0.1.0_x64.msi` for enterprise management).
+2. For zero-install portable usage, launch `TruthBeacon-Portable.exe` directly from any folder or USB drive.
+3. Open TruthBeacon from the Start Menu or desktop shortcut.
+4. Navigate to **Settings** to securely save your Discord Bot Token and target Guild ID.
+
+#### Linux:
+1. **AppImage:** Make executable (`chmod +x TruthBeacon-0.1.0.AppImage`) and run `./TruthBeacon-0.1.0.AppImage`.
+2. **Debian / Ubuntu:** Install package via `sudo dpkg -i truth-beacon_0.1.0_amd64.deb` (resolving dependencies with `sudo apt-get install -f`).
+3. Ensure system dependencies are met (`libappindicator3-1`, `libsecret-1-0`, and `libwebkit2gtk-4.1-0`).
+4. Launch TruthBeacon from your desktop environment menu or terminal (`truth-beacon`).
+>>>>>>> 9e22ef1 (docs: add Windows and Linux installation instructions to release notes and documentation)
