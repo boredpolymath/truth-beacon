@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "🔒 Report a Security Vulnerability"
+    url: "https://github.com/orangeheart-industries/truth-beacon/security/advisories/new"
+    about: "Report potential security vulnerabilities privately to project maintainers."
+  - name: "💬 Community Discussions & Questions"
+    url: "https://github.com/orangeheart-industries/truth-beacon/discussions"
+    about: "Ask questions, share setup tips, or chat about moderation workflows."

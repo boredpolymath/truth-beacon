@@ -1,0 +1,69 @@
+name: "🐛 Bug Report"
+description: "File a reproducible bug report to help improve TruthBeacon."
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please ensure you are not reporting a security vulnerability here.
+        For sensitive security issues, use [Private Vulnerability Reporting](https://github.com/orangeheart-industries/truth-beacon/security/advisories/new) per our [Security Policy](https://github.com/orangeheart-industries/truth-beacon/blob/main/.github/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: "TruthBeacon Version"
+      description: "What version of TruthBeacon are you running? (e.g. 1.0.0 or git commit hash)"
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: "Operating System"
+      description: "What OS are you running TruthBeacon on?"
+      options:
+        - "macOS (Apple Silicon - arm64)"
+        - "macOS (Intel - x86_64)"
+        - "Windows 11 / 10 (x86_64)"
+        - "Linux (Ubuntu / Debian / AppImage)"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Describe the Bug"
+      description: "A clear and concise description of what the bug is."
+      placeholder: "When opening the impersonation review dialog..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Step-by-step instructions on how to reproduce the behavior."
+      placeholder: |
+        1. Open TruthBeacon
+        2. Connect to Discord server
+        3. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected Behavior"
+      description: "What did you expect to happen instead?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs or Screenshots"
+      description: "Attach relevant screenshots or sanitized log output (never include actual Discord tokens or passwords)."
+    validations:
+      required: false

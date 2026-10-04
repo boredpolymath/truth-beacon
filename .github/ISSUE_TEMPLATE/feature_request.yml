@@ -1,0 +1,42 @@
+name: "💡 Feature Request"
+description: "Suggest an idea or enhancement for TruthBeacon."
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting an idea! Please share your ideas for identity protection, detection heuristics, or moderator ergonomics.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem Statement"
+      description: "Is your feature request related to a problem? Please describe clearly."
+      placeholder: "I am always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: "Proposed Solution"
+      description: "Describe the solution or improvement you would like to see."
+      placeholder: "TruthBeacon should provide an option to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"
+      description: "Describe any alternative solutions or features you have considered."
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional Context"
+      description: "Add any mockups, screenshots, or context about your community or moderation workflow."
+    validations:
+      required: false
