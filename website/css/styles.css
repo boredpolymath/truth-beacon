@@ -1,28 +1,36 @@
 /* TruthBeacon - Official GitHub Pages Downloads & Showcase Stylesheet */
-/* Design System: Discord Dark Palette + Orange Heart Brand Accents */
+/* Design System: Discord Charcoal Gray Palette + Discord Blurple/Purple Security Accents */
 
 :root {
-  --bg-deep: #0b0c0e;
+  /* Discord Signature Grays */
+  --bg-deep: #0a0b0d;
   --bg-primary: #111214;
   --bg-secondary: #1e1f22;
   --bg-card: #2b2d31;
-  --bg-card-hover: #35373c;
-  --bg-card-active: #3c3f45;
-  --bg-glass: rgba(30, 31, 34, 0.75);
+  --bg-card-hover: #313338;
+  --bg-card-active: #35373c;
+  --bg-glass: rgba(30, 31, 34, 0.82);
   
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(255, 255, 255, 0.14);
-  --border-accent: rgba(249, 115, 22, 0.4);
+  --border-accent: rgba(88, 101, 242, 0.45);
+  --border-accent-bright: rgba(121, 131, 245, 0.6);
   
-  --brand-orange: #f97316;
-  --brand-orange-light: #fb923c;
-  --brand-orange-glow: rgba(249, 115, 22, 0.25);
+  /* Discord Signature Blurple & Security Purples */
   --brand-blurple: #5865f2;
+  --brand-blurple-light: #7983f5;
+  --brand-blurple-soft: #8ea1e1;
   --brand-blurple-hover: #4752c4;
+  --brand-blurple-active: #3c45a5;
+  --brand-blurple-glow: rgba(88, 101, 242, 0.35);
+  --brand-blurple-subtle: rgba(88, 101, 242, 0.12);
+  
+  /* Status Colors */
   --brand-green: #23a55a;
-  --brand-green-glow: rgba(35, 165, 90, 0.2);
+  --brand-green-glow: rgba(35, 165, 90, 0.25);
   --brand-red: #f23f43;
 
+  /* Typography Colors */
   --text-pure: #ffffff;
   --text-normal: #dbdee1;
   --text-muted: #949ba4;
@@ -37,10 +45,10 @@
   --radius-xl: 24px;
   --radius-pill: 9999px;
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.24);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 32px var(--brand-orange-glow);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 0 32px var(--brand-blurple-glow);
 
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
@@ -69,8 +77,8 @@ body {
   flex-direction: column;
   overflow-x: hidden;
   background: 
-    radial-gradient(ellipse at 50% -20%, rgba(249, 115, 22, 0.15) 0%, transparent 60%),
-    radial-gradient(circle at 10% 20%, rgba(88, 101, 242, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% -20%, rgba(88, 101, 242, 0.2) 0%, transparent 60%),
+    radial-gradient(circle at 10% 20%, rgba(71, 82, 196, 0.12) 0%, transparent 40%),
     var(--bg-deep);
 }
 
@@ -113,7 +121,7 @@ body {
   width: 36px;
   height: 36px;
   object-fit: contain;
-  filter: drop-shadow(0 0 8px var(--brand-orange-glow));
+  filter: drop-shadow(0 0 10px var(--brand-blurple-glow));
 }
 
 .brand-wordmark-img {
@@ -126,8 +134,8 @@ body {
 .brand-badge {
   font-size: 0.72rem;
   font-weight: 700;
-  background: rgba(249, 115, 22, 0.16);
-  color: var(--brand-orange-light);
+  background: rgba(88, 101, 242, 0.16);
+  color: var(--brand-blurple-light);
   border: 1px solid var(--border-accent);
   padding: 2px 8px;
   border-radius: var(--radius-pill);
@@ -164,12 +172,14 @@ body {
   border-radius: var(--radius-md);
   font-size: 0.9rem;
   font-weight: 600;
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  box-shadow: 0 2px 10px rgba(88, 101, 242, 0.3);
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .nav-cta:hover {
   background: var(--brand-blurple-hover);
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(88, 101, 242, 0.45);
 }
 
 /* Hero Section */
@@ -219,7 +229,7 @@ body {
 }
 
 .hero-gradient-text {
-  background: linear-gradient(135deg, #ffffff 30%, var(--brand-orange-light) 75%, var(--brand-orange) 100%);
+  background: linear-gradient(135deg, #ffffff 20%, #8ea1e1 65%, var(--brand-blurple-light) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -252,7 +262,7 @@ body {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--brand-orange), var(--brand-blurple));
+  background: linear-gradient(90deg, var(--brand-blurple), var(--brand-blurple-light));
 }
 
 .detected-os-label {
@@ -277,20 +287,20 @@ body {
   gap: 12px;
   width: 100%;
   padding: 16px 28px;
-  background: linear-gradient(135deg, var(--brand-orange) 0%, #ea580c 100%);
+  background: linear-gradient(135deg, var(--brand-blurple) 0%, var(--brand-blurple-hover) 100%);
   color: var(--text-pure);
   text-decoration: none;
   font-size: 1.2rem;
   font-weight: 700;
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 4px 20px rgba(88, 101, 242, 0.45);
   transition: transform var(--transition-bounce), box-shadow var(--transition-fast), filter var(--transition-fast);
 }
 
 .btn-primary-download:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(249, 115, 22, 0.55);
-  filter: brightness(1.05);
+  box-shadow: 0 8px 30px rgba(88, 101, 242, 0.65);
+  filter: brightness(1.06);
 }
 
 .btn-primary-download:active {
@@ -324,7 +334,7 @@ body {
 }
 
 .hero-other-platforms:hover {
-  color: var(--brand-orange-light);
+  color: var(--brand-blurple-light);
 }
 
 /* Feature Badges Grid */
@@ -349,7 +359,7 @@ body {
 
 .highlight-icon {
   font-size: 1.4rem;
-  color: var(--brand-orange);
+  color: var(--brand-blurple-light);
 }
 
 .highlight-text-title {
@@ -382,7 +392,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--brand-orange);
+  color: var(--brand-blurple-light);
   margin-bottom: 10px;
 }
 
@@ -433,8 +443,8 @@ body {
 .tab-btn.active {
   background: var(--bg-card-hover);
   color: var(--text-pure);
-  border-color: var(--brand-orange);
-  box-shadow: 0 0 16px var(--brand-orange-glow);
+  border-color: var(--brand-blurple);
+  box-shadow: 0 0 16px var(--brand-blurple-glow);
 }
 
 .tab-btn svg {
@@ -469,15 +479,15 @@ body {
 
 .download-card.recommended {
   border-color: var(--border-accent);
-  background: linear-gradient(180deg, rgba(249, 115, 22, 0.04) 0%, var(--bg-secondary) 100%);
+  background: linear-gradient(180deg, rgba(88, 101, 242, 0.08) 0%, var(--bg-secondary) 100%);
 }
 
 .card-badge {
   position: absolute;
   top: 18px;
   right: 18px;
-  background: rgba(249, 115, 22, 0.16);
-  color: var(--brand-orange-light);
+  background: rgba(88, 101, 242, 0.18);
+  color: var(--brand-blurple-light);
   border: 1px solid var(--border-accent);
   font-size: 0.72rem;
   font-weight: 700;
@@ -502,7 +512,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--brand-orange);
+  color: var(--brand-blurple-light);
 }
 
 .card-title-group h3 {
@@ -542,14 +552,15 @@ body {
 }
 
 .download-card.recommended .card-btn-download {
-  background: var(--brand-orange);
-  border-color: var(--brand-orange);
+  background: var(--brand-blurple);
+  border-color: var(--brand-blurple);
   color: var(--text-pure);
+  box-shadow: 0 2px 12px rgba(88, 101, 242, 0.35);
 }
 
 .download-card.recommended .card-btn-download:hover {
-  background: #ea580c;
-  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.4);
+  background: var(--brand-blurple-hover);
+  box-shadow: 0 4px 18px rgba(88, 101, 242, 0.55);
 }
 
 .card-btn-download:hover {
@@ -600,7 +611,7 @@ body {
 }
 
 .btn-copy-checksum:hover {
-  color: var(--brand-orange);
+  color: var(--brand-blurple-light);
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -641,8 +652,8 @@ body {
 }
 
 .verify-tab-btn.active {
-  color: var(--brand-orange-light);
-  background: rgba(249, 115, 22, 0.12);
+  color: var(--brand-blurple-light);
+  background: rgba(88, 101, 242, 0.16);
 }
 
 .terminal-window {
@@ -716,9 +727,9 @@ body {
   margin: 0;
 }
 
-.term-cmd { color: #38bdf8; }
+.term-cmd { color: #8ea1e1; }
 .term-comment { color: var(--text-dim); }
-.term-flag { color: #f472b6; }
+.term-flag { color: #c084fc; }
 .term-val { color: #4ade80; }
 
 /* OS Gatekeeper Notice Accordion */
@@ -745,9 +756,9 @@ body {
   margin-bottom: 10px;
 }
 
-.notice-badge.mac { color: #60a5fa; }
-.notice-badge.win { color: #38bdf8; }
-.notice-badge.gpg { color: var(--brand-orange); }
+.notice-badge.mac { color: #8ea1e1; }
+.notice-badge.win { color: #7983f5; }
+.notice-badge.gpg { color: var(--brand-blurple-light); }
 
 .security-notice-card h4 {
   font-size: 1rem;
@@ -805,9 +816,9 @@ body {
 }
 
 .showcase-tab.active {
-  color: var(--brand-orange-light);
-  border-bottom-color: var(--brand-orange);
-  background: rgba(249, 115, 22, 0.05);
+  color: var(--brand-blurple-light);
+  border-bottom-color: var(--brand-blurple);
+  background: rgba(88, 101, 242, 0.08);
 }
 
 .showcase-content {
@@ -918,8 +929,8 @@ body {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-md);
-  background: rgba(249, 115, 22, 0.12);
-  color: var(--brand-orange-light);
+  background: rgba(88, 101, 242, 0.14);
+  color: var(--brand-blurple-light);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -998,7 +1009,7 @@ body {
   color: var(--text-pure);
   padding: 12px 20px;
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg), 0 0 20px var(--brand-orange-glow);
+  box-shadow: var(--shadow-lg), 0 0 20px var(--brand-blurple-glow);
   font-size: 0.9rem;
   font-weight: 600;
   display: flex;
@@ -1076,7 +1087,7 @@ body {
 }
 
 .footer-link:hover {
-  color: var(--brand-orange-light);
+  color: var(--brand-blurple-light);
 }
 
 .footer-bottom {
