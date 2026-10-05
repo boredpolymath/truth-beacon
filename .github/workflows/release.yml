@@ -61,25 +61,29 @@ jobs:
         run: cargo install tauri-cli --version "^2.0.0" --locked
 
       - name: Import Apple Developer ID Certificate
-        if: ${{ secrets.APPLE_CERTIFICATE_BASE64 != '' }}
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
-          KEYCHAIN_PASSWORD=$(uuidgen)
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode -o "$RUNNER_TEMP/certificate.p12"
-          security import "$RUNNER_TEMP/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          if [ -n "$APPLE_CERTIFICATE_BASE64" ]; then
+            echo "==> Importing Developer ID certificate into ephemeral keychain..."
+            KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+            KEYCHAIN_PASSWORD=$(uuidgen)
+            security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode -o "$RUNNER_TEMP/certificate.p12"
+            security import "$RUNNER_TEMP/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+            echo "✓ Certificate successfully imported into runner keychain."
+          else
+            echo "Notice: APPLE_CERTIFICATE_BASE64 not configured; skipping certificate import."
+          fi
 
       - name: Build Universal 2 Binary & Package DMG
         run: ./scripts/build_macos_universal.sh
         env:
-          SIGN_RELEASE: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
