@@ -252,7 +252,7 @@ jobs:
           echo "==> Release artifacts ready for publishing:"
           ls -la dist/
 
-          RELEASE_TAG="${GITHUB_REF_NAME}"
+          RELEASE_TAG="${{ github.event.inputs.version || github.ref_name }}"
           echo "==> Publishing to release tag: ${RELEASE_TAG}"
 
           # Create GitHub Release if not already existing, then upload/clobber assets

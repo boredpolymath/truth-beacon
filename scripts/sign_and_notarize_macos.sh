@@ -12,9 +12,10 @@ SRC_TAURI_DIR="${ROOT_DIR}/src-tauri"
 RELEASE_DIR="${ROOT_DIR}/release"
 ENTITLEMENTS_FILE="${SRC_TAURI_DIR}/Entitlements.plist"
 
+VERSION=$(grep '^version =' "${SRC_TAURI_DIR}/Cargo.toml" | head -n 1 | cut -d '"' -f 2)
 APP_PATH="${SRC_TAURI_DIR}/target/universal-apple-darwin/release/bundle/macos/TruthBeacon.app"
-DMG_PATH="${SRC_TAURI_DIR}/target/universal-apple-darwin/release/bundle/dmg/TruthBeacon_0.1.0_universal.dmg"
-RELEASE_DMG="${RELEASE_DIR}/TruthBeacon_0.1.0_universal.dmg"
+DMG_PATH="${SRC_TAURI_DIR}/target/universal-apple-darwin/release/bundle/dmg/TruthBeacon_${VERSION}_universal.dmg"
+RELEASE_DMG="${RELEASE_DIR}/TruthBeacon_${VERSION}_universal.dmg"
 
 # Configuration via environment or parameters
 SIGN_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
@@ -126,9 +127,10 @@ if [[ "${CAN_NOTARIZE}" = true && "${DRY_RUN}" = false ]]; then
     "${NOTARY_CMD[@]}"
     echo "  ✓ Notarization submission validated and ticket accepted!"
 
-    # 4. Staple ticket to DMG
-    echo "==> [4/4] Stapling Notarization Ticket to DMG..."
-    xcrun stapler staple "${DMG_PATH}"
+    # 4. Staple ticket to DMG and .app bundle
+    echo "==> [4/4] Stapling Notarization Ticket to DMG and .app bundle..."
+    xcrun stapler staple "${DMG_PATH}" || true
+    xcrun stapler staple "${APP_PATH}" || true
     xcrun stapler validate "${DMG_PATH}"
     spctl --assess --type open --context context:primary-signature --verbose "${DMG_PATH}"
     echo "  ✓ Notarization ticket successfully stapled and validated by Gatekeeper."

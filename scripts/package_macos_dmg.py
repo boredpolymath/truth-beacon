@@ -17,18 +17,24 @@ except ImportError:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "dmgbuild", "ds-store", "mac-alias"])
     import dmgbuild
 
+import json
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 SRC_TAURI_DIR = os.path.join(ROOT_DIR, "src-tauri")
+
+with open(os.path.join(SRC_TAURI_DIR, "tauri.conf.json"), "r") as f:
+    tauri_conf = json.load(f)
+VERSION = tauri_conf.get("version", "0.1.1")
 
 APP_BUNDLE = os.path.join(SRC_TAURI_DIR, "target/universal-apple-darwin/release/bundle/macos/TruthBeacon.app")
 BG_IMAGE = os.path.join(SRC_TAURI_DIR, "icons/dmg-background.png")
 ICON_ICNS = os.path.join(SRC_TAURI_DIR, "icons/icon.icns")
 
 DMG_TARGET_DIR = os.path.join(SRC_TAURI_DIR, "target/universal-apple-darwin/release/bundle/dmg")
-DMG_TARGET_FILE = os.path.join(DMG_TARGET_DIR, "TruthBeacon_0.1.0_universal.dmg")
+DMG_TARGET_FILE = os.path.join(DMG_TARGET_DIR, f"TruthBeacon_{VERSION}_universal.dmg")
 RELEASE_DIR = os.path.join(ROOT_DIR, "release")
-RELEASE_DMG_FILE = os.path.join(RELEASE_DIR, "TruthBeacon_0.1.0_universal.dmg")
+RELEASE_DMG_FILE = os.path.join(RELEASE_DIR, f"TruthBeacon_{VERSION}_universal.dmg")
 
 def build_dmg():
     if not os.path.exists(APP_BUNDLE):
