@@ -293,7 +293,7 @@ function renderVaultGrid() {
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
         </div>
-        <h3 style="color: var(--text-header); font-weight: 700; font-size: 1.15rem; margin-bottom: 6px;">No Protected Members Yet</h3>
+        <h3 style="color: var(--text-header); font-weight: 700; font-size: 1.15rem; margin-bottom: 6px;">No Protected Benchmarks Yet</h3>
         <p style="color: var(--text-secondary); font-size: 0.85rem; max-width: 440px; margin: 0 auto 18px;">
           Add pastors, elders, or staff to create official ground-truth benchmarks that safeguard against imposter accounts.
         </p>

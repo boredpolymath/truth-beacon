@@ -33,6 +33,9 @@ jobs:
       - name: Verify Packaging Pipeline Specs
         run: python3 scripts/verify_packaging_pipeline.py
 
+      - name: Verify Code Signing & Artifact Integrity Specs
+        run: python3 scripts/verify_code_signing_pipeline.py
+
   build-macos-universal:
     name: Build macOS Universal 2 (.dmg & .app)
     needs: validate-specs
@@ -59,6 +62,12 @@ jobs:
 
       - name: Build Universal 2 Binary & Package DMG
         run: ./scripts/build_macos_universal.sh
+        env:
+          SIGN_RELEASE: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload macOS Bundles
         uses: actions/upload-artifact@v7
@@ -95,7 +104,14 @@ jobs:
 
       - name: Build Windows Installers & Portable Executable
         shell: pwsh
-        run: ./scripts/build_windows_bundle.ps1 -SkipSign
+        run: |
+          if ("${{ secrets.WINDOWS_CERT_BASE64 }}" -ne "") {
+            $certBytes = [System.Convert]::FromBase64String("${{ secrets.WINDOWS_CERT_BASE64 }}")
+            [System.IO.File]::WriteAllBytes("cert.pfx", $certBytes)
+            ./scripts/build_windows_bundle.ps1 -CertFile "cert.pfx" -CertPassword "${{ secrets.WINDOWS_CERT_PASSWORD }}"
+          } else {
+            ./scripts/build_windows_bundle.ps1 -SkipSign
+          }
 
       - name: Upload Windows Bundles
         uses: actions/upload-artifact@v7
@@ -143,3 +159,52 @@ jobs:
           path: |
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage
+
+  stage-and-verify-integrity:
+    name: Sign Release Manifest & Verify Integrity
+    needs: [build-macos-universal, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: truthbeacon-macos-universal
+          path: release
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: truthbeacon-windows-x64
+          path: release
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: truthbeacon-linux-x86_64
+          path: release
+
+      - name: Generate Checksums & Detached GPG Signatures
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: python3 scripts/sign_release_artifacts.py
+
+      - name: Upload Release Checksums & Signatures
+        uses: actions/upload-artifact@v7
+        with:
+          name: truthbeacon-release-manifest
+          path: |
+            release/SHA256SUMS.txt
+            release/SHA256SUMS.txt.asc
+            release/RELEASE_MANIFEST.md
+            release/RELEASE_MANIFEST.md.asc
+

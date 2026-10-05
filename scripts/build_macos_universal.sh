@@ -50,8 +50,15 @@ cd "${SRC_TAURI_DIR}"
 cargo tauri build --target universal-apple-darwin --no-sign -b app
 python3 "${SCRIPT_DIR}/package_macos_dmg.py"
 
+# Optional: Execute Code Signing & Notarization if configured
+if [[ "${SIGN_RELEASE:-false}" == "true" || -n "${APPLE_SIGNING_IDENTITY:-}" ]]; then
+    echo "==> Code signing and notarization configured; executing sign_and_notarize_macos.sh..."
+    "${SCRIPT_DIR}/sign_and_notarize_macos.sh"
+fi
+
 echo "======================================================================"
 echo " macOS Universal 2 DMG packaging completed successfully!"
 echo " Output artifacts:"
 find "${SRC_TAURI_DIR}/target/universal-apple-darwin/release/bundle" -name "*.dmg" -o -name "*.app" || true
 echo "======================================================================"
+

@@ -180,6 +180,17 @@ impl StorageManager {
     pub fn checkpoint_on_shutdown(&self) -> Result<CheckpointResult> {
         self.checkpoint_wal(CheckpointMode::Truncate)
     }
+}
+
+impl Drop for StorageManager {
+    fn drop(&mut self) {
+        if self.db_path != Path::new(":memory:") {
+            let _ = self.checkpoint_on_shutdown();
+        }
+    }
+}
+
+impl StorageManager {
 
     /// Verifies database integrity on demand via `PRAGMA integrity_check;` (Phase 11.3).
     pub fn verify_integrity(&self) -> Result<bool> {

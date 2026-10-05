@@ -40,3 +40,11 @@ release/*.exe
 release/*.msi
 release/*.deb
 release/*.AppImage
+
+# Cryptographic keys and certificates
+scripts/.keys/
+*.pem
+*.key
+*.pfx
+*.p12
+

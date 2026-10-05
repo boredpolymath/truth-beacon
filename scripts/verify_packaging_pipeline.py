@@ -118,8 +118,12 @@ def test_scripts():
     scripts = [
         "generate_installer_assets.py",
         "build_macos_universal.sh",
+        "sign_and_notarize_macos.sh",
         "build_windows_bundle.ps1",
+        "sign_windows_bundle.ps1",
         "build_linux_bundle.sh",
+        "sign_release_artifacts.py",
+        "verify_code_signing_pipeline.py",
     ]
     for s in scripts:
         sp = os.path.join(ROOT_DIR, "scripts", s)

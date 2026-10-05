@@ -45,8 +45,15 @@ $PortableDir = Join-Path $BundleDir "portable"
 New-Item -ItemType Directory -Force -Path $PortableDir | Out-Null
 Copy-Item (Join-Path $ReleaseDir "truth-beacon.exe") (Join-Path $PortableDir "TruthBeacon-Portable.exe") -Force
 
+# 5. Optional Code Signing (Phase 24.2)
+if (-not $SkipSign) {
+    Write-Host "==> [5/5] Invoking Windows Authenticode signing pipeline..." -ForegroundColor Yellow
+    & (Join-Path $ScriptDir "sign_windows_bundle.ps1")
+}
+
 Write-Host "======================================================================" -ForegroundColor Green
 Write-Host " Windows Build & Bundling Completed Successfully!" -ForegroundColor Green
 Write-Host " Generated Artifacts:" -ForegroundColor Green
 Get-ChildItem -Recurse -Path $BundleDir -Include *.msi, *.exe | Select-Object FullName
 Write-Host "======================================================================" -ForegroundColor Green
+

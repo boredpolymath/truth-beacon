@@ -16,6 +16,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
+            // Initialize local SQLite storage and run startup integrity verification (Phase 11.3 & 25.3)
+            let storage = storage::StorageManager::default_instance()
+                .map_err(|e| Box::<dyn std::error::Error>::from(e.to_string()))?;
+            let _ = storage.verify_integrity();
+
             // Register persistent system tray icon on startup (Phase 17.1)
             tray::setup_system_tray(app)?;
             Ok(())

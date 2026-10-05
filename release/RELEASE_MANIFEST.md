@@ -15,9 +15,14 @@
 
 | Artifact File | Architecture | Size | SHA-256 Checksum | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `TruthBeacon_0.1.0_universal.dmg` | Universal 2 (Intel + Apple Silicon) | ~28 MB | `06f2ea99cdabc5a4d58a15b68c544e6aebf261769ba3b46c06e0c406aafb0e4d` | Drag-and-drop installer with branded Discord charcoal canvas |
-| `TruthBeacon_0.1.0_macos_universal.zip` | Universal 2 (Intel + Apple Silicon) | ~25 MB | `624611f1305d10e4d624be9b6544ec8dbaf5bf4038541f0f50a0c73e5d276839` | Standalone portable `.app` bundle archive |
+| `TruthBeacon_0.1.0_universal.dmg` | Universal 2 (Intel + Apple Silicon) | ~28 MB | `fb48df662d01327789e6cac080afe49219ad1ff26723849fd96757fe15cdf3dd` | Drag-and-drop macOS installer with branded Discord charcoal canvas |
+| `TruthBeacon_0.1.0_macos_universal.zip` | Universal 2 (Intel + Apple Silicon) | ~25 MB | `624611f1305d10e4d624be9b6544ec8dbaf5bf4038541f0f50a0c73e5d276839` | Standalone portable macOS `.app` bundle archive |
 | `truth-beacon-universal` | Universal 2 (Intel + Apple Silicon) | ~53 MB | `5616b4eb2b4c89828d8585abd41abcba65d6a61da6c05889377a510b8a9d43d4` | Standalone Mach-O fat binary |
+| `TruthBeacon_0.1.0_x64-setup.exe` | Windows x64 (MSVC) | ~10 MB | `775336e65cf81eae4bd2740f3425747cca82ba5d0732a52a57cf2cc708f87fdd` | Windows NSIS single-executable installer |
+| `TruthBeacon_0.1.0_x64_en-US.msi` | Windows x64 (MSVC) | ~12 MB | `3d794ff6d58f625ebea023322fe98b66e151b70bc05dc187f08bcd7510c32a0b` | Windows WiX MSI enterprise installer |
+| `TruthBeacon-Portable.exe` | Windows x64 (MSVC) | ~24 MB | `a7545c996c6c35f17c2b05c9abf1838ae1eeefdb393f27576d73b0105eddcca4` | Standalone portable Windows executable |
+| `TruthBeacon_0.1.0_amd64.deb` | Linux x86_64 | ~14 MB | `8c1818ec1fab31bb5e2c8e006beed887520bb8a9b5d3a4f0f8377cc9c6222132` | Debian / Ubuntu `.deb` package |
+| `TruthBeacon_0.1.0_amd64.AppImage` | Linux x86_64 | ~86 MB | `611cf68b9a9e4d6cb7a49b35dab8a593bb5973b3613d1f59fac0ce72c38bedc7` | Standalone cross-distro AppImage executable |
 
 ---
 
