@@ -1,16 +1,39 @@
-# TruthBeacon v0.1.0 — Official Release Notes
+# TruthBeacon v0.1.2 — Official Release Notes
 **Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
 
 ---
 
 ### Overview
-TruthBeacon v0.1.0 is the inaugural production release of our standalone desktop security console designed specifically for Discord community leadership, pastoral teams, and server moderators. 
+TruthBeacon v0.1.2 is a major usability and friction-removal release of our standalone desktop security console for Discord community leadership, pastoral teams, and server moderators. 
 
-TruthBeacon continuously inspects live Discord member events in real-time, detecting and mitigating identity impersonation attacks before bad actors can exploit pastoral or administrative trust to defraud community members.
+This release completely eliminates manual setup friction, snowflake ID hunting, and complex bot permission calculations—empowering community leaders to pair TruthBeacon with their Discord servers in under 60 seconds with zero technical complexity.
 
 ---
 
-### Key Capabilities
+### What's New in v0.1.2
+
+#### 1. Automated 1-Click Bot Authorization & Pre-Calculated Permissions
+- **Instant Client ID Extraction**: TruthBeacon automatically extracts and base64-decodes your bot's application snowflake ID directly from segment 1 of your Bot Token upon pasting. No need to navigate to the Discord Developer Portal's "General Information" tab just to hunt down an Application ID.
+- **Pre-Calculated Permissions Bitfield**: Eliminates the manual Discord OAuth2 URL Generator. TruthBeacon pre-calculates the exact bitwise integer required for anti-impersonation defense:
+  $$\text{VIEW\_CHANNEL (1024)} \mid \text{KICK\_MEMBERS (2)} \mid \text{BAN\_MEMBERS (4)} \mid \text{MODERATE\_MEMBERS (1099511627776)} = \mathbf{1099511628806}$$
+- **1-Click "Authorize & Invite Bot" Button**: A prominent action card provides direct 1-click addition of the bot to your Discord server, plus a 1-click "Copy Link" utility for server owners.
+
+#### 2. Automated Server Discovery (Zero Snowflake Hunting)
+- **Automatic Discord Gateway Server Discovery**: Added `fetch_bot_guilds` Tauri IPC command querying Discord v10 REST API (`GET /users/@me/guilds`).
+- **Elimination of Developer Mode**: Community leaders are no longer forced to enable Discord Developer Mode, right-click their server icon, and copy 19-digit numeric snowflake Guild IDs.
+- **Dynamic Discovered Servers Dropdown**: Discovered servers appear in an interactive dropdown with server names and IDs. If the bot is present in a single server, TruthBeacon auto-selects it instantly.
+
+#### 3. Frictionless Automated Handshake Auto-Verification
+- **Instant Pre-Flight Testing**: When a server is selected from the discovered server list, TruthBeacon automatically triggers the 5-point diagnostic pre-flight verification in the background.
+- **Instant Visual Confirmation**: Token Format, Gateway Handshake, Privileged `GUILD_MEMBERS` Intent, Server Membership, and Moderation Capabilities turn green automatically without requiring operators to hunt down a separate test button.
+
+#### 4. Native OS Keychain & Zeroized In-Memory Cache Resilience
+- **Persistent Credential Lifecycle**: Dual-tier credential architecture combining native OS Secure Enclaves (`keyring-rs` targeting Apple Keychain Services, Windows Credential Manager DPAPI, and Linux Secret Service) with zeroized in-memory fallback caches.
+- **Zero-Plaintext Security Policy**: Bot tokens remain strictly zeroized and never touch SQLite databases, flat files, or unredacted serialization logs.
+
+---
+
+### Core Security Engine
 
 1. **Deterministic Multi-Script Homoglyph Detection**:
    - Sub-50ms deterministic normalization and skeleton decomposition (NFKD).
@@ -26,13 +49,7 @@ TruthBeacon continuously inspects live Discord member events in real-time, detec
    - Escalates risk tier when brand-new accounts (< 72 hours old) exhibit visual or naming similarity to benchmark staff.
 
 4. **Zero-Telemetry Local Data Sovereignty**:
-   - No cloud snooping, no external logging, and no analytics beacons.
-   - All benchmarks, audit logs, and incident records are retained exclusively on the operator's machine in encrypted SQLite databases.
-   - Bot tokens and credentials securely held in the host operating system's native keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service).
-
-5. **Discord-Familiar Operator Interface**:
-   - Styled after Discord’s high-contrast dark theme (`#111214`, `#1e1f22`, `#2b2d31`, `#313338`) accented with Orange Heart warmth (`#f97316`).
-   - Clean, non-technical triage card layout with comparative side-by-side identity adjudication.
+   - 100% offline-first architecture; all benchmark vaults, audit logs, and incident records are retained exclusively on the operator's machine.
 
 ---
 
@@ -50,39 +67,6 @@ TruthBeacon continuously inspects live Discord member events in real-time, detec
 
 ---
 
-### Cryptographic Checksums (SHA-256)
+### Verification & Checksums
 
-```text
-fb48df662d01327789e6cac080afe49219ad1ff26723849fd96757fe15cdf3dd  TruthBeacon_0.1.0_universal.dmg
-624611f1305d10e4d624be9b6544ec8dbaf5bf4038541f0f50a0c73e5d276839  TruthBeacon_0.1.0_macos_universal.zip
-5616b4eb2b4c89828d8585abd41abcba65d6a61da6c05889377a510b8a9d43d4  truth-beacon-universal
-775336e65cf81eae4bd2740f3425747cca82ba5d0732a52a57cf2cc708f87fdd  TruthBeacon_0.1.0_x64-setup.exe
-3d794ff6d58f625ebea023322fe98b66e151b70bc05dc187f08bcd7510c32a0b  TruthBeacon_0.1.0_x64_en-US.msi
-a7545c996c6c35f17c2b05c9abf1838ae1eeefdb393f27576d73b0105eddcca4  TruthBeacon-Portable.exe
-8c1818ec1fab31bb5e2c8e006beed887520bb8a9b5d3a4f0f8377cc9c6222132  TruthBeacon_0.1.0_amd64.deb
-611cf68b9a9e4d6cb7a49b35dab8a593bb5973b3613d1f59fac0ce72c38bedc7  TruthBeacon_0.1.0_amd64.AppImage
-```
-
----
-
-### Installation & Quickstart
-
-#### macOS:
-1. Double-click `TruthBeacon_0.1.0_universal.dmg`.
-2. Drag `TruthBeacon` into `Applications`.
-3. Open TruthBeacon from `/Applications` or Spotlight.
-4. On initial launch, navigate to **Settings** and supply your Discord Bot Token and Guild ID.
-5. In **Benchmark Vault**, import verified server leaders to establish ground-truth protection.
-
-#### Windows:
-1. Run `TruthBeacon_0.1.0_x64-setup.exe` (or deploy `TruthBeacon_0.1.0_x64_en-US.msi` for enterprise management).
-2. For zero-install portable usage, launch `TruthBeacon-Portable.exe` directly from any folder or USB drive.
-3. Open TruthBeacon from the Start Menu or desktop shortcut.
-4. Navigate to **Settings** to securely save your Discord Bot Token and target Guild ID.
-
-#### Linux:
-1. **AppImage:** Make executable (`chmod +x TruthBeacon_0.1.0_amd64.AppImage`) and run `./TruthBeacon_0.1.0_amd64.AppImage`.
-2. **Debian / Ubuntu:** Install package via `sudo dpkg -i TruthBeacon_0.1.0_amd64.deb` (resolving dependencies with `sudo apt-get install -f`).
-3. Ensure system dependencies are met (`libappindicator3-1`, `libsecret-1-0`, and `libwebkit2gtk-4.1-0`).
-4. Launch TruthBeacon from your desktop environment menu or terminal (`truth-beacon`).
-
+All binaries are verified through GitHub Actions CI and signed with SHA-256 cryptographic checksums. Check `SHA256SUMS.txt` and `RELEASE_MANIFEST.md` for verification details.

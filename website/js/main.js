@@ -10,11 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initLightbox();
 });
 
-// Release Asset Configuration (v0.1.1)
-const RELEASE_BASE_URL = 'https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.1/';
+// Release Asset Configuration (v0.1.2)
+const RELEASE_BASE_URL = 'https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.2/';
 const ASSETS = {
   mac_dmg: {
-    filename: 'TruthBeacon_0.1.1_universal.dmg',
+    filename: 'TruthBeacon_0.1.2_universal.dmg',
     size: '27 MB',
     arch: 'Universal 2 (Apple Silicon & Intel)',
     label: 'Download for macOS',
@@ -22,7 +22,7 @@ const ASSETS = {
     hash: '52131ee3ebb13fc8a07ba3d10eb456cc095735dcad8bbb01b7b62f165536a8cb'
   },
   mac_zip: {
-    filename: 'TruthBeacon_0.1.1_macos_universal.zip',
+    filename: 'TruthBeacon_0.1.2_macos_universal.zip',
     size: '26 MB',
     arch: 'Universal 2 (.app Portable)',
     hash: '537e9c9209807901570789d723d8d0b50f21a5652ba29b34d6c23878378833f5'
@@ -34,7 +34,7 @@ const ASSETS = {
     hash: '1e78b07176204f93ded2d42eb7a7f96bebf66d208fb40d3e647d57d132b93417'
   },
   win_exe: {
-    filename: 'TruthBeacon_0.1.1_x64-setup.exe',
+    filename: 'TruthBeacon_0.1.2_x64-setup.exe',
     size: '9.5 MB',
     arch: 'Windows 64-bit (NSIS Installer)',
     label: 'Download for Windows',
@@ -42,7 +42,7 @@ const ASSETS = {
     hash: '00c3ed6f9788e5b90a96c3e5e2c78359bdf8fb3688b602b4ee862506a822fee9'
   },
   win_msi: {
-    filename: 'TruthBeacon_0.1.1_x64_en-US.msi',
+    filename: 'TruthBeacon_0.1.2_x64_en-US.msi',
     size: '12 MB',
     arch: 'Windows 64-bit (Enterprise WiX MSI)',
     hash: '1dc49e95c08abc40f74ee80c2a00bd15eb9f328188ea7c13913208c92d5f6228'
@@ -54,7 +54,7 @@ const ASSETS = {
     hash: 'ab2d95433a5e348ebfe4f84a318f2eeaa9138a3a25f825adb5eec76aee779543'
   },
   linux_appimage: {
-    filename: 'TruthBeacon_0.1.1_amd64.AppImage',
+    filename: 'TruthBeacon_0.1.2_amd64.AppImage',
     size: '86 MB',
     arch: 'Linux x86_64 (Universal AppImage)',
     label: 'Download for Linux',
@@ -62,7 +62,7 @@ const ASSETS = {
     hash: '146696070566d33444bdb51a4f22bdc7a1610a3e8e3cfa1632f0eee4d2262e52'
   },
   linux_deb: {
-    filename: 'TruthBeacon_0.1.1_amd64.deb',
+    filename: 'TruthBeacon_0.1.2_amd64.deb',
     size: '14 MB',
     arch: 'Debian / Ubuntu / Pop!_OS',
     hash: 'fde939e596f7389175f00b782e202c08483ff174e332df7705a8a8646eeb510e'
@@ -142,19 +142,19 @@ function initPlatformTabs() {
 const VERIFY_SNIPPETS = {
   macos: {
     title: 'terminal — zsh (macOS)',
-    code: `# Verify SHA-256 Checksum on macOS\nshasum -a 256 TruthBeacon_0.1.1_universal.dmg\n\n# Expected Output:\n# 52131ee3ebb13fc8a07ba3d10eb456cc095735dcad8bbb01b7b62f165536a8cb  TruthBeacon_0.1.1_universal.dmg`
+    code: `# Verify SHA-256 Checksum on macOS\nshasum -a 256 TruthBeacon_0.1.2_universal.dmg\n\n# Expected Output:\n# 52131ee3ebb13fc8a07ba3d10eb456cc095735dcad8bbb01b7b62f165536a8cb  TruthBeacon_0.1.2_universal.dmg`
   },
   linux: {
     title: 'bash — terminal (Linux)',
-    code: `# Verify SHA-256 Checksum on Linux\nsha256sum TruthBeacon_0.1.1_amd64.AppImage\n\n# Expected Output:\n# 146696070566d33444bdb51a4f22bdc7a1610a3e8e3cfa1632f0eee4d2262e52  TruthBeacon_0.1.1_amd64.AppImage`
+    code: `# Verify SHA-256 Checksum on Linux\nsha256sum TruthBeacon_0.1.2_amd64.AppImage\n\n# Expected Output:\n# 146696070566d33444bdb51a4f22bdc7a1610a3e8e3cfa1632f0eee4d2262e52  TruthBeacon_0.1.2_amd64.AppImage`
   },
   windows: {
     title: 'PowerShell — Windows 10 / 11',
-    code: `# Verify SHA-256 Checksum in Windows PowerShell\nGet-FileHash TruthBeacon_0.1.1_x64-setup.exe -Algorithm SHA256\n\n# Expected Output:\n# 00C3ED6F9788E5B90A96C3E5E2C78359BDF8FB3688B602B4EE862506A822FEE9`
+    code: `# Verify SHA-256 Checksum in Windows PowerShell\nGet-FileHash TruthBeacon_0.1.2_x64-setup.exe -Algorithm SHA256\n\n# Expected Output:\n# 00C3ED6F9788E5B90A96C3E5E2C78359BDF8FB3688B602B4EE862506A822FEE9`
   },
   gpg: {
     title: 'terminal — GnuPG Detached Signature',
-    code: `# Download SHA256SUMS and signature:\ncurl -LO https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.1/SHA256SUMS.txt\ncurl -LO https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.1/SHA256SUMS.txt.asc\n\n# Verify GPG Detached Signature:\ngpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt\n\n# Batch check all files:\nshasum -a 256 -c SHA256SUMS.txt`
+    code: `# Download SHA256SUMS and signature:\ncurl -LO https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.2/SHA256SUMS.txt\ncurl -LO https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.2/SHA256SUMS.txt.asc\n\n# Verify GPG Detached Signature:\ngpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt\n\n# Batch check all files:\nshasum -a 256 -c SHA256SUMS.txt`
   }
 };
 
