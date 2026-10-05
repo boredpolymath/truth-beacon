@@ -4,7 +4,10 @@
 # ==============================================================================
 
 param (
-    [switch]$SkipSign = $true
+    [switch]$SkipSign = $false,
+    [string]$CertFile,
+    [string]$CertPassword,
+    [string]$CertThumbprint
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,7 +51,12 @@ Copy-Item (Join-Path $ReleaseDir "truth-beacon.exe") (Join-Path $PortableDir "Tr
 # 5. Optional Code Signing (Phase 24.2)
 if (-not $SkipSign) {
     Write-Host "==> [5/5] Invoking Windows Authenticode signing pipeline..." -ForegroundColor Yellow
-    & (Join-Path $ScriptDir "sign_windows_bundle.ps1")
+    $SignScript = Join-Path $ScriptDir "sign_windows_bundle.ps1"
+    $SignParams = @{}
+    if ($CertFile) { $SignParams["CertFile"] = $CertFile }
+    if ($CertPassword) { $SignParams["CertPassword"] = $CertPassword }
+    if ($CertThumbprint) { $SignParams["CertThumbprint"] = $CertThumbprint }
+    & $SignScript @SignParams
 }
 
 Write-Host "======================================================================" -ForegroundColor Green
