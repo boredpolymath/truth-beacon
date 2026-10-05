@@ -380,58 +380,66 @@ pub async fn verify_bot_handshake(
                         .ok()
                         .and_then(|g| g.first().cloned())
                         .map(|fg| crate::credentials::CredentialManager::get_token(&fg))
-                        .unwrap_or(Err(crate::credentials::CredentialError::TokenNotFound(gid.clone())))
+                        .unwrap_or(Err(crate::credentials::CredentialError::TokenNotFound(
+                            gid.clone(),
+                        )))
                 })
-                .map_err(|_| CommandError::ValidationFailed("Bot token is required for verification".to_string()))?
-        } else if let Some(first_guild) = crate::credentials::CredentialManager::list_registered_guilds()
-            .ok()
-            .and_then(|g| g.first().cloned())
+                .map_err(|_| {
+                    CommandError::ValidationFailed(
+                        "Bot token is required for verification".to_string(),
+                    )
+                })?
+        } else if let Some(first_guild) =
+            crate::credentials::CredentialManager::list_registered_guilds()
+                .ok()
+                .and_then(|g| g.first().cloned())
         {
-            crate::credentials::CredentialManager::get_token(&first_guild)
-                .map_err(|_| CommandError::ValidationFailed("Bot token is required for verification".to_string()))?
+            crate::credentials::CredentialManager::get_token(&first_guild).map_err(|_| {
+                CommandError::ValidationFailed("Bot token is required for verification".to_string())
+            })?
         } else {
-            return Err(CommandError::ValidationFailed("Bot token cannot be empty".to_string()));
+            return Err(CommandError::ValidationFailed(
+                "Bot token cannot be empty".to_string(),
+            ));
         }
     } else {
         token
     };
 
-    crate::credentials::CredentialManager::preflight_handshake(&effective_token, guild_id.as_deref())
-        .await
-        .map_err(|e| match e {
-            crate::credentials::CredentialError::RateLimited(secs) => {
-                CommandError::RateLimited(secs)
-            }
-            crate::credentials::CredentialError::InvalidBotTokenFormat => {
-                CommandError::ValidationFailed("Invalid bot token format".to_string())
-            }
-            crate::credentials::CredentialError::UnauthorizedToken => {
-                CommandError::AuthenticationFailed(
-                    "Discord token is unauthorized or revoked".to_string(),
-                )
-            }
-            crate::credentials::CredentialError::NonBotAccountRejected => {
-                CommandError::ValidationFailed(
-                    "User accounts and self-bots are strictly prohibited".to_string(),
-                )
-            }
-            crate::credentials::CredentialError::MissingPrivilegedIntent(msg) => {
-                CommandError::ValidationFailed(format!(
-                    "Missing privileged Gateway intent: {}",
-                    msg
-                ))
-            }
-            crate::credentials::CredentialError::MissingGuildPermissions(perms) => {
-                CommandError::ValidationFailed(format!(
-                    "Missing required guild permissions: {:?}",
-                    perms
-                ))
-            }
-            crate::credentials::CredentialError::GuildMembershipNotFound(gid) => {
-                CommandError::ValidationFailed(format!("Bot is not a member of guild {}", gid))
-            }
-            other => CommandError::InternalError(other.to_string()),
-        })
+    crate::credentials::CredentialManager::preflight_handshake(
+        &effective_token,
+        guild_id.as_deref(),
+    )
+    .await
+    .map_err(|e| match e {
+        crate::credentials::CredentialError::RateLimited(secs) => CommandError::RateLimited(secs),
+        crate::credentials::CredentialError::InvalidBotTokenFormat => {
+            CommandError::ValidationFailed("Invalid bot token format".to_string())
+        }
+        crate::credentials::CredentialError::UnauthorizedToken => {
+            CommandError::AuthenticationFailed(
+                "Discord token is unauthorized or revoked".to_string(),
+            )
+        }
+        crate::credentials::CredentialError::NonBotAccountRejected => {
+            CommandError::ValidationFailed(
+                "User accounts and self-bots are strictly prohibited".to_string(),
+            )
+        }
+        crate::credentials::CredentialError::MissingPrivilegedIntent(msg) => {
+            CommandError::ValidationFailed(format!("Missing privileged Gateway intent: {}", msg))
+        }
+        crate::credentials::CredentialError::MissingGuildPermissions(perms) => {
+            CommandError::ValidationFailed(format!(
+                "Missing required guild permissions: {:?}",
+                perms
+            ))
+        }
+        crate::credentials::CredentialError::GuildMembershipNotFound(gid) => {
+            CommandError::ValidationFailed(format!("Bot is not a member of guild {}", gid))
+        }
+        other => CommandError::InternalError(other.to_string()),
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -526,12 +534,14 @@ pub async fn save_discord_config(
     let effective_token = if trimmed_token.is_empty() || trimmed_token.starts_with('•') {
         if let Ok(existing) = crate::credentials::CredentialManager::get_token(trimmed_guild) {
             existing
-        } else if let Some(first_guild) = crate::credentials::CredentialManager::list_registered_guilds()
-            .ok()
-            .and_then(|g| g.first().cloned())
+        } else if let Some(first_guild) =
+            crate::credentials::CredentialManager::list_registered_guilds()
+                .ok()
+                .and_then(|g| g.first().cloned())
         {
-            crate::credentials::CredentialManager::get_token(&first_guild)
-                .map_err(|_| CommandError::ValidationFailed("Discord bot token cannot be empty".to_string()))?
+            crate::credentials::CredentialManager::get_token(&first_guild).map_err(|_| {
+                CommandError::ValidationFailed("Discord bot token cannot be empty".to_string())
+            })?
         } else {
             return Err(CommandError::ValidationFailed(
                 "Discord bot token cannot be empty".to_string(),
@@ -541,18 +551,32 @@ pub async fn save_discord_config(
         trimmed_token.to_string()
     };
 
-    let clean_token = crate::credentials::CredentialManager::validate_bot_token_format(&effective_token)
-        .map_err(|_| CommandError::ValidationFailed("Invalid bot token format. Must be an official 3-part Discord Bot token.".to_string()))?;
+    let clean_token =
+        crate::credentials::CredentialManager::validate_bot_token_format(&effective_token)
+            .map_err(|_| {
+                CommandError::ValidationFailed(
+                    "Invalid bot token format. Must be an official 3-part Discord Bot token."
+                        .to_string(),
+                )
+            })?;
 
     // Step 1: Safely store credentials into Keychain & in-memory cache FIRST so configuration is guaranteed persistent
     crate::credentials::CredentialManager::store_token(trimmed_guild, &clean_token)
         .map_err(|e| CommandError::InternalError(e.to_string()))?;
 
     // Step 2: Attempt preflight verification handshake
-    let summary = match crate::credentials::CredentialManager::preflight_handshake(&clean_token, Some(trimmed_guild)).await {
+    let summary = match crate::credentials::CredentialManager::preflight_handshake(
+        &clean_token,
+        Some(trimmed_guild),
+    )
+    .await
+    {
         Ok(s) => s,
         Err(e) => {
-            log::warn!("Preflight handshake diagnostic issue after saving token: {}", e);
+            log::warn!(
+                "Preflight handshake diagnostic issue after saving token: {}",
+                e
+            );
             let (guild_found, perms_ok) = match &e {
                 crate::credentials::CredentialError::GuildMembershipNotFound(_) => (false, false),
                 crate::credentials::CredentialError::MissingGuildPermissions(_) => (true, false),
@@ -569,8 +593,14 @@ pub async fn save_discord_config(
                 permissions: None,
                 verified_at: chrono::Utc::now().timestamp(),
                 format_valid: true,
-                gateway_authenticated: !matches!(e, crate::credentials::CredentialError::UnauthorizedToken),
-                privileged_intents_active: !matches!(e, crate::credentials::CredentialError::MissingPrivilegedIntent(_)),
+                gateway_authenticated: !matches!(
+                    e,
+                    crate::credentials::CredentialError::UnauthorizedToken
+                ),
+                privileged_intents_active: !matches!(
+                    e,
+                    crate::credentials::CredentialError::MissingPrivilegedIntent(_)
+                ),
                 guild_found,
                 moderation_permissions_ok: perms_ok,
                 bot_name: Some("TruthBeacon Guard".to_string()),
@@ -925,7 +955,10 @@ mod tests {
 
         // 1. Save new guild and token
         let save_res = save_discord_config(test_guild.to_string(), sample_token.clone()).await;
-        assert!(save_res.is_ok(), "save_discord_config must succeed and store credentials");
+        assert!(
+            save_res.is_ok(),
+            "save_discord_config must succeed and store credentials"
+        );
         let summary = save_res.unwrap();
         assert!(summary.format_valid);
 
@@ -934,21 +967,41 @@ mod tests {
         assert!(cfg.has_token, "Config must show has_token = true");
         assert_eq!(cfg.guild_id.as_deref(), Some(test_guild));
         assert!(cfg.connected, "Config must show connected = true");
-        assert_eq!(cfg.token_masked.as_deref(), Some("••••••••••••••••••••••••••••••••"));
+        assert_eq!(
+            cfg.token_masked.as_deref(),
+            Some("••••••••••••••••••••••••••••••••")
+        );
 
         // 3. Verify updating with masked token preserves stored credentials
-        let update_res = save_discord_config(test_guild.to_string(), "••••••••••••••••••••••••••••••••".to_string()).await;
-        assert!(update_res.is_ok(), "Updating with masked token must succeed by reusing stored token");
+        let update_res = save_discord_config(
+            test_guild.to_string(),
+            "••••••••••••••••••••••••••••••••".to_string(),
+        )
+        .await;
+        assert!(
+            update_res.is_ok(),
+            "Updating with masked token must succeed by reusing stored token"
+        );
 
         // 4. Verify updating with empty token preserves stored credentials
         let empty_res = save_discord_config(test_guild.to_string(), "".to_string()).await;
-        assert!(empty_res.is_ok(), "Updating with empty token must succeed by reusing stored token");
+        assert!(
+            empty_res.is_ok(),
+            "Updating with empty token must succeed by reusing stored token"
+        );
 
         // 5. Verify disconnect clears credentials
         let disc_res = disconnect_discord(Some(test_guild.to_string()));
         assert!(disc_res.is_ok());
-        let cfg_after = get_discord_config().expect("get_discord_config must succeed after disconnect");
-        assert!(!cfg_after.has_token, "Config after disconnect must show has_token = false");
-        assert!(!cfg_after.connected, "Config after disconnect must show connected = false");
+        let cfg_after =
+            get_discord_config().expect("get_discord_config must succeed after disconnect");
+        assert!(
+            !cfg_after.has_token,
+            "Config after disconnect must show has_token = false"
+        );
+        assert!(
+            !cfg_after.connected,
+            "Config after disconnect must show connected = false"
+        );
     }
 }

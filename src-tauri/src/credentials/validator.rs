@@ -338,7 +338,13 @@ impl DiscordHandshakeValidator {
     ) -> Result<HandshakeSummary, CredentialError> {
         let user = self.verify_bot_identity(token).await?;
 
-        let (target_guild_id, target_guild_name, permissions, guild_found, moderation_permissions_ok) = match guild_id {
+        let (
+            target_guild_id,
+            target_guild_name,
+            permissions,
+            guild_found,
+            moderation_permissions_ok,
+        ) = match guild_id {
             Some(gid) if !gid.trim().is_empty() => {
                 let (guild, eval) = self.verify_guild_permissions(token, gid).await?;
                 let perms_ok = eval.is_fully_authorized;
