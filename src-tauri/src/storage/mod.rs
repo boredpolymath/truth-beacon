@@ -191,7 +191,6 @@ impl Drop for StorageManager {
 }
 
 impl StorageManager {
-
     /// Verifies database integrity on demand via `PRAGMA integrity_check;` (Phase 11.3).
     pub fn verify_integrity(&self) -> Result<bool> {
         let conn = self.conn.lock().unwrap();
