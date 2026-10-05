@@ -248,7 +248,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p dist
-          find release-dist -type f -exec cp -f {} dist/ \;
+          find release-dist -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.msi" -o -name "*.deb" -o -name "*.AppImage" -o -name "truth-beacon*" -o -name "SHA256SUMS*" -o -name "RELEASE_MANIFEST*" \) -exec cp -f {} dist/ \;
           echo "==> Release artifacts ready for publishing:"
           ls -la dist/
 
