@@ -275,12 +275,11 @@ impl DiscordHandshakeValidator {
         Ok(user)
     }
 
-    /// Fetches all guilds configured for the bot and verifies administrative permissions for a target guild.
-    pub async fn verify_guild_permissions(
+    /// Fetches all guilds configured for the bot directly from Discord v10 REST API.
+    pub async fn fetch_guilds(
         &self,
         token: &str,
-        guild_id: &str,
-    ) -> Result<(DiscordGuildSummary, GuildPermissionEvaluation), CredentialError> {
+    ) -> Result<Vec<DiscordGuildSummary>, CredentialError> {
         let parts = validate_token_format(token)?;
         let url = format!("{}/users/@me/guilds", self.api_base_url);
 
@@ -307,6 +306,17 @@ impl DiscordHandshakeValidator {
             .json()
             .await
             .map_err(|e| CredentialError::ApiError(e.to_string()))?;
+
+        Ok(guilds)
+    }
+
+    /// Fetches all guilds configured for the bot and verifies administrative permissions for a target guild.
+    pub async fn verify_guild_permissions(
+        &self,
+        token: &str,
+        guild_id: &str,
+    ) -> Result<(DiscordGuildSummary, GuildPermissionEvaluation), CredentialError> {
+        let guilds = self.fetch_guilds(token).await?;
 
         let target_guild = guilds
             .into_iter()

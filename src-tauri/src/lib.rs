@@ -53,7 +53,8 @@ pub fn run() {
             execute_notification_action,
             get_discord_config,
             save_discord_config,
-            disconnect_discord
+            disconnect_discord,
+            fetch_bot_guilds
         ])
         .run(tauri::generate_context!())
         .expect("error while running TruthBeacon application");

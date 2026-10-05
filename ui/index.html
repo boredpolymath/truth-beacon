@@ -216,14 +216,52 @@
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 <span>Tokens are stored exclusively in your local OS Keychain. Never sent to any cloud server.</span>
               </p>
+
+              <!-- Dynamic 1-Click Bot Authorization & Invite Assistant -->
+              <div class="dynamic-bot-invite-card" id="dynamic-bot-invite-card" style="display: none;">
+                <div class="bot-invite-header">
+                  <div class="bot-invite-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Bot Application Detected</span>
+                  </div>
+                  <span class="bot-client-id-text" id="bot-client-id-label">App ID: —</span>
+                </div>
+                <p class="bot-invite-desc">TruthBeacon pre-calculated all required moderation permissions. Click below to add this bot to your Discord server in 1 click (no manual OAuth2 setup needed):</p>
+                <div class="bot-invite-action-strip">
+                  <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-purple-invite" id="btn-quick-invite-bot">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    <span>1-Click Authorize & Invite Bot to Server</span>
+                  </a>
+                  <button type="button" class="btn btn-secondary-sm" id="btn-copy-invite-link" title="Copy OAuth2 invite link to clipboard">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span id="btn-copy-invite-text">Copy Link</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div class="form-group">
-              <label for="discord-guild-id-input" class="form-label">
-                Target Discord Server (Guild) ID *
-                <span class="form-label-hint">Right-click server icon in Discord &rarr; "Copy Server ID"</span>
-              </label>
-              <input type="text" id="discord-guild-id-input" class="form-input" placeholder="e.g. 999888777666555444" spellcheck="false" required>
+            <div class="form-group" id="guild-selector-group">
+              <div class="guild-label-row">
+                <label for="discord-guild-id-input" class="form-label" style="margin-bottom: 0;">
+                  Target Discord Server (Guild) *
+                </label>
+                <button type="button" class="btn-text-action" id="btn-refresh-guilds" title="Scan Discord API for servers the bot is in">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  <span id="btn-refresh-guilds-text">Discover Servers</span>
+                </button>
+              </div>
+
+              <!-- Automated Server Selection Dropdown (appears once bot is invited to server) -->
+              <div class="discovered-guilds-wrap" id="discovered-guilds-wrap" style="display: none;">
+                <select id="discord-guild-select" class="form-select">
+                  <option value="">-- Select Discovered Server --</option>
+                </select>
+              </div>
+
+              <input type="text" id="discord-guild-id-input" class="form-input" placeholder="e.g. 999888777666555444 (or select discovered server above)" spellcheck="false" required>
+              <p class="form-field-hint-text" id="guild-discovery-status">
+                Paste your Bot Token above and TruthBeacon will automatically discover your servers.
+              </p>
             </div>
 
             <!-- Action Buttons Strip -->

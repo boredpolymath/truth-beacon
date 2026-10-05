@@ -235,6 +235,7 @@ export async function invokeCommand(cmd, args = {}) {
         avatar_hamming_threshold: mockDiscordConfig.avatar_hamming_threshold ?? 10,
         privileged_intent_declared: true,
         bot_name: mockDiscordConfig.bot_name || "TruthBeacon Guard",
+        bot_id: mockDiscordConfig.has_token ? (mockDiscordConfig.bot_id || "109827364512938475") : null,
         guild_name: mockDiscordConfig.guild_name || (mockDiscordConfig.guild_id ? `Server (${mockDiscordConfig.guild_id})` : ""),
         connected: !!mockDiscordConfig.connected,
         token_masked: mockDiscordConfig.has_token ? (mockDiscordConfig.token_masked || '••••••••••••••••••••••••••••••••') : '',
@@ -245,6 +246,32 @@ export async function invokeCommand(cmd, args = {}) {
           circuit_limit_per_minute: mockDiscordConfig.circuit_limit_per_minute ?? 5
         }
       };
+
+    case 'fetch_bot_guilds': {
+      let token = args.token;
+      if ((!token || token.startsWith('••••')) && mockDiscordConfig.token) {
+        token = mockDiscordConfig.token;
+      }
+      if (!token && !mockDiscordConfig.has_token) {
+        throw { code: "VALIDATION_FAILED", message: "Bot token is required to discover server guilds." };
+      }
+      const currentGid = mockDiscordConfig.guild_id || "999888777666555444";
+      const currentName = mockDiscordConfig.guild_name || "Crossroads Community Sanctuary";
+      return [
+        {
+          id: currentGid,
+          name: currentName,
+          icon: null,
+          permissions: "1099511628806"
+        },
+        {
+          id: "123456789012345678",
+          name: "TruthBeacon Ops Alpha",
+          icon: null,
+          permissions: "1099511628806"
+        }
+      ];
+    }
 
     case 'verify_bot_handshake': {
       let { token, guild_id } = args;

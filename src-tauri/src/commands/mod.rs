@@ -442,6 +442,52 @@ pub async fn verify_bot_handshake(
     })
 }
 
+#[tauri::command]
+pub async fn fetch_bot_guilds(
+    token: Option<String>,
+) -> Result<Vec<crate::credentials::DiscordGuildSummary>, CommandError> {
+    let effective_token = if let Some(t) = token {
+        let trimmed = t.trim();
+        if trimmed.is_empty() || trimmed.starts_with('•') {
+            crate::credentials::CredentialManager::list_registered_guilds()
+                .ok()
+                .and_then(|g| g.first().cloned())
+                .and_then(|gid| crate::credentials::CredentialManager::get_token(&gid).ok())
+                .ok_or_else(|| {
+                    CommandError::ValidationFailed("Discord bot token is required".to_string())
+                })?
+        } else {
+            trimmed.to_string()
+        }
+    } else {
+        crate::credentials::CredentialManager::list_registered_guilds()
+            .ok()
+            .and_then(|g| g.first().cloned())
+            .and_then(|gid| crate::credentials::CredentialManager::get_token(&gid).ok())
+            .ok_or_else(|| {
+                CommandError::ValidationFailed("Discord bot token is required".to_string())
+            })?
+    };
+
+    let clean_token =
+        crate::credentials::CredentialManager::validate_bot_token_format(&effective_token)
+            .map_err(|e| CommandError::ValidationFailed(e.to_string()))?;
+
+    crate::credentials::CredentialManager::fetch_bot_guilds(&clean_token)
+        .await
+        .map_err(|e| match e {
+            crate::credentials::CredentialError::UnauthorizedToken => {
+                CommandError::AuthenticationFailed(
+                    "Discord token is unauthorized or revoked".to_string(),
+                )
+            }
+            crate::credentials::CredentialError::RateLimited(secs) => {
+                CommandError::RateLimited(secs)
+            }
+            other => CommandError::InternalError(other.to_string()),
+        })
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscordThresholds {
     pub similarity: f64,
@@ -462,6 +508,8 @@ pub struct DiscordConfigSummary {
     #[serde(default)]
     pub bot_name: Option<String>,
     #[serde(default)]
+    pub bot_id: Option<String>,
+    #[serde(default)]
     pub guild_name: Option<String>,
     #[serde(default)]
     pub connected: bool,
@@ -479,6 +527,23 @@ pub fn get_discord_config() -> Result<DiscordConfigSummary, CommandError> {
         crate::credentials::CredentialManager::list_registered_guilds().unwrap_or_default();
     let has_token = !registered_guilds.is_empty();
     let guild_id = registered_guilds.first().cloned();
+
+    let bot_id = if let Some(gid) = guild_id.as_deref() {
+        crate::credentials::CredentialManager::get_token(gid)
+            .ok()
+            .and_then(|tok| {
+                let parts: Vec<&str> = tok.trim().split('.').collect();
+                if !parts.is_empty() {
+                    crate::credentials::validator::decode_snowflake_segment(parts[0])
+                        .ok()
+                        .map(|id| id.to_string())
+                } else {
+                    None
+                }
+            })
+    } else {
+        None
+    };
 
     let (bot_name, guild_name, connected) = if has_token {
         let gid = guild_id.clone().unwrap_or_default();
@@ -501,6 +566,7 @@ pub fn get_discord_config() -> Result<DiscordConfigSummary, CommandError> {
         avatar_hamming_threshold: 10,
         privileged_intent_declared: true,
         bot_name,
+        bot_id,
         guild_name,
         connected,
         token_masked: if has_token {

@@ -306,6 +306,14 @@ impl CredentialManager {
         let validator = DiscordHandshakeValidator::new();
         validator.execute_preflight_handshake(token, guild_id).await
     }
+
+    /// Fetches all Discord servers (guilds) where the bot is currently a member.
+    pub async fn fetch_bot_guilds(
+        token: &str,
+    ) -> Result<Vec<DiscordGuildSummary>, CredentialError> {
+        let validator = DiscordHandshakeValidator::new();
+        validator.fetch_guilds(token).await
+    }
 }
 
 #[cfg(test)]

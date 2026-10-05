@@ -27,6 +27,18 @@ const btnSaveDiscord = document.getElementById('btn-save-discord');
 const btnDisconnectDiscord = document.getElementById('btn-disconnect-discord');
 const btnSaveThresholds = document.getElementById('btn-save-thresholds');
 
+// Dynamic Bot Invite & Server Discovery Elements
+const dynamicBotInviteCard = document.getElementById('dynamic-bot-invite-card');
+const botClientIdLabel = document.getElementById('bot-client-id-label');
+const btnQuickInviteBot = document.getElementById('btn-quick-invite-bot');
+const btnCopyInviteLink = document.getElementById('btn-copy-invite-link');
+const btnCopyInviteText = document.getElementById('btn-copy-invite-text');
+const discoveredGuildsWrap = document.getElementById('discovered-guilds-wrap');
+const discordGuildSelect = document.getElementById('discord-guild-select');
+const btnRefreshGuilds = document.getElementById('btn-refresh-guilds');
+const btnRefreshGuildsText = document.getElementById('btn-refresh-guilds-text');
+const guildDiscoveryStatus = document.getElementById('guild-discovery-status');
+
 // Discord Hero Status Elements
 const discordHeroStatusDot = document.getElementById('discord-hero-status-dot');
 const discordHeroBadge = document.getElementById('discord-hero-badge');
@@ -935,6 +947,149 @@ document.getElementById('btn-help-go-discord')?.addEventListener('click', () => 
   switchTab('discord');
 });
 
+// Extract numeric Bot Client ID from segment 1 of Discord bot token
+export function extractBotClientId(token) {
+  if (!token || typeof token !== 'string') return null;
+  const clean = token.trim().replace(/^Bot\s+/i, '');
+  const parts = clean.split('.');
+  if (parts.length < 2) return null;
+  try {
+    let b64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4 !== 0) {
+      b64 += '=';
+    }
+    const decoded = atob(b64);
+    if (/^\d{17,20}$/.test(decoded)) {
+      return decoded;
+    }
+  } catch (_) {}
+  return null;
+}
+
+// Render dynamic 1-click bot invite assistant
+function renderBotInviteCard(clientId) {
+  if (!dynamicBotInviteCard) return;
+  if (!clientId) {
+    dynamicBotInviteCard.style.display = 'none';
+    return;
+  }
+  // Permission bitfield: 1099511628806
+  // VIEW_CHANNEL (1024) | KICK_MEMBERS (2) | BAN_MEMBERS (4) | MODERATE_MEMBERS (1099511627776)
+  const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands&permissions=1099511628806`;
+  dynamicBotInviteCard.style.display = 'block';
+  if (botClientIdLabel) {
+    botClientIdLabel.textContent = `App ID: ${clientId}`;
+  }
+  if (btnQuickInviteBot) {
+    btnQuickInviteBot.href = inviteUrl;
+  }
+  if (btnCopyInviteLink) {
+    btnCopyInviteLink.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        if (btnCopyInviteText) btnCopyInviteText.textContent = 'Copied!';
+        setTimeout(() => {
+          if (btnCopyInviteText) btnCopyInviteText.textContent = 'Copy Link';
+        }, 2000);
+      } catch (_) {
+        prompt('Copy Discord Bot Invite Link:', inviteUrl);
+      }
+    };
+  }
+}
+
+function updateBotInviteCard(token) {
+  const clientId = extractBotClientId(token);
+  if (clientId) {
+    renderBotInviteCard(clientId);
+  } else if (!token || !token.startsWith('••••')) {
+    renderBotInviteCard(null);
+  }
+}
+
+// Automated server discovery
+let isDiscoveringGuilds = false;
+async function discoverServers(tokenOverride) {
+  if (isDiscoveringGuilds) return;
+  const rawToken = tokenOverride !== undefined ? tokenOverride : (discordTokenInput ? discordTokenInput.value.trim() : '');
+  const token = rawToken.startsWith('••••') ? '' : rawToken;
+
+  isDiscoveringGuilds = true;
+  if (btnRefreshGuilds) btnRefreshGuilds.disabled = true;
+  if (btnRefreshGuildsText) btnRefreshGuildsText.textContent = 'Discovering...';
+  if (guildDiscoveryStatus) {
+    guildDiscoveryStatus.innerHTML = '<span class="status-scanning">Scanning Discord Gateway for your bot\'s servers...</span>';
+  }
+
+  try {
+    const guilds = await invokeCommand('fetch_bot_guilds', { token: token || null });
+    if (Array.isArray(guilds) && guilds.length > 0) {
+      if (discoveredGuildsWrap) discoveredGuildsWrap.style.display = 'block';
+      if (discordGuildSelect) {
+        discordGuildSelect.innerHTML = `<option value="">-- Discovered Servers (${guilds.length}) --</option>` +
+          guilds.map(g => `<option value="${g.id}">${g.name} (${g.id})</option>`).join('');
+
+        const currentGuildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : '';
+        const match = guilds.find(g => g.id === currentGuildId);
+        if (match) {
+          discordGuildSelect.value = match.id;
+        } else if (guilds.length === 1 && !currentGuildId) {
+          discordGuildSelect.value = guilds[0].id;
+          if (discordGuildIdInput) {
+            discordGuildIdInput.value = guilds[0].id;
+            sessionStorage.setItem('truthbeacon_setup_guild_id', guilds[0].id);
+          }
+        }
+      }
+      if (guildDiscoveryStatus) {
+        guildDiscoveryStatus.innerHTML = `<span style="color: var(--color-success); font-weight: 500;">✓ Discovered ${guilds.length} server${guilds.length > 1 ? 's' : ''}. Select your server above.</span>`;
+      }
+    } else {
+      if (guildDiscoveryStatus) {
+        guildDiscoveryStatus.innerHTML = `<span style="color: var(--color-warning);">Bot is active, but not in any servers yet. Click <strong>"1-Click Authorize & Invite"</strong> above!</span>`;
+      }
+    }
+  } catch (err) {
+    console.warn('Guild discovery note:', err);
+    if (guildDiscoveryStatus) {
+      guildDiscoveryStatus.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.8125rem;">${err?.message || 'Paste bot token or invite bot to server to discover.'}</span>`;
+    }
+  } finally {
+    isDiscoveringGuilds = false;
+    if (btnRefreshGuilds) btnRefreshGuilds.disabled = false;
+    if (btnRefreshGuildsText) btnRefreshGuildsText.textContent = 'Discover Servers';
+  }
+}
+
+// Server selector change handler
+discordGuildSelect?.addEventListener('change', async e => {
+  const val = e.target.value;
+  if (val && discordGuildIdInput) {
+    discordGuildIdInput.value = val;
+    sessionStorage.setItem('truthbeacon_setup_guild_id', val);
+    const selectedOption = e.target.options[e.target.selectedIndex];
+    if (guildDiscoveryStatus) {
+      guildDiscoveryStatus.innerHTML = `<span style="color: var(--color-success); font-weight: 500;">Target server set to: <strong>${selectedOption ? selectedOption.text : val}</strong></span>`;
+    }
+    // Automatically trigger handshake check for zero-friction verification
+    const token = discordTokenInput ? discordTokenInput.value.trim() : '';
+    if (token) {
+      try {
+        const result = await invokeCommand('verify_bot_handshake', {
+          token: token.startsWith('••••') ? '' : token,
+          guild_id: val
+        });
+        renderHandshakeResult(result);
+      } catch (_) {}
+    }
+  }
+});
+
+// Refresh discovered servers button
+btnRefreshGuilds?.addEventListener('click', () => {
+  discoverServers();
+});
+
 // Persist draft setup inputs during tab navigation
 discordGuildIdInput?.addEventListener('input', e => {
   try {
@@ -947,8 +1102,22 @@ discordTokenInput?.addEventListener('input', e => {
     const val = e.target.value.trim();
     if (!val.startsWith('••••')) {
       sessionStorage.setItem('truthbeacon_setup_token_draft', val);
+      updateBotInviteCard(val);
+      if (val.split('.').length >= 3) {
+        discoverServers(val);
+      }
     }
   } catch (_) {}
+});
+
+discordTokenInput?.addEventListener('paste', () => {
+  setTimeout(() => {
+    const val = discordTokenInput.value.trim();
+    updateBotInviteCard(val);
+    if (val.split('.').length >= 3) {
+      discoverServers(val);
+    }
+  }, 50);
 });
 
 // Pre-flight handshake diagnostic check
@@ -1096,6 +1265,10 @@ btnDisconnectDiscord?.addEventListener('click', async () => {
     await invokeCommand('disconnect_discord', { guild_id: guildId });
     if (discordTokenInput) discordTokenInput.value = '';
     if (discordGuildIdInput) discordGuildIdInput.value = '';
+    if (discoveredGuildsWrap) discoveredGuildsWrap.style.display = 'none';
+    if (dynamicBotInviteCard) dynamicBotInviteCard.style.display = 'none';
+    if (discordGuildSelect) discordGuildSelect.innerHTML = '<option value="">-- Select Discovered Server --</option>';
+    if (guildDiscoveryStatus) guildDiscoveryStatus.textContent = 'Paste your Bot Token above and TruthBeacon will automatically discover your servers.';
     sessionStorage.removeItem('truthbeacon_setup_guild_id');
     sessionStorage.removeItem('truthbeacon_setup_token_draft');
     await loadDiscordConfig();
@@ -1245,6 +1418,16 @@ function renderDiscordConfig(config) {
       inputCircuitLimit.value = t.circuit_limit_per_minute;
       updateCircuitLimitBadge(t.circuit_limit_per_minute);
     }
+  }
+
+  if (config.bot_id) {
+    renderBotInviteCard(config.bot_id);
+  } else if (!config.has_token) {
+    renderBotInviteCard(null);
+  }
+
+  if (config.has_token && !isDiscoveringGuilds && (!discordGuildSelect || discordGuildSelect.options.length <= 1)) {
+    discoverServers();
   }
 }
 
