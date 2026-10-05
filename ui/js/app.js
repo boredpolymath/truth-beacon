@@ -1163,7 +1163,25 @@ function setDiagItem(el, ok, okText, failText) {
     icon.innerHTML = ok ? '&#10003;' : '&#10007;';
   }
   if (text) {
-    text.innerHTML = ok ? okText : `<strong style="color: var(--color-danger);">${failText}</strong>`;
+    text.textContent = '';
+    if (ok) {
+      const m = typeof okText === 'string' ? okText.match(/^(.*?)<strong>(.*?)<\/strong>(.*)$/i) : null;
+      if (m) {
+        const [, prefix, strongPart, suffix] = m;
+        if (prefix) text.appendChild(document.createTextNode(prefix));
+        const strongEl = document.createElement('strong');
+        strongEl.textContent = strongPart;
+        text.appendChild(strongEl);
+        if (suffix) text.appendChild(document.createTextNode(suffix));
+      } else {
+        text.textContent = okText || '';
+      }
+    } else {
+      const strongEl = document.createElement('strong');
+      strongEl.style.color = 'var(--color-danger)';
+      strongEl.textContent = failText || '';
+      text.appendChild(strongEl);
+    }
   }
 }
 
