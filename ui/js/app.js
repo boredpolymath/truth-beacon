@@ -1069,7 +1069,15 @@ discordGuildSelect?.addEventListener('change', async e => {
     sessionStorage.setItem('truthbeacon_setup_guild_id', val);
     const selectedOption = e.target.options[e.target.selectedIndex];
     if (guildDiscoveryStatus) {
-      guildDiscoveryStatus.innerHTML = `<span style="color: var(--color-success); font-weight: 500;">Target server set to: <strong>${selectedOption ? selectedOption.text : val}</strong></span>`;
+      const statusSpan = document.createElement('span');
+      statusSpan.style.color = 'var(--color-success)';
+      statusSpan.style.fontWeight = '500';
+      statusSpan.textContent = 'Target server set to: ';
+      const serverNameStrong = document.createElement('strong');
+      serverNameStrong.textContent = selectedOption ? selectedOption.text : val;
+      statusSpan.appendChild(serverNameStrong);
+      guildDiscoveryStatus.textContent = '';
+      guildDiscoveryStatus.appendChild(statusSpan);
     }
     // Automatically trigger handshake check for zero-friction verification
     const token = discordTokenInput ? discordTokenInput.value.trim() : '';
