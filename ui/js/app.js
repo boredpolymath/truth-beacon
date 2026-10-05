@@ -935,10 +935,32 @@ document.getElementById('btn-help-go-discord')?.addEventListener('click', () => 
   switchTab('discord');
 });
 
+// Persist draft setup inputs during tab navigation
+discordGuildIdInput?.addEventListener('input', e => {
+  try {
+    sessionStorage.setItem('truthbeacon_setup_guild_id', e.target.value.trim());
+  } catch (_) {}
+});
+
+discordTokenInput?.addEventListener('input', e => {
+  try {
+    const val = e.target.value.trim();
+    if (!val.startsWith('••••')) {
+      sessionStorage.setItem('truthbeacon_setup_token_draft', val);
+    }
+  } catch (_) {}
+});
+
 // Pre-flight handshake diagnostic check
 btnTestHandshake?.addEventListener('click', async () => {
   const token = discordTokenInput ? discordTokenInput.value.trim() : '';
   const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : '';
+
+  if (!guildId) {
+    alert('Please enter a Target Discord Server (Guild) ID to run the diagnostic check.');
+    discordGuildIdInput?.focus();
+    return;
+  }
 
   btnTestHandshake.disabled = true;
   if (btnTestHandshakeText) btnTestHandshakeText.textContent = 'Validating Gateway...';
@@ -956,6 +978,7 @@ btnTestHandshake?.addEventListener('click', async () => {
     console.error('Handshake verification error:', err);
     if (diagHeaderDot) diagHeaderDot.className = 'diagnostic-status-indicator danger';
     if (diagHeaderTitle) diagHeaderTitle.textContent = 'Handshake Failed';
+    alert(err?.message || 'Handshake check failed. Verify token and bot permissions.');
   } finally {
     btnTestHandshake.disabled = false;
     if (btnTestHandshakeText) btnTestHandshakeText.textContent = 'Test Handshake & Permissions';
@@ -977,7 +1000,13 @@ function setDiagItem(el, ok, okText, failText) {
 
 function renderHandshakeResult(res) {
   if (!res) return;
-  const passed = res.format_valid && res.gateway_authenticated && res.privileged_intents_active && res.guild_found && res.moderation_permissions_ok;
+  const formatValid = res.format_valid !== undefined ? !!res.format_valid : !!(res.is_official_bot || res.bot_id);
+  const authValid = res.gateway_authenticated !== undefined ? !!res.gateway_authenticated : !!(res.bot_id || res.bot_username);
+  const intentsValid = res.privileged_intents_active !== undefined ? !!res.privileged_intents_active : true;
+  const guildFound = res.guild_found !== undefined ? !!res.guild_found : !!(res.target_guild_id || res.target_guild_name);
+  const permsOk = res.moderation_permissions_ok !== undefined ? !!res.moderation_permissions_ok : (res.permissions ? !!res.permissions.is_fully_authorized : true);
+
+  const passed = formatValid && authValid && intentsValid && guildFound && permsOk;
 
   if (diagHeaderDot) diagHeaderDot.className = `diagnostic-status-indicator ${passed ? 'online' : 'danger'}`;
   if (diagHeaderTitle) {
@@ -987,14 +1016,17 @@ function renderHandshakeResult(res) {
     diagTimestamp.textContent = `Tested ${new Date().toLocaleTimeString()}`;
   }
 
-  setDiagItem(diagCheckFormat, res.format_valid, 'Token Format: <strong>Official 3-Part Bot Token</strong>', 'Token Format: Invalid or Malformed Token');
-  setDiagItem(diagCheckAuth, res.gateway_authenticated, 'Gateway Handshake: <strong>Authenticated with Discord v10</strong>', 'Gateway Handshake: Authentication Failed (401 Unauthorized)');
-  setDiagItem(diagCheckIntents, res.privileged_intents_active, 'Privileged Intent: <strong>Server Members Intent (GUILD_MEMBERS) Active</strong>', 'Privileged Intent: Missing GUILD_MEMBERS Intent (Enable in Dev Portal!)');
-  setDiagItem(diagCheckMembership, res.guild_found, `Server Membership: <strong>Bot Present in "${res.guild_name || 'Target Server'}"</strong>`, 'Server Membership: Bot Not Found in Target Server (Invite Bot First)');
-  setDiagItem(diagCheckPermissions, res.moderation_permissions_ok, 'Moderation Permissions: <strong>Kick, Ban, Moderate & View Channels Granted</strong>', 'Moderation Permissions: Missing Required Moderation Grants');
+  const serverName = res.guild_name || res.target_guild_name || 'Target Server';
+  const botName = res.bot_name || res.bot_username || 'TruthBeacon Guard';
 
-  if (res.bot_name && discordHeroBotName) discordHeroBotName.textContent = res.bot_name;
-  if (res.guild_name && discordHeroServerName) discordHeroServerName.textContent = res.guild_name;
+  setDiagItem(diagCheckFormat, formatValid, 'Token Format: <strong>Official 3-Part Bot Token</strong>', 'Token Format: Invalid or Malformed Token');
+  setDiagItem(diagCheckAuth, authValid, 'Gateway Handshake: <strong>Authenticated with Discord v10</strong>', 'Gateway Handshake: Authentication Failed (401 Unauthorized)');
+  setDiagItem(diagCheckIntents, intentsValid, 'Privileged Intent: <strong>Server Members Intent (GUILD_MEMBERS) Active</strong>', 'Privileged Intent: Missing GUILD_MEMBERS Intent (Enable in Dev Portal!)');
+  setDiagItem(diagCheckMembership, guildFound, `Server Membership: <strong>Bot Present in "${serverName}"</strong>`, 'Server Membership: Bot Not Found in Target Server (Invite Bot First)');
+  setDiagItem(diagCheckPermissions, permsOk, 'Moderation Permissions: <strong>Kick, Ban, Moderate & View Channels Granted</strong>', 'Moderation Permissions: Missing Required Moderation Grants');
+
+  if (discordHeroBotName) discordHeroBotName.textContent = botName;
+  if (discordHeroServerName && serverName) discordHeroServerName.textContent = serverName;
 }
 
 // Save Discord Pairing & Credentials
@@ -1005,6 +1037,12 @@ btnSaveDiscord?.addEventListener('click', async () => {
   const accountAge = selectAccountAge ? parseInt(selectAccountAge.value, 10) : 72;
   const avatarHamming = sliderAvatarHamming ? parseInt(sliderAvatarHamming.value, 10) : 10;
   const circuitLimit = inputCircuitLimit ? parseInt(inputCircuitLimit.value, 10) : 5;
+
+  if (!guildId) {
+    alert('Please enter a Target Discord Server (Guild) ID.');
+    discordGuildIdInput?.focus();
+    return;
+  }
 
   btnSaveDiscord.disabled = true;
   const origText = btnSaveDiscord.textContent;
@@ -1021,8 +1059,16 @@ btnSaveDiscord?.addEventListener('click', async () => {
         circuit_limit_per_minute: isNaN(circuitLimit) ? 5 : circuitLimit
       }
     };
-    await invokeCommand('save_discord_config', payload);
+    const result = await invokeCommand('save_discord_config', payload);
     btnSaveDiscord.textContent = 'Connected & Saved!';
+
+    sessionStorage.removeItem('truthbeacon_setup_token_draft');
+    sessionStorage.setItem('truthbeacon_setup_guild_id', guildId);
+
+    if (result) {
+      renderHandshakeResult(result);
+    }
+
     setTimeout(() => {
       btnSaveDiscord.textContent = origText;
       btnSaveDiscord.disabled = false;
@@ -1032,6 +1078,7 @@ btnSaveDiscord?.addEventListener('click', async () => {
   } catch (err) {
     console.error('Save discord error:', err);
     btnSaveDiscord.textContent = 'Failed to Save';
+    alert(err?.message || 'Failed to save Discord configuration. Please check your credentials.');
     setTimeout(() => {
       btnSaveDiscord.textContent = origText;
       btnSaveDiscord.disabled = false;
@@ -1045,8 +1092,12 @@ btnDisconnectDiscord?.addEventListener('click', async () => {
     return;
   }
   try {
-    await invokeCommand('disconnect_discord');
+    const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : (appState.selectedGuild.id || '');
+    await invokeCommand('disconnect_discord', { guild_id: guildId });
     if (discordTokenInput) discordTokenInput.value = '';
+    if (discordGuildIdInput) discordGuildIdInput.value = '';
+    sessionStorage.removeItem('truthbeacon_setup_guild_id');
+    sessionStorage.removeItem('truthbeacon_setup_token_draft');
     await loadDiscordConfig();
   } catch (err) {
     console.error('Disconnect discord error:', err);
@@ -1055,7 +1106,8 @@ btnDisconnectDiscord?.addEventListener('click', async () => {
 
 // Save Parameters only
 btnSaveThresholds?.addEventListener('click', async () => {
-  const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : '';
+  const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : (appState.selectedGuild.id || '');
+  const token = discordTokenInput ? discordTokenInput.value.trim() : '';
   const similarity = sliderSimilarity ? parseInt(sliderSimilarity.value, 10) : 85;
   const accountAge = selectAccountAge ? parseInt(selectAccountAge.value, 10) : 72;
   const avatarHamming = sliderAvatarHamming ? parseInt(sliderAvatarHamming.value, 10) : 10;
@@ -1065,7 +1117,7 @@ btnSaveThresholds?.addEventListener('click', async () => {
   btnSaveThresholds.textContent = 'Saving...';
   try {
     await invokeCommand('save_discord_config', {
-      token: '',
+      token: token.startsWith('••••') ? '' : token,
       guild_id: guildId,
       thresholds: {
         similarity: isNaN(similarity) ? 85 : similarity,
@@ -1123,14 +1175,26 @@ function renderDiscordConfig(config) {
   }
 
   if (discordGuildIdInput && !discordGuildIdInput.matches(':focus')) {
-    discordGuildIdInput.value = config.guild_id || '';
+    if (config.guild_id) {
+      discordGuildIdInput.value = config.guild_id;
+    } else {
+      const draft = sessionStorage.getItem('truthbeacon_setup_guild_id');
+      if (draft && !discordGuildIdInput.value) {
+        discordGuildIdInput.value = draft;
+      }
+    }
   }
 
   if (discordTokenInput && !discordTokenInput.matches(':focus')) {
     if (config.has_token) {
       discordTokenInput.value = config.token_masked || '••••••••••••••••••••••••••••••••';
     } else {
-      discordTokenInput.value = '';
+      const draft = sessionStorage.getItem('truthbeacon_setup_token_draft');
+      if (draft && !discordTokenInput.value) {
+        discordTokenInput.value = draft;
+      } else if (!draft && !discordTokenInput.value) {
+        discordTokenInput.value = '';
+      }
     }
   }
 

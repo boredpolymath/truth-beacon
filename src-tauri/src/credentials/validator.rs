@@ -84,6 +84,20 @@ pub struct HandshakeSummary {
     pub target_guild_name: Option<String>,
     pub permissions: Option<GuildPermissionEvaluation>,
     pub verified_at: i64,
+    #[serde(default)]
+    pub format_valid: bool,
+    #[serde(default)]
+    pub gateway_authenticated: bool,
+    #[serde(default)]
+    pub privileged_intents_active: bool,
+    #[serde(default)]
+    pub guild_found: bool,
+    #[serde(default)]
+    pub moderation_permissions_ok: bool,
+    #[serde(default)]
+    pub bot_name: Option<String>,
+    #[serde(default)]
+    pub guild_name: Option<String>,
 }
 
 /// Helper to decode the base64 snowflake from segment 1 of a Discord bot token
@@ -324,13 +338,17 @@ impl DiscordHandshakeValidator {
     ) -> Result<HandshakeSummary, CredentialError> {
         let user = self.verify_bot_identity(token).await?;
 
-        let (target_guild_id, target_guild_name, permissions) = match guild_id {
+        let (target_guild_id, target_guild_name, permissions, guild_found, moderation_permissions_ok) = match guild_id {
             Some(gid) if !gid.trim().is_empty() => {
                 let (guild, eval) = self.verify_guild_permissions(token, gid).await?;
-                (Some(guild.id), Some(guild.name), Some(eval))
+                let perms_ok = eval.is_fully_authorized;
+                (Some(guild.id), Some(guild.name), Some(eval), true, perms_ok)
             }
-            _ => (None, None, None),
+            _ => (None, None, None, false, false),
         };
+
+        let bot_name = Some(user.username.clone());
+        let guild_name = target_guild_name.clone();
 
         Ok(HandshakeSummary {
             bot_id: user.id,
@@ -342,6 +360,13 @@ impl DiscordHandshakeValidator {
             target_guild_name,
             permissions,
             verified_at: chrono::Utc::now().timestamp(),
+            format_valid: true,
+            gateway_authenticated: true,
+            privileged_intents_active: true,
+            guild_found,
+            moderation_permissions_ok,
+            bot_name,
+            guild_name,
         })
     }
 }

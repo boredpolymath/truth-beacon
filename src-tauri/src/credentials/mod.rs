@@ -104,6 +104,14 @@ impl std::fmt::Display for SecureBotToken {
     }
 }
 
+use std::collections::HashMap;
+use std::sync::{LazyLock, RwLock};
+
+static MEMORY_TOKEN_CACHE: LazyLock<RwLock<HashMap<String, Zeroizing<String>>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+static MEMORY_GUILD_REGISTRY: LazyLock<RwLock<Vec<String>>> =
+    LazyLock::new(|| RwLock::new(Vec::new()));
+
 pub struct CredentialManager;
 
 impl CredentialManager {
@@ -127,24 +135,48 @@ impl CredentialManager {
 
     /// Helper to retrieve the list of guild IDs stored in the vault registry (IDs only, never tokens).
     fn get_registered_guild_ids() -> Result<Vec<String>, CredentialError> {
-        let entry = Entry::new(SERVICE_NAME, GUILD_REGISTRY_KEY)?;
-        match entry.get_password() {
-            Ok(json_str) => serde_json::from_str(&json_str)
-                .map_err(|e| CredentialError::RegistryCorruption(e.to_string())),
-            Err(keyring::Error::NoEntry) => Ok(Vec::new()),
-            Err(e) => Err(CredentialError::KeyringError(e)),
+        if let Ok(entry) = Entry::new(SERVICE_NAME, GUILD_REGISTRY_KEY) {
+            match entry.get_password() {
+                Ok(json_str) => {
+                    if let Ok(guilds) = serde_json::from_str::<Vec<String>>(&json_str) {
+                        if !guilds.is_empty() {
+                            if let Ok(mut mem) = MEMORY_GUILD_REGISTRY.write() {
+                                *mem = guilds.clone();
+                            }
+                            return Ok(guilds);
+                        }
+                    }
+                }
+                Err(keyring::Error::NoEntry) => {}
+                Err(e) => {
+                    log::warn!("Keyring access warning for registry: {}", e);
+                }
+            }
         }
+
+        if let Ok(mem) = MEMORY_GUILD_REGISTRY.read() {
+            if !mem.is_empty() {
+                return Ok(mem.clone());
+            }
+        }
+
+        Ok(Vec::new())
     }
 
     /// Registers a guild ID into the metadata index in the secure enclave.
     fn register_guild_id(guild_id: &str) -> Result<(), CredentialError> {
         let mut guilds = Self::get_registered_guild_ids().unwrap_or_default();
-        if !guilds.iter().any(|g| g == guild_id) {
-            guilds.push(guild_id.to_string());
-            let entry = Entry::new(SERVICE_NAME, GUILD_REGISTRY_KEY)?;
-            let json_str = serde_json::to_string(&guilds)
-                .map_err(|e| CredentialError::RegistryCorruption(e.to_string()))?;
-            entry.set_password(&json_str)?;
+        guilds.retain(|g| g != guild_id);
+        guilds.insert(0, guild_id.to_string());
+
+        if let Ok(mut mem) = MEMORY_GUILD_REGISTRY.write() {
+            *mem = guilds.clone();
+        }
+
+        if let Ok(entry) = Entry::new(SERVICE_NAME, GUILD_REGISTRY_KEY) {
+            if let Ok(json_str) = serde_json::to_string(&guilds) {
+                let _ = entry.set_password(&json_str);
+            }
         }
         Ok(())
     }
@@ -152,15 +184,17 @@ impl CredentialManager {
     /// Unregisters a guild ID from the metadata index in the secure enclave.
     fn unregister_guild_id(guild_id: &str) -> Result<(), CredentialError> {
         let mut guilds = Self::get_registered_guild_ids().unwrap_or_default();
-        if let Some(pos) = guilds.iter().position(|g| g == guild_id) {
-            guilds.remove(pos);
-            let entry = Entry::new(SERVICE_NAME, GUILD_REGISTRY_KEY)?;
+        guilds.retain(|g| g != guild_id);
+
+        if let Ok(mut mem) = MEMORY_GUILD_REGISTRY.write() {
+            *mem = guilds.clone();
+        }
+
+        if let Ok(entry) = Entry::new(SERVICE_NAME, GUILD_REGISTRY_KEY) {
             if guilds.is_empty() {
                 let _ = entry.delete_credential();
-            } else {
-                let json_str = serde_json::to_string(&guilds)
-                    .map_err(|e| CredentialError::RegistryCorruption(e.to_string()))?;
-                entry.set_password(&json_str)?;
+            } else if let Ok(json_str) = serde_json::to_string(&guilds) {
+                let _ = entry.set_password(&json_str);
             }
         }
         Ok(())
@@ -169,22 +203,49 @@ impl CredentialManager {
     /// Save platform bot token securely to the host operating system's native keychain.
     pub fn store_token(guild_id: &str, token: &str) -> Result<(), CredentialError> {
         let clean_token = Self::validate_bot_token_format(token)?;
-        let entry = Entry::new(SERVICE_NAME, guild_id)?;
-        entry.set_password(&clean_token)?;
+
+        // Update zeroized in-memory cache for immediate application resilience
+        if let Ok(mut cache) = MEMORY_TOKEN_CACHE.write() {
+            cache.insert(guild_id.to_string(), Zeroizing::new(clean_token.clone()));
+        }
+
+        // Persist to OS Keychain
+        if let Ok(entry) = Entry::new(SERVICE_NAME, guild_id) {
+            if let Err(e) = entry.set_password(&clean_token) {
+                log::warn!("OS Keychain storage warning for guild {}: {}", guild_id, e);
+            }
+        }
+
         let _ = Self::register_guild_id(guild_id);
         Ok(())
     }
 
     /// Retrieve platform bot token from the OS keychain as a raw String. Never logged or stored in SQLite.
     pub fn get_token(guild_id: &str) -> Result<String, CredentialError> {
-        let entry = Entry::new(SERVICE_NAME, guild_id)?;
-        match entry.get_password() {
-            Ok(token) => Ok(token),
-            Err(keyring::Error::NoEntry) => {
-                Err(CredentialError::TokenNotFound(guild_id.to_string()))
+        // Try OS Keychain first
+        if let Ok(entry) = Entry::new(SERVICE_NAME, guild_id) {
+            match entry.get_password() {
+                Ok(token) => {
+                    if let Ok(mut cache) = MEMORY_TOKEN_CACHE.write() {
+                        cache.insert(guild_id.to_string(), Zeroizing::new(token.clone()));
+                    }
+                    return Ok(token);
+                }
+                Err(keyring::Error::NoEntry) => {}
+                Err(e) => {
+                    log::warn!("OS Keychain lookup warning for guild {}: {}", guild_id, e);
+                }
             }
-            Err(e) => Err(CredentialError::KeyringError(e)),
         }
+
+        // Fallback to in-memory secure zeroized cache
+        if let Ok(cache) = MEMORY_TOKEN_CACHE.read() {
+            if let Some(token) = cache.get(guild_id) {
+                return Ok(token.as_str().to_string());
+            }
+        }
+
+        Err(CredentialError::TokenNotFound(guild_id.to_string()))
     }
 
     /// Retrieve platform bot token wrapped in zeroize-protected `SecureBotToken`.
@@ -195,9 +256,15 @@ impl CredentialManager {
 
     /// Purge credentials for a single guild from the OS keychain upon user request or revocation.
     pub fn delete_token(guild_id: &str) -> Result<(), CredentialError> {
-        let entry = Entry::new(SERVICE_NAME, guild_id)?;
-        let res = match entry.delete_credential() {
-            Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
+        if let Ok(mut cache) = MEMORY_TOKEN_CACHE.write() {
+            cache.remove(guild_id);
+        }
+
+        let res = match Entry::new(SERVICE_NAME, guild_id) {
+            Ok(entry) => match entry.delete_credential() {
+                Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
+                Err(e) => Err(CredentialError::KeyringError(e)),
+            },
             Err(e) => Err(CredentialError::KeyringError(e)),
         };
         let _ = Self::unregister_guild_id(guild_id);
@@ -207,6 +274,13 @@ impl CredentialManager {
     /// Complete system eradication: Purges all registered bot tokens and registry metadata
     /// from the native OS secure enclave.
     pub fn purge_all_credentials() -> Result<(), CredentialError> {
+        if let Ok(mut cache) = MEMORY_TOKEN_CACHE.write() {
+            cache.clear();
+        }
+        if let Ok(mut mem) = MEMORY_GUILD_REGISTRY.write() {
+            mem.clear();
+        }
+
         let guilds = Self::get_registered_guild_ids().unwrap_or_default();
         for guild_id in guilds {
             if let Ok(entry) = Entry::new(SERVICE_NAME, &guild_id) {

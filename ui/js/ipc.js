@@ -5,6 +5,43 @@ let mockIncidents = [...INITIAL_INCIDENTS];
 let mockAuditLogs = [...INITIAL_AUDIT_LOGS];
 let mockCircuitBreakerTripped = false;
 
+const STORAGE_KEY_DISCORD_CONFIG = 'truth_beacon_mock_discord_config';
+
+function loadMockDiscordConfig() {
+  try {
+    const raw = typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem(STORAGE_KEY_DISCORD_CONFIG) : null;
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (_) {}
+  return {
+    has_token: false,
+    guild_id: "",
+    registered_guilds: [],
+    string_similarity_threshold: 0.85,
+    new_account_age_hours_threshold: 72,
+    avatar_hamming_threshold: 10,
+    circuit_limit_per_minute: 5,
+    privileged_intent_declared: true,
+    bot_name: "TruthBeacon Guard",
+    guild_name: "",
+    connected: false,
+    token_masked: "",
+    token: ""
+  };
+}
+
+let mockDiscordConfig = loadMockDiscordConfig();
+
+function saveMockDiscordConfig(cfg) {
+  mockDiscordConfig = { ...mockDiscordConfig, ...cfg };
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(STORAGE_KEY_DISCORD_CONFIG, JSON.stringify(mockDiscordConfig));
+    }
+  } catch (_) {}
+}
+
 export const isTauriEnvironment = () => {
   return typeof window !== "undefined" && (window.__TAURI_INTERNALS__ !== undefined || window.__TAURI__ !== undefined);
 };
@@ -190,28 +227,50 @@ export async function invokeCommand(cmd, args = {}) {
 
     case 'get_discord_config':
       return {
-        has_token: false,
-        guild_id: "",
-        registered_guilds: [],
-        string_similarity_threshold: 0.85,
-        new_account_age_hours_threshold: 72,
-        avatar_hamming_threshold: 10,
-        privileged_intent_declared: true
+        has_token: !!mockDiscordConfig.has_token,
+        guild_id: mockDiscordConfig.guild_id || "",
+        registered_guilds: mockDiscordConfig.registered_guilds || [],
+        string_similarity_threshold: mockDiscordConfig.string_similarity_threshold ?? 0.85,
+        new_account_age_hours_threshold: mockDiscordConfig.new_account_age_hours_threshold ?? 72,
+        avatar_hamming_threshold: mockDiscordConfig.avatar_hamming_threshold ?? 10,
+        privileged_intent_declared: true,
+        bot_name: mockDiscordConfig.bot_name || "TruthBeacon Guard",
+        guild_name: mockDiscordConfig.guild_name || (mockDiscordConfig.guild_id ? `Server (${mockDiscordConfig.guild_id})` : ""),
+        connected: !!mockDiscordConfig.connected,
+        token_masked: mockDiscordConfig.has_token ? (mockDiscordConfig.token_masked || '••••••••••••••••••••••••••••••••') : '',
+        thresholds: {
+          similarity: Math.round((mockDiscordConfig.string_similarity_threshold ?? 0.85) * 100),
+          account_age_hours: mockDiscordConfig.new_account_age_hours_threshold ?? 72,
+          avatar_hamming_distance: mockDiscordConfig.avatar_hamming_threshold ?? 10,
+          circuit_limit_per_minute: mockDiscordConfig.circuit_limit_per_minute ?? 5
+        }
       };
 
     case 'verify_bot_handshake': {
-      const { token, guild_id } = args;
+      let { token, guild_id } = args;
+      if ((!token || token.startsWith('••••')) && mockDiscordConfig.token) {
+        token = mockDiscordConfig.token;
+      }
       if (!token || token.length < 15) {
         throw { code: "VALIDATION_FAILED", message: "Invalid bot token format: Discord Bot tokens must contain 3 segments." };
       }
+      const targetGid = guild_id?.trim() || mockDiscordConfig.guild_id || "";
+      const guildName = targetGid ? `Server (${targetGid})` : "Crossroads Community Sanctuary";
       return {
         bot_id: "109827364512938475",
+        bot_name: "TruthBeacon Guard",
         bot_username: "TruthBeacon Guard",
         bot_discriminator: "0",
         bot_avatar: null,
         is_official_bot: true,
-        target_guild_id: guild_id || "",
-        target_guild_name: guild_id ? `Server (${guild_id})` : "Verified Community Sanctuary",
+        target_guild_id: targetGid,
+        target_guild_name: guildName,
+        guild_name: guildName,
+        format_valid: true,
+        gateway_authenticated: true,
+        privileged_intents_active: true,
+        guild_found: !!targetGid,
+        moderation_permissions_ok: true,
         permissions: {
           is_administrator: false,
           has_kick_members: true,
@@ -226,21 +285,58 @@ export async function invokeCommand(cmd, args = {}) {
     }
 
     case 'save_discord_config': {
-      const { guild_id, token } = args;
-      if (!guild_id?.trim()) {
+      const { guild_id, token, thresholds } = args;
+      const targetGuild = guild_id?.trim() || mockDiscordConfig.guild_id;
+      if (!targetGuild) {
         throw { code: "VALIDATION_FAILED", message: "Server Guild ID cannot be empty" };
       }
-      if (!token?.trim()) {
+
+      let activeToken = token?.trim();
+      if (!activeToken || activeToken.startsWith('••••')) {
+        activeToken = mockDiscordConfig.token;
+      }
+      if (!activeToken) {
         throw { code: "VALIDATION_FAILED", message: "Bot token cannot be empty" };
       }
+
+      const guildName = `Server (${targetGuild})`;
+      const registered = [...(mockDiscordConfig.registered_guilds || [])];
+      const existingIdx = registered.indexOf(targetGuild);
+      if (existingIdx !== -1) {
+        registered.splice(existingIdx, 1);
+      }
+      registered.unshift(targetGuild);
+
+      saveMockDiscordConfig({
+        has_token: true,
+        guild_id: targetGuild,
+        registered_guilds: registered,
+        token: activeToken,
+        token_masked: '••••••••••••••••••••••••••••••••',
+        guild_name: guildName,
+        bot_name: "TruthBeacon Guard",
+        connected: true,
+        string_similarity_threshold: thresholds?.similarity ? (thresholds.similarity / 100) : mockDiscordConfig.string_similarity_threshold,
+        new_account_age_hours_threshold: thresholds?.account_age_hours ?? mockDiscordConfig.new_account_age_hours_threshold,
+        avatar_hamming_threshold: thresholds?.avatar_hamming_distance ?? mockDiscordConfig.avatar_hamming_threshold,
+        circuit_limit_per_minute: thresholds?.circuit_limit_per_minute ?? mockDiscordConfig.circuit_limit_per_minute ?? 5
+      });
+
       return {
         bot_id: "109827364512938475",
+        bot_name: "TruthBeacon Guard",
         bot_username: "TruthBeacon Guard",
         bot_discriminator: "0",
         bot_avatar: null,
         is_official_bot: true,
-        target_guild_id: guild_id,
-        target_guild_name: "Crossroads Community Sanctuary",
+        target_guild_id: targetGuild,
+        target_guild_name: guildName,
+        guild_name: guildName,
+        format_valid: true,
+        gateway_authenticated: true,
+        privileged_intents_active: true,
+        guild_found: true,
+        moderation_permissions_ok: true,
         permissions: {
           is_administrator: false,
           has_kick_members: true,
@@ -254,8 +350,23 @@ export async function invokeCommand(cmd, args = {}) {
       };
     }
 
-    case 'disconnect_discord':
+    case 'disconnect_discord': {
+      saveMockDiscordConfig({
+        has_token: false,
+        guild_id: "",
+        registered_guilds: [],
+        token: "",
+        token_masked: "",
+        guild_name: "",
+        connected: false
+      });
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(STORAGE_KEY_DISCORD_CONFIG);
+        }
+      } catch (_) {}
       return true;
+    }
 
     default:
       console.warn(`[TruthBeacon Mock IPC] Unhandled command: ${cmd}`);
