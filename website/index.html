@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TruthBeacon — Official Downloads & Next-Gen Discord Security</title>
+  <meta name="description" content="Official downloads for TruthBeacon v0.1.0 across macOS, Windows, and Linux. Zero-telemetry, memory-safe Discord anti-impersonation and threat defense engineered in Rust and Tauri 2.">
+  <meta name="keywords" content="TruthBeacon, Discord security, anti-impersonation, anti-token-theft, homoglyph detection, avatar clone detection, Tauri, Rust, download, macOS, Windows, Linux">
+  <meta name="author" content="Orange Heart Industries">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://orangeheart-industries.github.io/truth-beacon/">
+  <meta property="og:title" content="TruthBeacon — Official Downloads & Discord Threat Defense">
+  <meta property="og:description" content="Next-Gen Discord Anti-Impersonation & Threat Shield. Download TruthBeacon v0.1.0 for macOS, Windows, and Linux.">
+  <meta property="og:image" content="https://orangeheart-industries.github.io/truth-beacon/assets/screenshot_protected.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://orangeheart-industries.github.io/truth-beacon/">
+  <meta property="twitter:title" content="TruthBeacon — Official Downloads & Discord Threat Defense">
+  <meta property="twitter:description" content="Download TruthBeacon v0.1.0 for macOS, Windows, and Linux. 100% offline, zero-telemetry defense engineered in Rust and Tauri 2.">
+  <meta property="twitter:image" content="https://orangeheart-industries.github.io/truth-beacon/assets/screenshot_protected.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/favicon.png">
+
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Site Navigation -->
+  <header class="site-header" id="site-header">
+    <div class="container nav-inner">
+      <a href="#" class="nav-brand" id="nav-brand-link">
+        <img src="assets/truthbeacon_emblem.png" alt="TruthBeacon Emblem" class="brand-emblem" id="brand-emblem-img">
+        <img src="assets/truthbeacon_wordmark.png" alt="TruthBeacon" class="brand-wordmark-img" id="brand-wordmark-img">
+        <span class="brand-badge" id="nav-version-badge">v0.1.0</span>
+      </a>
+
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#downloads" class="nav-link" id="nav-link-downloads">Downloads</a></li>
+          <li><a href="#verification" class="nav-link" id="nav-link-verification">Verification</a></li>
+          <li><a href="#showcase" class="nav-link" id="nav-link-showcase">Showcase</a></li>
+          <li><a href="#architecture" class="nav-link" id="nav-link-architecture">Architecture</a></li>
+        </ul>
+      </nav>
+
+      <div>
+        <a href="https://github.com/orangeheart-industries/truth-beacon" target="_blank" rel="noopener noreferrer" class="nav-cta" id="nav-cta-github">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main>
+    <section class="hero" id="hero-section">
+      <div class="container">
+        <div class="hero-tag-wrap" id="hero-tag-wrap">
+          <span class="hero-tag-pulse"></span>
+          <span>TruthBeacon v0.1.0 Public Release</span>
+        </div>
+
+        <h1 class="hero-title" id="hero-title">
+          Next-Gen Discord <br>
+          <span class="hero-gradient-text">Anti-Impersonation & Threat Shield</span>
+        </h1>
+
+        <p class="hero-desc" id="hero-description">
+          Lightweight, zero-telemetry defense engineered in native Rust and Tauri 2. Detects perceptual avatar cloning, homoglyphs, and webhook hijacking before accounts or communities are compromised.
+        </p>
+
+        <!-- Smart 1-Click Download Hero Box -->
+        <div class="hero-download-box" id="hero-download-box">
+          <div class="detected-os-label" id="hero-os-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Target OS: <strong class="detected-os-name" id="hero-detected-os">macOS (Universal 2)</strong></span>
+          </div>
+
+          <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/TruthBeacon_0.1.0_universal.dmg" class="btn-primary-download" id="hero-primary-download-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span class="btn-label-text">Download for macOS</span>
+          </a>
+
+          <div class="btn-download-meta" id="hero-download-meta">
+            <span id="hero-meta-size">28 MB</span>
+            <span class="meta-divider">•</span>
+            <span id="hero-meta-arch">Universal 2 (Apple Silicon & Intel)</span>
+            <span class="meta-divider">•</span>
+            <span id="hero-meta-format">DMG</span>
+            <span class="meta-divider">•</span>
+            <span>SHA-256 Verified</span>
+          </div>
+        </div>
+
+        <div>
+          <a href="#downloads" class="hero-other-platforms" id="hero-other-platforms-link">
+            <span>Explore all installers (Windows, Linux, Portable & CLI)</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </a>
+        </div>
+
+        <!-- Highlight Badges -->
+        <div class="hero-highlights" id="hero-highlights">
+          <div class="highlight-pill" id="pill-telemetry">
+            <div class="highlight-icon">🔒</div>
+            <div>
+              <div class="highlight-text-title">100% Offline & Local</div>
+              <div class="highlight-text-sub">Zero telemetry or cloud relay</div>
+            </div>
+          </div>
+          <div class="highlight-pill" id="pill-engine">
+            <div class="highlight-icon">⚡</div>
+            <div>
+              <div class="highlight-text-title">Tauri 2 + Pure Rust</div>
+              <div class="highlight-text-sub">Zero unvetted npm blobs</div>
+            </div>
+          </div>
+          <div class="highlight-pill" id="pill-detection">
+            <div class="highlight-icon">🎯</div>
+            <div>
+              <div class="highlight-text-title">Sub-10ms Detection</div>
+              <div class="highlight-text-sub">Perceptual hash & homoglyphs</div>
+            </div>
+          </div>
+          <div class="highlight-pill" id="pill-multiarch">
+            <div class="highlight-icon">💻</div>
+            <div>
+              <div class="highlight-text-title">Universal Multi-OS</div>
+              <div class="highlight-text-sub">macOS, Windows, and Linux</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Platform Downloads Section -->
+    <section class="section" id="downloads">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">Release v0.1.0</span>
+          <h2 class="section-title">Official Download Packages</h2>
+          <p class="section-desc">
+            All binaries are compiled natively with full compiler hardening, signed with GPG detached signatures, and indexed with cryptographic SHA-256 manifests.
+          </p>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="platform-tabs" id="platform-tabs-nav">
+          <button type="button" class="tab-btn active" data-platform="all" id="tab-all">
+            <span>All Platforms</span>
+          </button>
+          <button type="button" class="tab-btn" data-platform="mac" id="tab-mac">
+            <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.15c.61-.74 1.04-1.79.92-2.85-.92.04-2.02.62-2.67 1.36-.57.65-1.07 1.71-.93 2.73 1.03.08 2.07-.5 2.68-1.24z"/></svg>
+            <span>macOS</span>
+          </button>
+          <button type="button" class="tab-btn" data-platform="win" id="tab-win">
+            <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            <span>Windows</span>
+          </button>
+          <button type="button" class="tab-btn" data-platform="linux" id="tab-linux">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14h-2v-4h2v4zm4 0h-2v-4h2v4zm-2-8a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
+            <span>Linux</span>
+          </button>
+        </div>
+
+        <!-- Downloads Grid -->
+        <div class="downloads-grid" id="downloads-grid">
+
+          <!-- Card 1: macOS DMG (Recommended) -->
+          <div class="download-card recommended" data-platform="mac" id="card-mac-dmg">
+            <span class="card-badge">Recommended</span>
+            <div class="card-header-row">
+              <div class="card-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.15c.61-.74 1.04-1.79.92-2.85-.92.04-2.02.62-2.67 1.36-.57.65-1.07 1.71-.93 2.73 1.03.08 2.07-.5 2.68-1.24z"/></svg>
+              </div>
+              <div class="card-title-group">
+                <h3>macOS Universal Installer</h3>
+                <div class="card-arch-tag">Apple Silicon & Intel • DMG (~28 MB)</div>
+              </div>
+            </div>
+            <p class="card-desc">
+              Branded drag-and-drop installer for macOS 12 Monterey, 13 Ventura, 14 Sonoma, and 15 Sequoia. Native dual architecture.
+            </p>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/TruthBeacon_0.1.0_universal.dmg" class="card-btn-download" id="btn-download-mac-dmg">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download .DMG</span>
+            </a>
+            <div class="checksum-box">
+              <div class="checksum-content" title="fb48df662d01327789e6cac080afe49219ad1ff26723849fd96757fe15cdf3dd">
+                <span>SHA-256:</span>
+                <span class="checksum-hash">fb48df66...5cdf3dd</span>
+              </div>
+              <button type="button" class="btn-copy-checksum" data-hash="fb48df662d01327789e6cac080afe49219ad1ff26723849fd96757fe15cdf3dd" title="Copy SHA-256 Checksum" id="btn-copy-mac-dmg">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 2: macOS Portable Zip -->
+          <div class="download-card" data-platform="mac" id="card-mac-zip">
+            <div class="card-header-row">
+              <div class="card-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.15c.61-.74 1.04-1.79.92-2.85-.92.04-2.02.62-2.67 1.36-.57.65-1.07 1.71-.93 2.73 1.03.08 2.07-.5 2.68-1.24z"/></svg>
+              </div>
+              <div class="card-title-group">
+                <h3>macOS Portable App</h3>
+                <div class="card-arch-tag">Universal 2 • ZIP Archive (~25 MB)</div>
+              </div>
+            </div>
+            <p class="card-desc">
+              Standalone zipped <code style="font-size:0.8rem">TruthBeacon.app</code> bundle. Perfect for flash drives or portable testing without mounting a disk image.
+            </p>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/TruthBeacon_0.1.0_macos_universal.zip" class="card-btn-download" id="btn-download-mac-zip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download .ZIP</span>
+            </a>
+            <div class="checksum-box">
+              <div class="checksum-content" title="624611f1305d10e4d624be9b6544ec8dbaf5bf4038541f0f50a0c73e5d276839">
+                <span>SHA-256:</span>
+                <span class="checksum-hash">624611f1...5d276839</span>
+              </div>
+              <button type="button" class="btn-copy-checksum" data-hash="624611f1305d10e4d624be9b6544ec8dbaf5bf4038541f0f50a0c73e5d276839" title="Copy SHA-256 Checksum" id="btn-copy-mac-zip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 3: Windows Setup EXE (Recommended) -->
+          <div class="download-card recommended" data-platform="win" id="card-win-exe">
+            <span class="card-badge">Recommended</span>
+            <div class="card-header-row">
+              <div class="card-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              </div>
+              <div class="card-title-group">
+                <h3>Windows Installer</h3>
+                <div class="card-arch-tag">x64 MSVC • NSIS EXE (~10 MB)</div>
+              </div>
+            </div>
+            <p class="card-desc">
+              Standard Windows single-click installer with automatic desktop shortcut, Start Menu integration, and clean uninstaller support.
+            </p>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/TruthBeacon_0.1.0_x64-setup.exe" class="card-btn-download" id="btn-download-win-exe">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download .EXE</span>
+            </a>
+            <div class="checksum-box">
+              <div class="checksum-content" title="775336e65cf81eae4bd2740f3425747cca82ba5d0732a52a57cf2cc708f87fdd">
+                <span>SHA-256:</span>
+                <span class="checksum-hash">775336e6...87fdd</span>
+              </div>
+              <button type="button" class="btn-copy-checksum" data-hash="775336e65cf81eae4bd2740f3425747cca82ba5d0732a52a57cf2cc708f87fdd" title="Copy SHA-256 Checksum" id="btn-copy-win-exe">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 4: Windows MSI Enterprise -->
+          <div class="download-card" data-platform="win" id="card-win-msi">
+            <div class="card-header-row">
+              <div class="card-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              </div>
+              <div class="card-title-group">
+                <h3>Windows Enterprise MSI</h3>
+                <div class="card-arch-tag">x64 MSVC • WiX Package (~12 MB)</div>
+              </div>
+            </div>
+            <p class="card-desc">
+              Standard Microsoft Windows Installer package (`.msi`). Built for sysadmins and automated enterprise deployments via GPO or Intune.
+            </p>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/TruthBeacon_0.1.0_x64_en-US.msi" class="card-btn-download" id="btn-download-win-msi">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download .MSI</span>
+            </a>
+            <div class="checksum-box">
+              <div class="checksum-content" title="3d794ff6d58f625ebea023322fe98b66e151b70bc05dc187f08bcd7510c32a0b">
+                <span>SHA-256:</span>
+                <span class="checksum-hash">3d794ff6...10c32a0b</span>
+              </div>
+              <button type="button" class="btn-copy-checksum" data-hash="3d794ff6d58f625ebea023322fe98b66e151b70bc05dc187f08bcd7510c32a0b" title="Copy SHA-256 Checksum" id="btn-copy-win-msi">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 5: Windows Portable -->
+          <div class="download-card" data-platform="win" id="card-win-portable">
+            <div class="card-header-row">
+              <div class="card-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              </div>
+              <div class="card-title-group">
+                <h3>Windows Portable EXE</h3>
+                <div class="card-arch-tag">x64 MSVC • Zero Install (~24 MB)</div>
+              </div>
+            </div>
+            <p class="card-desc">
+              Completely standalone executable. Runs instantly without touching the Windows Registry or requiring elevated admin permissions.
+            </p>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/TruthBeacon-Portable.exe" class="card-btn-download" id="btn-download-win-portable">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download Portable</span>
+            </a>
+            <div class="checksum-box">
+              <div class="checksum-content" title="a7545c996c6c35f17c2b05c9abf1838ae1eeefdb393f27576d73b0105eddcca4">
+                <span>SHA-256:</span>
+                <span class="checksum-hash">a7545c99...05eddcca4</span>
+              </div>
+              <button type="button" class="btn-copy-checksum" data-hash="a7545c996c6c35f17c2b05c9abf1838ae1eeefdb393f27576d73b0105eddcca4" title="Copy SHA-256 Checksum" id="btn-copy-win-portable">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 6: Linux AppImage (Recommended) -->
+          <div class="download-card recommended" data-platform="linux" id="card-linux-appimage">
+            <span class="card-badge">Recommended</span>
+            <div class="card-header-row">
+              <div class="card-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14h-2v-4h2v4zm4 0h-2v-4h2v4zm-2-8a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
+              </div>
+              <div class="card-title-group">
+                <h3>Linux Universal AppImage</h3>
+                <div class="card-arch-tag">x86_64 • All Distros (~86 MB)</div>
+              </div>
+            </div>
+            <p class="card-desc">
+              Standalone portable bundle compatible with Ubuntu, Arch, Fedora, Debian, Mint, openSUSE, and Pop!_OS. Just chmod +x and run.
+            </p>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/TruthBeacon_0.1.0_amd64.AppImage" class="card-btn-download" id="btn-download-linux-appimage">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download AppImage</span>
+            </a>
+            <div class="checksum-box">
+              <div class="checksum-content" title="611cf68b9a9e4d6cb7a49b35dab8a593bb5973b3613d1f59fac0ce72c38bedc7">
+                <span>SHA-256:</span>
+                <span class="checksum-hash">611cf68b...2c38bedc7</span>
+              </div>
+              <button type="button" class="btn-copy-checksum" data-hash="611cf68b9a9e4d6cb7a49b35dab8a593bb5973b3613d1f59fac0ce72c38bedc7" title="Copy SHA-256 Checksum" id="btn-copy-linux-appimage">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 7: Linux Debian .deb -->
+          <div class="download-card" data-platform="linux" id="card-linux-deb">
+            <div class="card-header-row">
+              <div class="card-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14h-2v-4h2v4zm4 0h-2v-4h2v4zm-2-8a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
+              </div>
+              <div class="card-title-group">
+                <h3>Debian / Ubuntu Package</h3>
+                <div class="card-arch-tag">x86_64 • DEB Package (~14 MB)</div>
+              </div>
+            </div>
+            <p class="card-desc">
+              Native `.deb` package with FreeDesktop menu integration, XDG icons, and standard apt / dpkg dependency resolution.
+            </p>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/TruthBeacon_0.1.0_amd64.deb" class="card-btn-download" id="btn-download-linux-deb">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download .DEB</span>
+            </a>
+            <div class="checksum-box">
+              <div class="checksum-content" title="8c1818ec1fab31bb5e2c8e006beed887520bb8a9b5d3a4f0f8377cc9c6222132">
+                <span>SHA-256:</span>
+                <span class="checksum-hash">8c1818ec...7cc9c622</span>
+              </div>
+              <button type="button" class="btn-copy-checksum" data-hash="8c1818ec1fab31bb5e2c8e006beed887520bb8a9b5d3a4f0f8377cc9c6222132" title="Copy SHA-256 Checksum" id="btn-copy-linux-deb">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 8: macOS Mach-O CLI Fat Binary -->
+          <div class="download-card" data-platform="mac" id="card-mac-bin">
+            <div class="card-header-row">
+              <div class="card-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              </div>
+              <div class="card-title-group">
+                <h3>macOS CLI Fat Binary</h3>
+                <div class="card-arch-tag">Universal 2 • Mach-O Binary (~53 MB)</div>
+              </div>
+            </div>
+            <p class="card-desc">
+              Standalone headless / command-line daemon binary containing combined x86_64 and arm64 slices. Perfect for background scripting.
+            </p>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/truth-beacon-universal" class="card-btn-download" id="btn-download-mac-bin">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download CLI Binary</span>
+            </a>
+            <div class="checksum-box">
+              <div class="checksum-content" title="5616b4eb2b4c89828d8585abd41abcba65d6a61da6c05889377a510b8a9d43d4">
+                <span>SHA-256:</span>
+                <span class="checksum-hash">5616b4eb...10b8a9d4</span>
+              </div>
+              <button type="button" class="btn-copy-checksum" data-hash="5616b4eb2b4c89828d8585abd41abcba65d6a61da6c05889377a510b8a9d43d4" title="Copy SHA-256 Checksum" id="btn-copy-mac-bin">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Verification Section -->
+    <section class="section" id="verification">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">Security & Auditing</span>
+          <h2 class="section-title">Cryptographic Verification</h2>
+          <p class="section-desc">
+            Verify the integrity of downloaded binaries prior to execution. We provide detached GPG signatures and standard SHA-256 checksums for every build artifact.
+          </p>
+        </div>
+
+        <div class="verification-card" id="verification-card">
+          <div class="verify-nav" id="verify-nav-tabs">
+            <button type="button" class="verify-tab-btn active" data-verify-tab="macos" id="verify-tab-mac">macOS (shasum)</button>
+            <button type="button" class="verify-tab-btn" data-verify-tab="linux" id="verify-tab-linux">Linux (sha256sum)</button>
+            <button type="button" class="verify-tab-btn" data-verify-tab="windows" id="verify-tab-win">Windows (PowerShell)</button>
+            <button type="button" class="verify-tab-btn" data-verify-tab="gpg" id="verify-tab-gpg">GPG Detached Signatures</button>
+          </div>
+
+          <div class="terminal-window" id="terminal-window">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+              </div>
+              <div class="terminal-title" id="terminal-title-text">terminal — zsh (macOS)</div>
+              <button type="button" class="btn-copy-code" id="btn-copy-terminal-code">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="terminal-body">
+              <pre><code id="verify-code-content"># Verify SHA-256 Checksum on macOS
+shasum -a 256 TruthBeacon_0.1.0_universal.dmg
+
+# Expected Output:
+# fb48df662d01327789e6cac080afe49219ad1ff26723849fd96757fe15cdf3dd  TruthBeacon_0.1.0_universal.dmg</code></pre>
+            </div>
+          </div>
+
+          <div style="margin-top: 20px; display: flex; gap: 16px; flex-wrap: wrap;">
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/SHA256SUMS.txt" target="_blank" class="nav-cta" style="background:var(--bg-card); border:1px solid var(--border-medium); font-size:0.85rem;" id="link-download-sha-txt">
+              Download SHA256SUMS.txt
+            </a>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/SHA256SUMS.txt.asc" target="_blank" class="nav-cta" style="background:var(--bg-card); border:1px solid var(--border-medium); font-size:0.85rem;" id="link-download-sha-asc">
+              Download SHA256SUMS.txt.asc (GPG)
+            </a>
+            <a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/RELEASE_MANIFEST.md" target="_blank" class="nav-cta" style="background:var(--bg-card); border:1px solid var(--border-medium); font-size:0.85rem;" id="link-download-manifest">
+              View RELEASE_MANIFEST.md
+            </a>
+          </div>
+        </div>
+
+        <!-- Security Notices Grid -->
+        <div class="security-notices" id="security-notices">
+          <div class="security-notice-card" id="notice-gatekeeper">
+            <div class="notice-badge mac">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+              <span>Apple macOS Gatekeeper</span>
+            </div>
+            <h4>Opening on macOS</h4>
+            <p>
+              TruthBeacon is an open-source, non-commercial security tool built without an Apple Developer ID subscription. If macOS warns about an unidentified developer, right-click <code>TruthBeacon.app</code>, select <strong>Open</strong>, and click <strong>Open</strong> in the dialog. Or run <code>xattr -cr /Applications/TruthBeacon.app</code>.
+            </p>
+          </div>
+
+          <div class="security-notice-card" id="notice-smartscreen">
+            <div class="notice-badge win">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+              <span>Microsoft Windows Defender</span>
+            </div>
+            <h4>Windows SmartScreen Prompt</h4>
+            <p>
+              When launching the installer or portable EXE, Windows SmartScreen may show an unrecognised app alert because the binary is not signed with an enterprise EV certificate. Click <strong>More info</strong>, then choose <strong>Run anyway</strong>. You can verify the SHA-256 hash first.
+            </p>
+          </div>
+
+          <div class="security-notice-card" id="notice-linux">
+            <div class="notice-badge gpg">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+              <span>Linux Permissions</span>
+            </div>
+            <h4>Linux AppImage Execution</h4>
+            <p>
+              After downloading the AppImage, grant execution permissions: <code>chmod +x TruthBeacon_0.1.0_amd64.AppImage</code>. On Ubuntu 22.04+, ensure <code>libfuse2</code> is installed: <code>sudo apt install libfuse2</code>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visual Feature Showcase -->
+    <section class="section" id="showcase">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">Interactive Interface</span>
+          <h2 class="section-title">Engineered for Transparency</h2>
+          <p class="section-desc">
+            A native desktop security center that operates unobtrusively in your system tray while keeping your Discord sessions protected.
+          </p>
+        </div>
+
+        <div class="showcase-container" id="showcase-container">
+          <div class="showcase-tabs" id="showcase-tabs-nav">
+            <button type="button" class="showcase-tab active" data-showcase="protection" id="showcase-tab-protection">Protection Status</button>
+            <button type="button" class="showcase-tab" data-showcase="alerts" id="showcase-tab-alerts">Threat Alerts</button>
+            <button type="button" class="showcase-tab" data-showcase="activity" id="showcase-tab-activity">Activity Log</button>
+            <button type="button" class="showcase-tab" data-showcase="discord" id="showcase-tab-discord">Discord Setup Guide</button>
+          </div>
+
+          <div class="showcase-content">
+            <div class="showcase-text">
+              <h3 id="showcase-item-title">Active Protection Dashboard</h3>
+              <p id="showcase-item-desc">
+                Real-time telemetry and continuous threat detection. Visual shield status indicates real-time memory-safe daemon integrity.
+              </p>
+              <ul class="showcase-points" id="showcase-item-points">
+                <li class="showcase-point"><span class="showcase-point-icon">✓</span><span>Visual green shield heartbeat verifying zero-privilege daemon status</span></li>
+                <li class="showcase-point"><span class="showcase-point-icon">✓</span><span>Real-time count of total scans, quarantined payloads, and threats blocked</span></li>
+                <li class="showcase-point"><span class="showcase-point-icon">✓</span><span>Instant toggle for live Discord client memory & asset hooks</span></li>
+              </ul>
+            </div>
+
+            <div class="showcase-preview-frame" title="Click to view full image">
+              <img src="assets/screenshot_protected.png" alt="TruthBeacon Active Protection Dashboard" class="showcase-preview-img" id="showcase-item-img">
+              <span class="preview-overlay-hint">Click to enlarge</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture & Privacy Pillars -->
+    <section class="section" id="architecture">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">Zero Trust Principles</span>
+          <h2 class="section-title">Local-First Defense Architecture</h2>
+          <p class="section-desc">
+            Unlike commercial security software that uploads your chats or telemetry to proprietary cloud servers, TruthBeacon runs 100% locally.
+          </p>
+        </div>
+
+        <div class="pillars-grid" id="pillars-grid">
+          <div class="pillar-card" id="pillar-offline">
+            <div class="pillar-icon-box">🛡️</div>
+            <h3>100% Offline & Private</h3>
+            <p>
+              No external API calls, no third-party telemetry, no analytics beacons. All threat scanning, perceptual DCT hashing, and log retention occurs exclusively on your machine.
+            </p>
+          </div>
+
+          <div class="pillar-card" id="pillar-npm">
+            <div class="pillar-icon-box">📦</div>
+            <h3>Zero-npm Webview</h3>
+            <p>
+              Zero dependency on npm runtime blobs or Node.js runtime vulnerabilities. Built with standard semantic HTML, CSS, and Tauri 2 OS webviews for absolute supply-chain integrity.
+            </p>
+          </div>
+
+          <div class="pillar-card" id="pillar-rust">
+            <div class="pillar-icon-box">🦀</div>
+            <h3>Native Rust Performance</h3>
+            <p>
+              Powered by a multi-threaded Rust daemon executing homoglyph analysis, DCT frequency hashing, and fuzzy Levenshtein comparisons with sub-millisecond response times.
+            </p>
+          </div>
+
+          <div class="pillar-card" id="pillar-reproducible">
+            <div class="pillar-icon-box">📜</div>
+            <h3>Open Source & Auditable</h3>
+            <p>
+              Dual-licensed under MIT and Apache-2.0. Complete test suites with 100% test pass rate, license compliance audits, and adversarial red-team simulations verifiable on GitHub.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Screenshot Lightbox Modal -->
+  <div class="lightbox-modal" id="lightbox-modal">
+    <div class="lightbox-content">
+      <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close modal">&times;</button>
+      <img src="" alt="Full preview" class="lightbox-img" id="lightbox-img">
+    </div>
+  </div>
+
+  <!-- Toast Element -->
+  <div class="toast" id="site-toast"></div>
+
+  <!-- Site Footer -->
+  <footer class="site-footer" id="site-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand-col">
+          <div class="footer-brand-header">
+            <img src="assets/truthbeacon_emblem.png" alt="TruthBeacon" width="28" height="28">
+            <img src="assets/truthbeacon_wordmark.png" alt="TruthBeacon" height="18">
+          </div>
+          <p class="footer-desc">
+            Next-Gen Discord Anti-Impersonation & Threat Defense. Built and maintained with passion by Orange Heart Industries.
+          </p>
+        </div>
+
+        <div class="footer-nav-col">
+          <h4>Release v0.1.0</h4>
+          <ul class="footer-links">
+            <li><a href="https://github.com/orangeheart-industries/truth-beacon/releases/tag/v0.1.0" target="_blank" class="footer-link">GitHub Release Notes</a></li>
+            <li><a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/SHA256SUMS.txt" target="_blank" class="footer-link">SHA256SUMS.txt</a></li>
+            <li><a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/SHA256SUMS.txt.asc" target="_blank" class="footer-link">GPG Detached Signature</a></li>
+            <li><a href="https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.0/RELEASE_MANIFEST.md" target="_blank" class="footer-link">Staging Manifest</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-nav-col">
+          <h4>Repository & Audits</h4>
+          <ul class="footer-links">
+            <li><a href="https://github.com/orangeheart-industries/truth-beacon" target="_blank" class="footer-link">Source Code (GitHub)</a></li>
+            <li><a href="https://github.com/orangeheart-industries/truth-beacon/issues" target="_blank" class="footer-link">Report Vulnerability / Issue</a></li>
+            <li><a href="https://github.com/orangeheart-industries/truth-beacon/blob/main/LICENSE" target="_blank" class="footer-link">MIT & Apache-2.0 License</a></li>
+            <li><a href="https://github.com/orangeheart-industries/truth-beacon/actions" target="_blank" class="footer-link">CI & Build Pipelines</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>&copy; 2026 Orange Heart Industries. All rights reserved. Free and open source software.</div>
+        <div>Engineered with Tauri 2 & Rust • Not affiliated with Discord Inc.</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/main.js"></script>
+</body>
+</html>
