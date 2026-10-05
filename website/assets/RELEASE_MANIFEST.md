@@ -15,14 +15,14 @@
 
 | Artifact File | Architecture | Size | SHA-256 Checksum | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `TruthBeacon_0.1.2_universal.dmg` | Universal 2 (Intel + Apple Silicon) | ~27 MB | `52131ee3ebb13fc8a07ba3d10eb456cc095735dcad8bbb01b7b62f165536a8cb` | Apple Developer ID signed drag-and-drop macOS installer |
-| `TruthBeacon_0.1.2_macos_universal.zip` | Universal 2 (Intel + Apple Silicon) | ~26 MB | `537e9c9209807901570789d723d8d0b50f21a5652ba29b34d6c23878378833f5` | Standalone portable macOS `.app` bundle archive |
-| `truth-beacon-universal` | Universal 2 (Intel + Apple Silicon) | ~53 MB | `1e78b07176204f93ded2d42eb7a7f96bebf66d208fb40d3e647d57d132b93417` | Standalone Mach-O fat binary |
-| `TruthBeacon_0.1.2_x64-setup.exe` | Windows x64 (MSVC) | ~9.5 MB | `00c3ed6f9788e5b90a96c3e5e2c78359bdf8fb3688b602b4ee862506a822fee9` | Windows NSIS single-executable installer |
-| `TruthBeacon_0.1.2_x64_en-US.msi` | Windows x64 (MSVC) | ~12 MB | `1dc49e95c08abc40f74ee80c2a00bd15eb9f328188ea7c13913208c92d5f6228` | Windows WiX MSI enterprise installer |
-| `TruthBeacon-Portable.exe` | Windows x64 (MSVC) | ~24 MB | `ab2d95433a5e348ebfe4f84a318f2eeaa9138a3a25f825adb5eec76aee779543` | Standalone portable Windows executable |
-| `TruthBeacon_0.1.2_amd64.deb` | Linux x86_64 | ~14 MB | `fde939e596f7389175f00b782e202c08483ff174e332df7705a8a8646eeb510e` | Debian / Ubuntu `.deb` package |
-| `TruthBeacon_0.1.2_amd64.AppImage` | Linux x86_64 | ~86 MB | `146696070566d33444bdb51a4f22bdc7a1610a3e8e3cfa1632f0eee4d2262e52` | Standalone cross-distro AppImage executable |
+| `TruthBeacon_0.1.2_universal.dmg` | Universal 2 (Intel + Apple Silicon) | ~27 MB | `1a7f83b2c0def1e34a3bbe10dc3f596955665dfc5e506390768d8b45107c5f94` | Apple Developer ID signed drag-and-drop macOS installer |
+| `TruthBeacon_0.1.2_macos_universal.zip` | Universal 2 (Intel + Apple Silicon) | ~26 MB | `f72e2fe3c68236f047ff82612688fb33651e95f198373cbe8389cc377c854537` | Standalone portable macOS `.app` bundle archive |
+| `truth-beacon-universal` | Universal 2 (Intel + Apple Silicon) | ~53 MB | `718dfae41e44a7c60bf7ea4b40ee6fbe3e0767da86619a697aa758d8a7e1f53a` | Standalone Mach-O fat binary |
+| `TruthBeacon_0.1.2_x64-setup.exe` | Windows x64 (MSVC) | ~9.5 MB | `6f36a65df228544edaa36111ea7ae5eac11baa754fae81adc62956953267586e` | Windows NSIS single-executable installer |
+| `TruthBeacon_0.1.2_x64_en-US.msi` | Windows x64 (MSVC) | ~12 MB | `436d9f7be2f5776455e9fe06b111c079c703f184ce56c9bc5ee570ea3e64aaad` | Windows WiX MSI enterprise installer |
+| `TruthBeacon-Portable.exe` | Windows x64 (MSVC) | ~24 MB | `03858df78e645d9c3d38ea1ac0c146d86e8aa843f22fcba8678f59d39985a098` | Standalone portable Windows executable |
+| `TruthBeacon_0.1.2_amd64.deb` | Linux x86_64 | ~14 MB | `3173c92fa36016171fa7d1efabeb2b1c67b82e7ad2e490f6426d7bbebbb94136` | Debian / Ubuntu `.deb` package |
+| `TruthBeacon_0.1.2_amd64.AppImage` | Linux x86_64 | ~86 MB | `ec3203b01db76b58b2c55311ea5fdbfeca4c97111cc8207073038c382ca9d3c3` | Standalone cross-distro AppImage executable |
 
 ---
 

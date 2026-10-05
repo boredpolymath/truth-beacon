@@ -36,6 +36,7 @@ docs/
 release/*.dmg
 release/*.zip
 release/*-universal
+release/truth-beacon
 release/*.exe
 release/*.msi
 release/*.deb

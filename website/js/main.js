@@ -19,19 +19,19 @@ const ASSETS = {
     arch: 'Universal 2 (Apple Silicon & Intel)',
     label: 'Download for macOS',
     sub: 'Universal DMG (macOS 10.15+)',
-    hash: '52131ee3ebb13fc8a07ba3d10eb456cc095735dcad8bbb01b7b62f165536a8cb'
+    hash: '1a7f83b2c0def1e34a3bbe10dc3f596955665dfc5e506390768d8b45107c5f94'
   },
   mac_zip: {
     filename: 'TruthBeacon_0.1.2_macos_universal.zip',
     size: '26 MB',
     arch: 'Universal 2 (.app Portable)',
-    hash: '537e9c9209807901570789d723d8d0b50f21a5652ba29b34d6c23878378833f5'
+    hash: 'f72e2fe3c68236f047ff82612688fb33651e95f198373cbe8389cc377c854537'
   },
   mac_bin: {
     filename: 'truth-beacon-universal',
-    size: '53 MB',
+    size: '54 MB',
     arch: 'Mach-O Universal Fat Binary',
-    hash: '1e78b07176204f93ded2d42eb7a7f96bebf66d208fb40d3e647d57d132b93417'
+    hash: '718dfae41e44a7c60bf7ea4b40ee6fbe3e0767da86619a697aa758d8a7e1f53a'
   },
   win_exe: {
     filename: 'TruthBeacon_0.1.2_x64-setup.exe',
@@ -39,19 +39,19 @@ const ASSETS = {
     arch: 'Windows 64-bit (NSIS Installer)',
     label: 'Download for Windows',
     sub: 'Windows 10 / 11 (64-bit Installer)',
-    hash: '00c3ed6f9788e5b90a96c3e5e2c78359bdf8fb3688b602b4ee862506a822fee9'
+    hash: '6f36a65df228544edaa36111ea7ae5eac11baa754fae81adc62956953267586e'
   },
   win_msi: {
     filename: 'TruthBeacon_0.1.2_x64_en-US.msi',
     size: '12 MB',
     arch: 'Windows 64-bit (Enterprise WiX MSI)',
-    hash: '1dc49e95c08abc40f74ee80c2a00bd15eb9f328188ea7c13913208c92d5f6228'
+    hash: '436d9f7be2f5776455e9fe06b111c079c703f184ce56c9bc5ee570ea3e64aaad'
   },
   win_portable: {
     filename: 'TruthBeacon-Portable.exe',
     size: '24 MB',
     arch: 'Windows 64-bit (Zero-install Portable)',
-    hash: 'ab2d95433a5e348ebfe4f84a318f2eeaa9138a3a25f825adb5eec76aee779543'
+    hash: '03858df78e645d9c3d38ea1ac0c146d86e8aa843f22fcba8678f59d39985a098'
   },
   linux_appimage: {
     filename: 'TruthBeacon_0.1.2_amd64.AppImage',
@@ -59,13 +59,13 @@ const ASSETS = {
     arch: 'Linux x86_64 (Universal AppImage)',
     label: 'Download for Linux',
     sub: 'x86_64 AppImage (Any Distro)',
-    hash: '146696070566d33444bdb51a4f22bdc7a1610a3e8e3cfa1632f0eee4d2262e52'
+    hash: 'ec3203b01db76b58b2c55311ea5fdbfeca4c97111cc8207073038c382ca9d3c3'
   },
   linux_deb: {
     filename: 'TruthBeacon_0.1.2_amd64.deb',
     size: '14 MB',
     arch: 'Debian / Ubuntu / Pop!_OS',
-    hash: 'fde939e596f7389175f00b782e202c08483ff174e332df7705a8a8646eeb510e'
+    hash: '3173c92fa36016171fa7d1efabeb2b1c67b82e7ad2e490f6426d7bbebbb94136'
   }
 };
 
@@ -142,15 +142,15 @@ function initPlatformTabs() {
 const VERIFY_SNIPPETS = {
   macos: {
     title: 'terminal — zsh (macOS)',
-    code: `# Verify SHA-256 Checksum on macOS\nshasum -a 256 TruthBeacon_0.1.2_universal.dmg\n\n# Expected Output:\n# 52131ee3ebb13fc8a07ba3d10eb456cc095735dcad8bbb01b7b62f165536a8cb  TruthBeacon_0.1.2_universal.dmg`
+    code: `# Verify SHA-256 Checksum on macOS\nshasum -a 256 TruthBeacon_0.1.2_universal.dmg\n\n# Expected Output:\n# 1a7f83b2c0def1e34a3bbe10dc3f596955665dfc5e506390768d8b45107c5f94  TruthBeacon_0.1.2_universal.dmg`
   },
   linux: {
     title: 'bash — terminal (Linux)',
-    code: `# Verify SHA-256 Checksum on Linux\nsha256sum TruthBeacon_0.1.2_amd64.AppImage\n\n# Expected Output:\n# 146696070566d33444bdb51a4f22bdc7a1610a3e8e3cfa1632f0eee4d2262e52  TruthBeacon_0.1.2_amd64.AppImage`
+    code: `# Verify SHA-256 Checksum on Linux\nsha256sum TruthBeacon_0.1.2_amd64.AppImage\n\n# Expected Output:\n# ec3203b01db76b58b2c55311ea5fdbfeca4c97111cc8207073038c382ca9d3c3  TruthBeacon_0.1.2_amd64.AppImage`
   },
   windows: {
     title: 'PowerShell — Windows 10 / 11',
-    code: `# Verify SHA-256 Checksum in Windows PowerShell\nGet-FileHash TruthBeacon_0.1.2_x64-setup.exe -Algorithm SHA256\n\n# Expected Output:\n# 00C3ED6F9788E5B90A96C3E5E2C78359BDF8FB3688B602B4EE862506A822FEE9`
+    code: `# Verify SHA-256 Checksum in Windows PowerShell\nGet-FileHash TruthBeacon_0.1.2_x64-setup.exe -Algorithm SHA256\n\n# Expected Output:\n# 6F36A65DF228544EDAA36111EA7AE5EAC11BAA754FAE81ADC62956953267586E`
   },
   gpg: {
     title: 'terminal — GnuPG Detached Signature',

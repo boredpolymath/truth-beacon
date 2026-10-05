@@ -19,6 +19,7 @@ import hashlib
 import subprocess
 import re
 import base64
+import shutil
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 RELEASE_DIR = os.path.join(ROOT_DIR, "release")
@@ -40,6 +41,18 @@ def update_checksums():
     print("==> [1/4] Scanning release staging directory for binary deliverables...")
     if not os.path.exists(RELEASE_DIR):
         os.makedirs(RELEASE_DIR, exist_ok=True)
+
+    # Flatten deliverables from any subdirectories (e.g. from CI download-artifact) into RELEASE_DIR root
+    for root, _, files in os.walk(RELEASE_DIR):
+        if root == RELEASE_DIR:
+            continue
+        for f in files:
+            ext = os.path.splitext(f)[1]
+            if ext in SIGNABLE_EXTENSIONS or f in SIGNABLE_NAMES:
+                src_path = os.path.join(root, f)
+                dest_path = os.path.join(RELEASE_DIR, f)
+                if not os.path.exists(dest_path):
+                    shutil.copy2(src_path, dest_path)
 
     artifacts = []
     for fname in sorted(os.listdir(RELEASE_DIR)):
