@@ -228,3 +228,37 @@ jobs:
             release/RELEASE_MANIFEST.md
             release/RELEASE_MANIFEST.md.asc
 
+  publish-github-release:
+    name: Publish Release Assets to GitHub Release
+    needs: [stage-and-verify-integrity]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Download all staged artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: release-dist
+
+      - name: Flatten and Publish Release Assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          find release-dist -type f -exec cp -f {} dist/ \;
+          echo "==> Release artifacts ready for publishing:"
+          ls -la dist/
+
+          RELEASE_TAG="${GITHUB_REF_NAME}"
+          echo "==> Publishing to release tag: ${RELEASE_TAG}"
+
+          # Create GitHub Release if not already existing, then upload/clobber assets
+          gh release view "${RELEASE_TAG}" >/dev/null 2>&1 || \
+            gh release create "${RELEASE_TAG}" --title "TruthBeacon ${RELEASE_TAG}" --notes-file RELEASE_NOTES.md --verify-tag
+
+          gh release upload "${RELEASE_TAG}" dist/* --clobber
+          echo "✓ All cross-platform release assets successfully published to GitHub Release!"
+
