@@ -193,6 +193,54 @@ impl DiscordGatewayDaemon {
     }
 }
 
+use std::sync::LazyLock;
+
+static GLOBAL_DAEMON: LazyLock<Arc<Mutex<Option<Arc<DiscordGatewayDaemon>>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
+static GLOBAL_DAEMON_RUNNING: LazyLock<Arc<AtomicBool>> =
+    LazyLock::new(|| Arc::new(AtomicBool::new(false)));
+
+pub async fn start_global_daemon(token: &str) {
+    let clean_token = token.trim();
+    if clean_token.is_empty() {
+        return;
+    }
+    let config = GatewayConfig {
+        bot_token: clean_token.to_string(),
+        ..GatewayConfig::default()
+    };
+    let (tx, _rx) = mpsc::channel(128);
+    let (daemon, _session) = DiscordGatewayDaemon::new(config, tx);
+    let daemon = Arc::new(daemon);
+
+    let mut guard = GLOBAL_DAEMON.lock().await;
+    if let Some(existing) = guard.take() {
+        existing.stop().await;
+    }
+    *guard = Some(daemon.clone());
+    GLOBAL_DAEMON_RUNNING.store(true, Ordering::SeqCst);
+
+    let daemon_run = daemon.clone();
+    tokio::spawn(async move {
+        if let Err(e) = daemon_run.run().await {
+            log::warn!("Discord Gateway Daemon run loop exited: {}", e);
+        }
+        GLOBAL_DAEMON_RUNNING.store(false, Ordering::SeqCst);
+    });
+}
+
+pub async fn stop_global_daemon() {
+    let mut guard = GLOBAL_DAEMON.lock().await;
+    if let Some(existing) = guard.take() {
+        existing.stop().await;
+    }
+    GLOBAL_DAEMON_RUNNING.store(false, Ordering::SeqCst);
+}
+
+pub fn is_global_daemon_running_sync() -> bool {
+    GLOBAL_DAEMON_RUNNING.load(Ordering::SeqCst)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

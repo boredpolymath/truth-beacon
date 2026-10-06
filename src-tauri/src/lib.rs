@@ -23,6 +23,17 @@ pub fn run() {
 
             // Register persistent system tray icon on startup (Phase 17.1)
             tray::setup_system_tray(app)?;
+
+            // If bot credentials are saved in OS Keychain, launch the Discord Gateway connection automatically
+            if let Ok(guilds) = credentials::CredentialManager::list_registered_guilds() {
+                if let Some(first_guild) = guilds.first() {
+                    if let Ok(token) = credentials::CredentialManager::get_token(first_guild) {
+                        tokio::spawn(async move {
+                            gateway::daemon::start_global_daemon(&token).await;
+                        });
+                    }
+                }
+            }
             Ok(())
         })
         .on_window_event(|window, event| {

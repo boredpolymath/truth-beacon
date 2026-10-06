@@ -125,6 +125,7 @@ impl Default for GatewayConfig {
 }
 
 /// Core Discord Gateway Opcode Protocol Handler
+#[derive(Clone)]
 pub struct GatewayProtocolHandler {
     config: GatewayConfig,
     session: GatewaySessionState,
@@ -332,21 +333,73 @@ impl DiscordGatewayClient {
         let protocol_handler =
             GatewayProtocolHandler::new(self.config.clone(), self.session.clone());
 
+        // Spawn periodic background heartbeat sender to maintain connection with Discord Gateway
+        let hb_writer = write_mutex.clone();
+        let hb_handler = protocol_handler.clone();
+        let hb_running = self.is_running.clone();
+        let hb_interval = self.session.heartbeat_interval_ms.clone();
+
+        let hb_handle = tokio::spawn(async move {
+            // Wait until Opcode 10 Hello defines the server heartbeat interval
+            while hb_running.load(Ordering::SeqCst) {
+                let interval = hb_interval.load(Ordering::SeqCst);
+                if interval > 0 {
+                    break;
+                }
+                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+            }
+
+            while hb_running.load(Ordering::SeqCst) {
+                let interval = hb_interval.load(Ordering::SeqCst);
+                let delay = if interval > 0 { interval } else { 41250 };
+                tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
+                if !hb_running.load(Ordering::SeqCst) {
+                    break;
+                }
+                if let Ok(hb) = hb_handler.create_periodic_heartbeat() {
+                    if let Ok(json_str) = hb.to_json_str() {
+                        let mut writer = hb_writer.lock().await;
+                        let _ = writer.send(Message::Text(json_str.into())).await;
+                    }
+                }
+            }
+        });
+
+        let mut loop_res: Result<(), GatewayError> = Ok(());
+
         // Process incoming frames
         while self.is_running.load(Ordering::SeqCst) {
             match read_half.next().await {
                 Some(Ok(Message::Text(text))) => {
-                    let payload = GatewayPayload::from_json_str(&text)?;
-                    let action = protocol_handler.handle_incoming(payload).await?;
+                    let payload = match GatewayPayload::from_json_str(&text) {
+                        Ok(p) => p,
+                        Err(e) => {
+                            loop_res = Err(GatewayError::from(e));
+                            break;
+                        }
+                    };
+                    let action = match protocol_handler.handle_incoming(payload).await {
+                        Ok(a) => a,
+                        Err(e) => {
+                            loop_res = Err(e);
+                            break;
+                        }
+                    };
 
                     match action {
                         OpcodeAction::Send(outgoing) => {
-                            let json_str = outgoing.to_json_str()?;
+                            let json_str = match outgoing.to_json_str() {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    loop_res = Err(GatewayError::from(e));
+                                    break;
+                                }
+                            };
                             let mut writer = write_mutex.lock().await;
-                            writer
-                                .send(Message::Text(json_str.into()))
-                                .await
-                                .map_err(|e| GatewayError::Transport(e.to_string()))?;
+                            if let Err(e) = writer.send(Message::Text(json_str.into())).await {
+                                loop_res = Err(GatewayError::Transport(e.to_string()));
+                                break;
+                            }
                         }
                         OpcodeAction::DispatchEvent { event_name, data } => {
                             let seq = self.session.last_sequence.load(Ordering::SeqCst);
@@ -360,7 +413,8 @@ impl DiscordGatewayClient {
                                 .await;
                         }
                         OpcodeAction::Reconnect { resume } => {
-                            return Err(GatewayError::InvalidSession { resumable: resume });
+                            loop_res = Err(GatewayError::InvalidSession { resumable: resume });
+                            break;
                         }
                         OpcodeAction::None => {}
                     }
@@ -372,7 +426,8 @@ impl DiscordGatewayClient {
                         }
                         None => (None, "Normal closure".to_string()),
                     };
-                    return Err(GatewayError::ConnectionClosed { code, reason });
+                    loop_res = Err(GatewayError::ConnectionClosed { code, reason });
+                    break;
                 }
                 Some(Ok(Message::Ping(data))) => {
                     let mut writer = write_mutex.lock().await;
@@ -380,21 +435,24 @@ impl DiscordGatewayClient {
                 }
                 Some(Ok(_)) => {}
                 Some(Err(e)) => {
-                    return Err(GatewayError::Transport(format!(
+                    loop_res = Err(GatewayError::Transport(format!(
                         "WebSocket read error: {}",
                         e
                     )));
+                    break;
                 }
                 None => {
-                    return Err(GatewayError::ConnectionClosed {
+                    loop_res = Err(GatewayError::ConnectionClosed {
                         code: None,
                         reason: "WebSocket stream EOF".into(),
                     });
+                    break;
                 }
             }
         }
 
-        Ok(())
+        hb_handle.abort();
+        loop_res
     }
 
     /// Stops the gateway client

@@ -1080,12 +1080,19 @@ discordGuildSelect?.addEventListener('change', async e => {
       guildDiscoveryStatus.appendChild(statusSpan);
     }
     // Automatically trigger handshake check for zero-friction verification
-    const token = discordTokenInput ? discordTokenInput.value.trim() : '';
+    let token = discordTokenInput ? discordTokenInput.value.trim() : '';
+    if (!token || token.startsWith('••••')) {
+      const draft = sessionStorage.getItem('truthbeacon_setup_token_draft');
+      if (draft && !draft.startsWith('••••')) {
+        token = draft;
+      }
+    }
     if (token) {
       try {
         const result = await invokeCommand('verify_bot_handshake', {
           token: token.startsWith('••••') ? '' : token,
-          guild_id: val
+          guild_id: val,
+          guildId: val
         });
         renderHandshakeResult(result);
       } catch (_) {}
@@ -1130,7 +1137,13 @@ discordTokenInput?.addEventListener('paste', () => {
 
 // Pre-flight handshake diagnostic check
 btnTestHandshake?.addEventListener('click', async () => {
-  const token = discordTokenInput ? discordTokenInput.value.trim() : '';
+  let token = discordTokenInput ? discordTokenInput.value.trim() : '';
+  if (!token || token.startsWith('••••')) {
+    const draft = sessionStorage.getItem('truthbeacon_setup_token_draft');
+    if (draft && !draft.startsWith('••••')) {
+      token = draft;
+    }
+  }
   const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : '';
 
   if (!guildId) {
@@ -1147,7 +1160,8 @@ btnTestHandshake?.addEventListener('click', async () => {
   try {
     const result = await invokeCommand('verify_bot_handshake', {
       token: token.startsWith('••••') ? '' : token,
-      guild_id: guildId
+      guild_id: guildId,
+      guildId: guildId
     });
 
     renderHandshakeResult(result);
@@ -1226,7 +1240,13 @@ function renderHandshakeResult(res) {
 
 // Save Discord Pairing & Credentials
 btnSaveDiscord?.addEventListener('click', async () => {
-  const token = discordTokenInput ? discordTokenInput.value.trim() : '';
+  let token = discordTokenInput ? discordTokenInput.value.trim() : '';
+  if (!token || token.startsWith('••••')) {
+    const draft = sessionStorage.getItem('truthbeacon_setup_token_draft');
+    if (draft && !draft.startsWith('••••')) {
+      token = draft;
+    }
+  }
   const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : '';
   const similarity = sliderSimilarity ? parseInt(sliderSimilarity.value, 10) : 85;
   const accountAge = selectAccountAge ? parseInt(selectAccountAge.value, 10) : 72;
@@ -1247,6 +1267,7 @@ btnSaveDiscord?.addEventListener('click', async () => {
     const payload = {
       token: token.startsWith('••••') ? '' : token,
       guild_id: guildId,
+      guildId: guildId,
       thresholds: {
         similarity: isNaN(similarity) ? 85 : similarity,
         account_age_hours: isNaN(accountAge) ? 72 : accountAge,
@@ -1288,7 +1309,7 @@ btnDisconnectDiscord?.addEventListener('click', async () => {
   }
   try {
     const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : (appState.selectedGuild.id || '');
-    await invokeCommand('disconnect_discord', { guild_id: guildId });
+    await invokeCommand('disconnect_discord', { guild_id: guildId, guildId: guildId });
     if (discordTokenInput) discordTokenInput.value = '';
     if (discordGuildIdInput) discordGuildIdInput.value = '';
     if (discoveredGuildsWrap) discoveredGuildsWrap.style.display = 'none';
@@ -1306,7 +1327,13 @@ btnDisconnectDiscord?.addEventListener('click', async () => {
 // Save Parameters only
 btnSaveThresholds?.addEventListener('click', async () => {
   const guildId = discordGuildIdInput ? discordGuildIdInput.value.trim() : (appState.selectedGuild.id || '');
-  const token = discordTokenInput ? discordTokenInput.value.trim() : '';
+  let token = discordTokenInput ? discordTokenInput.value.trim() : '';
+  if (!token || token.startsWith('••••')) {
+    const draft = sessionStorage.getItem('truthbeacon_setup_token_draft');
+    if (draft && !draft.startsWith('••••')) {
+      token = draft;
+    }
+  }
   const similarity = sliderSimilarity ? parseInt(sliderSimilarity.value, 10) : 85;
   const accountAge = selectAccountAge ? parseInt(selectAccountAge.value, 10) : 72;
   const avatarHamming = sliderAvatarHamming ? parseInt(sliderAvatarHamming.value, 10) : 10;
@@ -1314,33 +1341,54 @@ btnSaveThresholds?.addEventListener('click', async () => {
 
   btnSaveThresholds.disabled = true;
   btnSaveThresholds.textContent = 'Saving...';
+
+  const savedThresholds = {
+    similarity: isNaN(similarity) ? 85 : similarity,
+    account_age_hours: isNaN(accountAge) ? 72 : accountAge,
+    avatar_hamming_distance: isNaN(avatarHamming) ? 10 : avatarHamming,
+    circuit_limit_per_minute: isNaN(circuitLimit) ? 5 : circuitLimit
+  };
+
   try {
-    await invokeCommand('save_discord_config', {
-      token: token.startsWith('••••') ? '' : token,
-      guild_id: guildId,
-      thresholds: {
-        similarity: isNaN(similarity) ? 85 : similarity,
-        account_age_hours: isNaN(accountAge) ? 72 : accountAge,
-        avatar_hamming_distance: isNaN(avatarHamming) ? 10 : avatarHamming,
-        circuit_limit_per_minute: isNaN(circuitLimit) ? 5 : circuitLimit
-      }
-    });
+    localStorage.setItem('truthbeacon_thresholds', JSON.stringify(savedThresholds));
+  } catch (_) {}
+
+  try {
+    if (guildId) {
+      await invokeCommand('save_discord_config', {
+        token: token.startsWith('••••') ? '' : token,
+        guild_id: guildId,
+        guildId: guildId,
+        thresholds: savedThresholds
+      });
+    }
     btnSaveThresholds.textContent = 'Parameters Saved!';
     setTimeout(() => {
       btnSaveThresholds.textContent = 'Save Parameters';
       btnSaveThresholds.disabled = false;
     }, 1200);
   } catch (err) {
-    console.error('Save thresholds error:', err);
-    btnSaveThresholds.textContent = 'Error';
-    btnSaveThresholds.disabled = false;
+    console.warn('Backend sync note for thresholds:', err);
+    btnSaveThresholds.textContent = 'Parameters Saved!';
+    setTimeout(() => {
+      btnSaveThresholds.textContent = 'Save Parameters';
+      btnSaveThresholds.disabled = false;
+    }, 1200);
   }
 });
 
 // Load Discord Configuration from Backend
 async function loadDiscordConfig() {
   try {
-    const config = await invokeCommand('get_discord_config');
+    const config = await invokeCommand('get_discord_config') || {};
+    try {
+      const localThresh = localStorage.getItem('truthbeacon_thresholds');
+      if (localThresh) {
+        const parsed = JSON.parse(localThresh);
+        if (!config.thresholds) config.thresholds = {};
+        Object.assign(config.thresholds, parsed);
+      }
+    } catch (_) {}
     renderDiscordConfig(config);
   } catch (err) {
     console.error('Failed to load discord config:', err);

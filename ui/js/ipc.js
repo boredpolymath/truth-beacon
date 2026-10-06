@@ -49,7 +49,15 @@ export const isTauriEnvironment = () => {
 export async function invokeCommand(cmd, args = {}) {
   if (isTauriEnvironment() && window.__TAURI__?.core?.invoke) {
     try {
-      return await window.__TAURI__.core.invoke(cmd, args);
+      // Normalize args: Tauri commands expect camelCase by default (e.g. guild_id -> guildId).
+      // Supply both camelCase and snake_case keys in payload so Rust handlers receive either seamlessly.
+      const tauriArgs = {};
+      for (const [k, v] of Object.entries(args)) {
+        tauriArgs[k] = v;
+        const camelKey = k.replace(/_([a-z0-9])/g, (_, letter) => letter.toUpperCase());
+        tauriArgs[camelKey] = v;
+      }
+      return await window.__TAURI__.core.invoke(cmd, tauriArgs);
     } catch (err) {
       console.warn(`[TruthBeacon IPC] Failed invoking ${cmd}:`, err);
       throw err;
@@ -274,14 +282,14 @@ export async function invokeCommand(cmd, args = {}) {
     }
 
     case 'verify_bot_handshake': {
-      let { token, guild_id } = args;
+      let { token, guild_id, guildId } = args;
+      const targetGid = (guildId || guild_id)?.trim() || mockDiscordConfig.guild_id || "";
       if ((!token || token.startsWith('••••')) && mockDiscordConfig.token) {
         token = mockDiscordConfig.token;
       }
       if (!token || token.length < 15) {
         throw { code: "VALIDATION_FAILED", message: "Invalid bot token format: Discord Bot tokens must contain 3 segments." };
       }
-      const targetGid = guild_id?.trim() || mockDiscordConfig.guild_id || "";
       const guildName = targetGid ? `Server (${targetGid})` : "Crossroads Community Sanctuary";
       return {
         bot_id: "109827364512938475",
@@ -312,8 +320,8 @@ export async function invokeCommand(cmd, args = {}) {
     }
 
     case 'save_discord_config': {
-      const { guild_id, token, thresholds } = args;
-      const targetGuild = guild_id?.trim() || mockDiscordConfig.guild_id;
+      const { guild_id, guildId, token, thresholds } = args;
+      const targetGuild = (guildId || guild_id)?.trim() || mockDiscordConfig.guild_id;
       if (!targetGuild) {
         throw { code: "VALIDATION_FAILED", message: "Server Guild ID cannot be empty" };
       }

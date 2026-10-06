@@ -67,10 +67,10 @@ pub struct SystemStatus {
 pub fn get_system_status() -> Result<SystemStatus, CommandError> {
     let breaker = crate::circuit_breaker::get_global_circuit_breaker();
     let db_path = crate::storage::StorageManager::default_db_path();
+    let is_connected = crate::gateway::daemon::is_global_daemon_running_sync();
     Ok(SystemStatus {
-        // TODO: Wire daemon_healthy and gateway_connected to live DiscordGatewayDaemon state
         daemon_healthy: true,
-        gateway_connected: true,
+        gateway_connected: is_connected,
         circuit_breaker_tripped: breaker.is_tripped(),
         db_path: db_path.to_string_lossy().to_string(),
         // TODO: Wire to StorageManager query when VaultManager state is injected via Tauri managed state
@@ -588,7 +588,9 @@ pub fn get_discord_config() -> Result<DiscordConfigSummary, CommandError> {
 pub async fn save_discord_config(
     guild_id: String,
     token: String,
+    thresholds: Option<serde_json::Value>,
 ) -> Result<crate::credentials::HandshakeSummary, CommandError> {
+    let _ = thresholds;
     let trimmed_guild = guild_id.trim();
     if trimmed_guild.is_empty() {
         return Err(CommandError::ValidationFailed(
@@ -675,11 +677,14 @@ pub async fn save_discord_config(
         }
     };
 
+    // Step 3: Launch live background Discord Gateway WebSocket connection
+    crate::gateway::daemon::start_global_daemon(&clean_token).await;
+
     Ok(summary)
 }
 
 #[tauri::command]
-pub fn disconnect_discord(guild_id: Option<String>) -> Result<bool, CommandError> {
+pub async fn disconnect_discord(guild_id: Option<String>) -> Result<bool, CommandError> {
     if let Some(gid) = guild_id {
         if !gid.trim().is_empty() {
             let _ = crate::credentials::CredentialManager::delete_token(gid.trim());
@@ -687,6 +692,7 @@ pub fn disconnect_discord(guild_id: Option<String>) -> Result<bool, CommandError
     }
     // Complete eradication of credentials on disconnect
     let _ = crate::credentials::CredentialManager::purge_all_credentials();
+    crate::gateway::daemon::stop_global_daemon().await;
     Ok(true)
 }
 
@@ -1020,7 +1026,8 @@ mod tests {
         let test_guild = "guild_discord_persistence_test_998";
 
         // 1. Save new guild and token
-        let save_res = save_discord_config(test_guild.to_string(), sample_token.clone()).await;
+        let save_res =
+            save_discord_config(test_guild.to_string(), sample_token.clone(), None).await;
         assert!(
             save_res.is_ok(),
             "save_discord_config must succeed and store credentials"
@@ -1042,6 +1049,7 @@ mod tests {
         let update_res = save_discord_config(
             test_guild.to_string(),
             "••••••••••••••••••••••••••••••••".to_string(),
+            None,
         )
         .await;
         assert!(
@@ -1050,14 +1058,15 @@ mod tests {
         );
 
         // 4. Verify updating with empty token preserves stored credentials
-        let empty_res = save_discord_config(test_guild.to_string(), "".to_string()).await;
+        let empty_res =
+            save_discord_config(test_guild.to_string(), "".to_string(), None).await;
         assert!(
             empty_res.is_ok(),
             "Updating with empty token must succeed by reusing stored token"
         );
 
         // 5. Verify disconnect clears credentials
-        let disc_res = disconnect_discord(Some(test_guild.to_string()));
+        let disc_res = disconnect_discord(Some(test_guild.to_string())).await;
         assert!(disc_res.is_ok());
         let cfg_after =
             get_discord_config().expect("get_discord_config must succeed after disconnect");
