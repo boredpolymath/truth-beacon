@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Release Asset Configuration (v0.1.2)
-const RELEASE_BASE_URL = 'https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.2/';
+const RELEASE_BASE_URL = 'https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.2/';
 const ASSETS = {
   mac_dmg: {
     filename: 'TruthBeacon_0.1.2_universal.dmg',
@@ -154,7 +154,7 @@ const VERIFY_SNIPPETS = {
   },
   gpg: {
     title: 'terminal — GnuPG Detached Signature',
-    code: `# Download SHA256SUMS and signature:\ncurl -LO https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.2/SHA256SUMS.txt\ncurl -LO https://github.com/orangeheart-industries/truth-beacon/releases/download/v0.1.2/SHA256SUMS.txt.asc\n\n# Verify GPG Detached Signature:\ngpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt\n\n# Batch check all files:\nshasum -a 256 -c SHA256SUMS.txt`
+    code: `# Download SHA256SUMS and signature:\ncurl -LO https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.2/SHA256SUMS.txt\ncurl -LO https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.2/SHA256SUMS.txt.asc\n\n# Verify GPG Detached Signature:\ngpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt\n\n# Batch check all files:\nshasum -a 256 -c SHA256SUMS.txt`
   }
 };
 

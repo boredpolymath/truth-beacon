@@ -125,7 +125,7 @@ Note the password assigned to your `.pfx` certificate file.
 ## 5. Inputting Secrets into GitHub Repository
 
 1. Open your browser and navigate to:  
-   `https://github.com/orangeheart-industries/truth-beacon/settings/secrets/actions`
+   `https://github.com/boredpolymath/truth-beacon/settings/secrets/actions`
 2. Click the green **New repository secret** button.
 3. Enter the secret name and value for each item in the table below:
 

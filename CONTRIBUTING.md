@@ -16,7 +16,7 @@ By participating in this project, you agree to abide by the [Code of Conduct](CO
 
 **Do not file public GitHub issues for security vulnerabilities.**
 
-If you discover a potential security bug or vulnerability, please refer to our [Security Policy](.github/SECURITY.md) and report it privately through [GitHub Private Vulnerability Reporting](https://github.com/orangeheart-industries/truth-beacon/security/advisories/new).
+If you discover a potential security bug or vulnerability, please refer to our [Security Policy](.github/SECURITY.md) and report it privately through [GitHub Private Vulnerability Reporting](https://github.com/boredpolymath/truth-beacon/security/advisories/new).
 
 ---
 

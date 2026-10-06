@@ -16,7 +16,7 @@ The TruthBeacon team takes security vulnerabilities seriously. We appreciate you
 ### Private Vulnerability Reporting (Preferred)
 
 Please use GitHub's **Private Vulnerability Reporting** to report security issues privately:
-1. Navigate to the [TruthBeacon Security Advisories tab](https://github.com/orangeheart-industries/truth-beacon/security/advisories).
+1. Navigate to the [TruthBeacon Security Advisories tab](https://github.com/boredpolymath/truth-beacon/security/advisories).
 2. Click **"Report a vulnerability"** to submit a private draft advisory.
 3. Include detailed reproduction steps, proof of concept, and impacted platforms (macOS, Windows, Linux).
 

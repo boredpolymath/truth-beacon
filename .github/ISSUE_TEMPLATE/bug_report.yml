@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thank you for reporting a bug! Please ensure you are not reporting a security vulnerability here.
-        For sensitive security issues, use [Private Vulnerability Reporting](https://github.com/orangeheart-industries/truth-beacon/security/advisories/new) per our [Security Policy](https://github.com/orangeheart-industries/truth-beacon/blob/main/.github/SECURITY.md).
+        For sensitive security issues, use [Private Vulnerability Reporting](https://github.com/boredpolymath/truth-beacon/security/advisories/new) per our [Security Policy](https://github.com/boredpolymath/truth-beacon/blob/main/.github/SECURITY.md).
 
   - type: input
     id: version

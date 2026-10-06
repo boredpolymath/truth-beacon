@@ -10,6 +10,9 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/boredpolymath/truth-beacon"><img src="https://img.shields.io/badge/GitHub-boredpolymath%2Ftruth--beacon-181717?style=flat-square&logo=github" alt="GitHub Repo"></a>
+  <a href="https://boredpolymath.github.io/truth-beacon/"><img src="https://img.shields.io/badge/Web-truth--beacon-5865F2?style=flat-square" alt="Website"></a>
+  <img src="https://img.shields.io/badge/Version-v0.1.2-green?style=flat-square" alt="Version 0.1.2">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/Framework-Tauri%20v2-orange?style=flat-square" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Language-Rust%202021-red?style=flat-square" alt="Rust 2021">
@@ -240,7 +243,7 @@ You can adjust sensitivity thresholds, rate limits, and safety settings directly
 {
   "application": {
     "name": "TruthBeacon",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "vendor": "Orange Heart Industries",
     "description": "Community Impersonation Defense & Identity Protection Console"
   },
@@ -321,7 +324,7 @@ TruthBeacon delivers first-class, native desktop installers across all major ope
 ```
 truth-beacon/
 ├── README.md                      # Project overview and getting started guide
-├── RELEASE_NOTES.md               # Version 0.1.0 release notes & distribution summary
+├── RELEASE_NOTES.md               # Version 0.1.2 release notes & distribution summary
 ├── truthbeacon.config.json        # Custom detection thresholds and safety limits
 ├── .github/                       # GitHub Actions CI/CD workflows
 │   └── workflows/
@@ -339,8 +342,8 @@ truth-beacon/
 │   ├── 08-local-storage-architecture-and-migration-strategy.md # SQLite schema & migrations
 │   └── 09-cross-platform-packaging-and-release-staging.md # Build bundling & packaging specification
 ├── release/                       # Staged production release binaries & verification artifacts
-│   ├── TruthBeacon_0.1.0_universal.dmg     # Universal 2 drag-and-drop installer
-│   ├── TruthBeacon_0.1.0_macos_universal.zip # Standalone universal application bundle
+│   ├── TruthBeacon_0.1.2_universal.dmg     # Universal 2 drag-and-drop installer
+│   ├── TruthBeacon_0.1.2_macos_universal.zip # Standalone universal application bundle
 │   ├── truth-beacon-universal              # Standalone fat binary (x86_64 + arm64)
 │   ├── RELEASE_MANIFEST.md                 # Production build metadata & dependency audit
 │   ├── RELEASE_NOTES.md                    # Platform release documentation
@@ -400,4 +403,8 @@ TruthBeacon is proudly created by **Orange Heart Industries** with the belief th
 - 🕊️ **Charity & Faith Grant:** 100% free access to all advanced features for registered non-profits, shelters, food banks, and faith communities.
 
 We welcome issues, feedback, ideas, and pull requests! If you care about protecting people and building thoughtful software, we would love to have you build with us.
+
+- 🌐 **Project Home & Downloads:** [https://boredpolymath.github.io/truth-beacon/](https://boredpolymath.github.io/truth-beacon/)
+- 💻 **Source Repository:** [https://github.com/boredpolymath/truth-beacon](https://github.com/boredpolymath/truth-beacon)
+- 🐛 **Issue Tracker:** [https://github.com/boredpolymath/truth-beacon/issues](https://github.com/boredpolymath/truth-beacon/issues)
 

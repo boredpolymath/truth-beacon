@@ -98,7 +98,7 @@ foreach ($file in $ArtifactsToSign) {
         Write-Host "  [DRY-RUN] Simulating signtool invocation for $file" -ForegroundColor Gray
         Write-Host "  signtool.exe sign /fd $DigestAlgorithm /tr $TimestampServer /td $DigestAlgorithm /d `"TruthBeacon`" `"$file`"" -ForegroundColor Gray
     } else {
-        $SignArgs = @("sign", "/fd", $DigestAlgorithm, "/tr", $TimestampServer, "/td", $DigestAlgorithm, "/d", "TruthBeacon", "/du", "https://github.com/orangeheart-industries/truth-beacon")
+        $SignArgs = @("sign", "/fd", $DigestAlgorithm, "/tr", $TimestampServer, "/td", $DigestAlgorithm, "/d", "TruthBeacon", "/du", "https://github.com/boredpolymath/truth-beacon")
         if ($CertFile) {
             $SignArgs += @("/f", $CertFile)
             if ($CertPassword) {
