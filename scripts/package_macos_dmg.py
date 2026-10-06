@@ -50,7 +50,9 @@ def build_dmg():
         os.remove(DMG_TARGET_FILE)
 
     import subprocess
-    subprocess.run(["codesign", "-s", "-", "--force", "--deep", APP_BUNDLE], check=False)
+    verify_res = subprocess.run(["codesign", "-v", APP_BUNDLE], capture_output=True)
+    if verify_res.returncode != 0:
+        subprocess.run(["codesign", "-s", "-", "--force", "--deep", APP_BUNDLE], check=False)
 
     settings = {
         'format': 'UDZO',
