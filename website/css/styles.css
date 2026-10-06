@@ -10,12 +10,12 @@
   --bg-card-hover: #313338;
   --bg-card-active: #35373c;
   --bg-glass: rgba(30, 31, 34, 0.82);
-  
+
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(255, 255, 255, 0.14);
   --border-accent: rgba(88, 101, 242, 0.45);
   --border-accent-bright: rgba(121, 131, 245, 0.6);
-  
+
   /* Discord Signature Blurple & Security Purples */
   --brand-blurple: #5865f2;
   --brand-blurple-light: #7983f5;
@@ -24,7 +24,7 @@
   --brand-blurple-active: #3c45a5;
   --brand-blurple-glow: rgba(88, 101, 242, 0.35);
   --brand-blurple-subtle: rgba(88, 101, 242, 0.12);
-  
+
   /* Status Colors */
   --brand-green: #23a55a;
   --brand-green-glow: rgba(35, 165, 90, 0.25);
@@ -55,7 +55,9 @@
   --transition-bounce: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -76,7 +78,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-  background: 
+  background:
     radial-gradient(ellipse at 50% -20%, rgba(88, 101, 242, 0.2) 0%, transparent 60%),
     radial-gradient(circle at 10% 20%, rgba(71, 82, 196, 0.12) 0%, transparent 40%),
     var(--bg-deep);
@@ -214,8 +216,17 @@ body {
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
 }
 
 .hero-title {
@@ -690,9 +701,17 @@ body {
   border-radius: 50%;
 }
 
-.dot-red { background: #ff5f56; }
-.dot-yellow { background: #ffbd2e; }
-.dot-green { background: #27c93f; }
+.dot-red {
+  background: #ff5f56;
+}
+
+.dot-yellow {
+  background: #ffbd2e;
+}
+
+.dot-green {
+  background: #27c93f;
+}
 
 .terminal-title {
   font-size: 0.8rem;
@@ -734,10 +753,21 @@ body {
   margin: 0;
 }
 
-.term-cmd { color: #8ea1e1; }
-.term-comment { color: var(--text-dim); }
-.term-flag { color: #c084fc; }
-.term-val { color: #4ade80; }
+.term-cmd {
+  color: #8ea1e1;
+}
+
+.term-comment {
+  color: var(--text-dim);
+}
+
+.term-flag {
+  color: #c084fc;
+}
+
+.term-val {
+  color: #4ade80;
+}
 
 /* OS Gatekeeper Notice Accordion */
 .security-notices {
@@ -763,9 +793,17 @@ body {
   margin-bottom: 10px;
 }
 
-.notice-badge.mac { color: #8ea1e1; }
-.notice-badge.win { color: #7983f5; }
-.notice-badge.gpg { color: var(--brand-blurple-light); }
+.notice-badge.mac {
+  color: #8ea1e1;
+}
+
+.notice-badge.win {
+  color: #7983f5;
+}
+
+.notice-badge.gpg {
+  color: var(--brand-blurple-light);
+}
 
 .security-notice-card h4 {
   font-size: 1rem;
@@ -1110,14 +1148,6 @@ body {
 
 .footer-copyright {
   flex: 1 1 auto;
-<<<<<<< HEAD
-}
-
-.footer-disclaimer {
-  flex: 0 1 auto;
-  text-align: right;
-  margin-left: auto;
-=======
   text-align: left;
 }
 
@@ -1126,7 +1156,6 @@ body {
   text-align: right;
   margin-left: auto;
   white-space: nowrap;
->>>>>>> 2fb5ddd (fix: update footer layout and shorten Discord disclaimer text)
 }
 
 /* Responsive adjustments */
@@ -1134,31 +1163,26 @@ body {
   .nav-links {
     display: none;
   }
+
   .hero-highlights {
     grid-template-columns: 1fr;
   }
+
   .downloads-grid {
     grid-template-columns: 1fr;
   }
+
   .showcase-content {
     padding: 20px;
   }
+
   .footer-bottom {
-<<<<<<< HEAD
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  .footer-disclaimer {
-    text-align: left;
-    margin-left: 0;
-=======
     flex-wrap: wrap;
     justify-content: space-between;
   }
+
   .footer-disclaimer {
     text-align: right;
     margin-left: auto;
->>>>>>> 2fb5ddd (fix: update footer layout and shorten Discord disclaimer text)
   }
 }
