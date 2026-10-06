@@ -1058,8 +1058,7 @@ mod tests {
         );
 
         // 4. Verify updating with empty token preserves stored credentials
-        let empty_res =
-            save_discord_config(test_guild.to_string(), "".to_string(), None).await;
+        let empty_res = save_discord_config(test_guild.to_string(), "".to_string(), None).await;
         assert!(
             empty_res.is_ok(),
             "Updating with empty token must succeed by reusing stored token"
