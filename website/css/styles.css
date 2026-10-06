@@ -1103,7 +1103,6 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: 16px;
   font-size: 0.85rem;
   color: var(--text-dim);
@@ -1111,12 +1110,23 @@ body {
 
 .footer-copyright {
   flex: 1 1 auto;
+<<<<<<< HEAD
 }
 
 .footer-disclaimer {
   flex: 0 1 auto;
   text-align: right;
   margin-left: auto;
+=======
+  text-align: left;
+}
+
+.footer-disclaimer {
+  flex: 0 0 auto;
+  text-align: right;
+  margin-left: auto;
+  white-space: nowrap;
+>>>>>>> 2fb5ddd (fix: update footer layout and shorten Discord disclaimer text)
 }
 
 /* Responsive adjustments */
@@ -1134,6 +1144,7 @@ body {
     padding: 20px;
   }
   .footer-bottom {
+<<<<<<< HEAD
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
@@ -1141,5 +1152,13 @@ body {
   .footer-disclaimer {
     text-align: left;
     margin-left: 0;
+=======
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .footer-disclaimer {
+    text-align: right;
+    margin-left: auto;
+>>>>>>> 2fb5ddd (fix: update footer layout and shorten Discord disclaimer text)
   }
 }
