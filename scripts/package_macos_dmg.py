@@ -49,6 +49,9 @@ def build_dmg():
     if os.path.exists(DMG_TARGET_FILE):
         os.remove(DMG_TARGET_FILE)
 
+    import subprocess
+    subprocess.run(["codesign", "-s", "-", "--force", "--deep", APP_BUNDLE], check=False)
+
     settings = {
         'format': 'UDZO',
         'filesystem': 'HFS+',

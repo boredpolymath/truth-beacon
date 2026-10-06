@@ -1,16 +1,23 @@
-# TruthBeacon v0.1.2 — Official Release Notes
+# TruthBeacon v0.1.3 — Official Release Notes
 **Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
 
 ---
 
 ### Overview
-TruthBeacon v0.1.2 is a major usability and friction-removal release of our standalone desktop security console for Discord community leadership, pastoral teams, and server moderators. 
-
-This release completely eliminates manual setup friction, snowflake ID hunting, and complex bot permission calculations—empowering community leaders to pair TruthBeacon with their Discord servers in under 60 seconds with zero technical complexity.
+TruthBeacon v0.1.3 is an essential patch release resolving a critical IPC parameter serialization mismatch in the bot pre-flight verification and server pairing engine.
 
 ---
 
-### What's New in v0.1.2
+### What's Fixed in v0.1.3
+
+#### 1. Tauri 2 IPC Parameter Normalization (Discord Handshake & Membership Verification Fix)
+- **Resolved CamelCase Argument Serialization**: Tauri 2 commands expect camelCase argument names by default (`guildId`). In v0.1.2, passing `guild_id` in snake_case caused the Rust backend to deserialize `guild_id` as `None`, leading pre-flight handshake diagnostics to always report `"Bot Not Found in Target Server"` and `"Missing Required Moderation Grants"`.
+- **Automatic Casing Normalization**: Added an IPC payload normalization layer in `ui/js/ipc.js` that automatically transforms all command arguments into both camelCase and snake_case representations, guaranteeing seamless deserialization across all Tauri commands.
+- **Heartbeat & Resilient Daemon Lifecycle**: Hardened background Discord Gateway connection lifecycle and periodic heartbeat transmission.
+
+---
+
+### Previous Highlights from v0.1.2
 
 #### 1. Automated 1-Click Bot Authorization & Pre-Calculated Permissions
 - **Instant Client ID Extraction**: TruthBeacon automatically extracts and base64-decodes your bot's application snowflake ID directly from segment 1 of your Bot Token upon pasting. No need to navigate to the Discord Developer Portal's "General Information" tab just to hunt down an Application ID.
@@ -23,11 +30,7 @@ This release completely eliminates manual setup friction, snowflake ID hunting, 
 - **Elimination of Developer Mode**: Community leaders are no longer forced to enable Discord Developer Mode, right-click their server icon, and copy 19-digit numeric snowflake Guild IDs.
 - **Dynamic Discovered Servers Dropdown**: Discovered servers appear in an interactive dropdown with server names and IDs. If the bot is present in a single server, TruthBeacon auto-selects it instantly.
 
-#### 3. Frictionless Automated Handshake Auto-Verification
-- **Instant Pre-Flight Testing**: When a server is selected from the discovered server list, TruthBeacon automatically triggers the 5-point diagnostic pre-flight verification in the background.
-- **Instant Visual Confirmation**: Token Format, Gateway Handshake, Privileged `GUILD_MEMBERS` Intent, Server Membership, and Moderation Capabilities turn green automatically without requiring operators to hunt down a separate test button.
-
-#### 4. Native OS Keychain & Zeroized In-Memory Cache Resilience
+#### 3. Native OS Keychain & Zeroized In-Memory Cache Resilience
 - **Persistent Credential Lifecycle**: Dual-tier credential architecture combining native OS Secure Enclaves (`keyring-rs` targeting Apple Keychain Services, Windows Credential Manager DPAPI, and Linux Secret Service) with zeroized in-memory fallback caches.
 - **Zero-Plaintext Security Policy**: Bot tokens remain strictly zeroized and never touch SQLite databases, flat files, or unredacted serialization logs.
 

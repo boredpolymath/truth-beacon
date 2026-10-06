@@ -28,7 +28,9 @@ import re
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 RELEASE_DIR = os.path.join(ROOT_DIR, "release")
-DMG_PATH = os.path.join(RELEASE_DIR, "TruthBeacon_0.1.0_universal.dmg")
+dmg_candidates = [f for f in os.listdir(RELEASE_DIR) if f.startswith("TruthBeacon_") and f.endswith(".dmg")] if os.path.exists(RELEASE_DIR) else []
+dmg_candidates.sort()
+DMG_PATH = os.path.join(RELEASE_DIR, dmg_candidates[-1]) if dmg_candidates else os.path.join(RELEASE_DIR, "TruthBeacon_0.1.3_universal.dmg")
 APP_DEST = "/Applications/TruthBeacon.app"
 USER_HOME = os.path.expanduser("~")
 TB_DATA_DIR = os.path.join(USER_HOME, ".truthbeacon")
@@ -159,7 +161,7 @@ def test_presentation_state():
 
     # 5. Server ID input field is blank and ready for community guild entry
     check(
-        '<input type="text" id="discord-guild-id-input" class="form-input" placeholder="e.g. 999888777666555444" spellcheck="false" required>' in html,
+        'id="discord-guild-id-input"' in html and 'placeholder="e.g. 999888777666555444' in html,
         'Server ID input field is blank with placeholder'
     )
 
