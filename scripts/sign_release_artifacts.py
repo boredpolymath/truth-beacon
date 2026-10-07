@@ -98,12 +98,15 @@ def update_checksums():
         with open(MANIFEST_FILE, "r", encoding="utf-8") as f:
             manifest_content = f.read()
 
-        for fname, csum, _ in artifacts:
+        for fname, csum, size_mb in artifacts:
             # Replace checksum in table row for fname if present
             # Format: | `filename` | arch | size | `old_checksum` | desc |
             pattern = re.compile(rf"(\|.*?`{re.escape(fname)}`.*?\|.*?\|.*?\|)\s*`[a-f0-9]{{64}}`\s*(\|.*)")
             if pattern.search(manifest_content):
                 manifest_content = pattern.sub(rf"\1 `{csum}` \2", manifest_content)
+            elif f"`{fname}`" not in manifest_content:
+                table_row = f"| `{fname}` | Universal 2 (Intel + Apple Silicon) | ~{int(size_mb)} MB | `{csum}` | Release deliverable |\n"
+                manifest_content = manifest_content.replace("\n---\n", f"{table_row}\n---\n", 1)
 
         with open(MANIFEST_FILE, "w", encoding="utf-8") as f:
             f.write(manifest_content)
