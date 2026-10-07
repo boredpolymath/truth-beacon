@@ -1,19 +1,38 @@
-# TruthBeacon v0.1.4 — Official Release Notes
+# TruthBeacon v0.1.5 — Official Release Notes
 **Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
 
 ---
 
 ### Overview
-TruthBeacon v0.1.4 is a major reliability, usability, and release infrastructure update for our standalone desktop security console. This release delivers:
+TruthBeacon v0.1.5 is a user-experience and interface alignment release that synchronizes both the standalone desktop security console and the official web distribution center with all recent architectural advancements:
 
-1. **Zero-Crash Startup Resilience**: Resolves a critical Tokio runtime panic (`EXC_CRASH (SIGABRT)`) on macOS during boot when auto-connecting with saved bot credentials.
-2. **Zero-Prompt Authenticated AES-256-GCM Machine Vault**: Replaces disruptive native OS Keychain modal dialogs with a seamless, machine-bound authenticated AES-256-GCM credential vault with strict POSIX permissions.
-3. **Cross-Platform Cryptographic Auto-Updater Engine**: Integrates in-app update checks, release notification cards, streamed progress downloads, and 1-click seamless restarts across macOS, Windows, and Linux powered by `tauri-plugin-updater` and Minisign Ed25519 signatures.
-4. **Hardened CI/CD & Multi-Platform Release Staging**: Implements automated Minisign signing in CI workflows, fallback signing for local developer packaging, automated updater catalog generation (`latest.json`), and detached GPG signatures.
+1. **Complete UI Alignment with Machine-Bound AES-256-GCM Vault**: Modernized all desktop console badges, security enclave pills, input help notes, and interactive FAQ guidance to accurately describe the zero-prompt machine-bound AES-256-GCM credential vault (`0600` POSIX) replacing legacy OS keychain references.
+2. **Auto-Updater Interface & Version Synchronization**: Elevated the desktop header version pill, update polling fallback routines, and website manifests to v0.1.5 with full Minisign Ed25519 cryptographic auto-updater catalog (`latest.json`) support.
+3. **Distribution Portal & Architecture Showcase Refresh**: Updated the public website with dedicated highlights and architecture pillars for the zero-prompt vault and auto-updater engine, along with updated download matrices and verification snippets.
+4. **Universal 2 Packaging & Cryptographic Integrity Verification**: Rebuilt and staged production Universal 2 macOS artifacts (`.dmg`, `.app.tar.gz`), updated detached signatures, and verified clean-slate launch with 150 passing unit and integration tests.
 
 ---
 
-### What's New & Fixed in v0.1.4
+### What's New & Fixed in v0.1.5
+
+#### 1. Desktop Console Interface Modernization
+- **Credential Enclave Status Pill**: Replaced the legacy "OS Secure Enclave / Apple Keychain" pill in Discord Settings with the high-visibility **"Zero-Prompt AES-256-GCM Vault Active"** badge, reflecting local authenticated encryption with hardware entropy binding and strict owner-only (`0600`) POSIX permissions.
+- **Form Field Security Guidance**: Clarified token storage security notes to reassure operators that bot credentials are encrypted locally with machine-bound AES-256-GCM and never sent to remote cloud infrastructure.
+- **Credential Purge Tooltip**: Updated the disconnect button tooltip to explicitly reflect cryptographic zeroization and eradication from the local AES-256-GCM vault.
+- **In-App FAQ Guidance**: Revised the token storage security FAQ entry to provide precise technical disclosure of the Ring AEAD AES-256-GCM scheme, SHA-256 HKDF key derivation, and zero-telemetry policy.
+
+#### 2. Auto-Updater Engine & Version Bumping
+- **Desktop Version Badge**: Synchronized the interactive update button in the desktop header to default to `v0.1.5`.
+- **IPC Update Dispatcher**: Bumped IPC mock and fallback version values to `0.1.5`.
+- **Catalog Synchronization**: Automated deployment of Tauri 2 `latest.json` updater catalogs across release directories and website assets.
+
+#### 3. Web Distribution Portal Alignment
+- **Feature Highlights & Architecture Pillars**: Added dedicated showcase cards for the **AES-256-GCM Machine Vault** and **Cross-Platform Auto-Updater Engine** on the official website.
+- **Download Catalogs & Verification Snippets**: Updated all direct download links, terminal SHA-256 verification instructions, and GPG signature endpoints to point to v0.1.5 deliverables.
+
+---
+
+### Previous Highlights from v0.1.4
 
 #### 1. Resolved Startup Tokio Reactor Panic on Credential Auto-Connect
 - **Issue**: When bot credentials had been registered and stored in the secure vault, TruthBeacon automatically initiates background connection to the Discord Gateway daemon during startup. In v0.1.3, this async task was spawned using `tokio::spawn` inside Tauri's synchronous `.setup(|app| ...)` hook on the main thread. Because Tauri executes `setup` on the main thread outside of an active Tokio runtime context, `tokio::spawn` panicked immediately with:

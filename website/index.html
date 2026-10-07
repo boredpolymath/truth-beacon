@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TruthBeacon — Official Downloads & Next-Gen Discord Security</title>
   <meta name="description"
-    content="Official downloads for TruthBeacon v0.1.4 across macOS, Windows, and Linux. Zero-telemetry, memory-safe Discord anti-impersonation and threat defense engineered in Rust and Tauri 2.">
+    content="Official downloads for TruthBeacon v0.1.5 across macOS, Windows, and Linux. Zero-telemetry, memory-safe Discord anti-impersonation and threat defense engineered in Rust and Tauri 2.">
   <meta name="keywords"
     content="TruthBeacon, Discord security, anti-impersonation, anti-token-theft, homoglyph detection, avatar clone detection, Tauri, Rust, download, macOS, Windows, Linux">
   <meta name="author" content="Bored Polymath Studios">
@@ -16,7 +16,7 @@
   <meta property="og:url" content="https://boredpolymath.github.io/truth-beacon/">
   <meta property="og:title" content="TruthBeacon — Official Downloads & Discord Threat Defense">
   <meta property="og:description"
-    content="Next-Gen Discord Anti-Impersonation & Threat Shield. Download TruthBeacon v0.1.4 for macOS, Windows, and Linux.">
+    content="Next-Gen Discord Anti-Impersonation & Threat Shield. Download TruthBeacon v0.1.5 for macOS, Windows, and Linux.">
   <meta property="og:image" content="https://boredpolymath.github.io/truth-beacon/assets/screenshot_protected.png">
 
   <!-- Twitter -->
@@ -24,7 +24,7 @@
   <meta property="twitter:url" content="https://boredpolymath.github.io/truth-beacon/">
   <meta property="twitter:title" content="TruthBeacon — Official Downloads & Discord Threat Defense">
   <meta property="twitter:description"
-    content="Download TruthBeacon v0.1.4 for macOS, Windows, and Linux. 100% offline, zero-telemetry defense engineered in Rust and Tauri 2.">
+    content="Download TruthBeacon v0.1.5 for macOS, Windows, and Linux. 100% offline, zero-telemetry defense engineered in Rust and Tauri 2.">
   <meta property="twitter:image" content="https://boredpolymath.github.io/truth-beacon/assets/screenshot_protected.png">
 
   <!-- Favicon -->
@@ -50,7 +50,7 @@
       <a href="#" class="nav-brand" id="nav-brand-link">
         <img src="assets/truthbeacon_emblem.png" alt="TruthBeacon Emblem" class="brand-emblem" id="brand-emblem-img">
         <img src="assets/truthbeacon_wordmark.png" alt="TruthBeacon" class="brand-wordmark-img" id="brand-wordmark-img">
-        <span class="brand-badge" id="nav-version-badge">v0.1.4</span>
+        <span class="brand-badge" id="nav-version-badge">v0.1.5</span>
       </a>
 
       <nav>
@@ -81,7 +81,7 @@
       <div class="container">
         <div class="hero-tag-wrap" id="hero-tag-wrap">
           <span class="hero-tag-pulse"></span>
-          <span>TruthBeacon v0.1.4 Public Release</span>
+          <span>TruthBeacon v0.1.5 Public Release</span>
         </div>
 
         <h1 class="hero-title" id="hero-title">
@@ -104,7 +104,7 @@
             <span>Target OS: <strong class="detected-os-name" id="hero-detected-os">macOS (Universal 2)</strong></span>
           </div>
 
-          <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_universal.dmg"
+          <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/TruthBeacon_0.1.5_universal.dmg"
             class="btn-primary-download" id="hero-primary-download-btn">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
               stroke-linecap="round" stroke-linejoin="round">
@@ -144,11 +144,18 @@
               <div class="highlight-text-sub">Zero telemetry or cloud relay</div>
             </div>
           </div>
-          <div class="highlight-pill" id="pill-engine">
-            <div class="highlight-icon">⚡</div>
+          <div class="highlight-pill" id="pill-vault">
+            <div class="highlight-icon">🔐</div>
             <div>
-              <div class="highlight-text-title">Tauri 2 + Pure Rust</div>
-              <div class="highlight-text-sub">Zero unvetted npm blobs</div>
+              <div class="highlight-text-title">AES-256-GCM Vault</div>
+              <div class="highlight-text-sub">Zero-prompt authenticated storage</div>
+            </div>
+          </div>
+          <div class="highlight-pill" id="pill-updater">
+            <div class="highlight-icon">🔄</div>
+            <div>
+              <div class="highlight-text-title">Auto-Updater Engine</div>
+              <div class="highlight-text-sub">Ed25519 Minisign signed</div>
             </div>
           </div>
           <div class="highlight-pill" id="pill-detection">
@@ -173,7 +180,7 @@
     <section class="section" id="downloads">
       <div class="container">
         <div class="section-header">
-          <span class="section-tag">Release v0.1.4</span>
+          <span class="section-tag">Release v0.1.5</span>
           <h2 class="section-title">Official Download Packages</h2>
           <p class="section-desc">
             All binaries are compiled natively with full compiler hardening, signed with GPG detached signatures, and
@@ -231,7 +238,7 @@
               Branded drag-and-drop installer for macOS 12 Monterey, 13 Ventura, 14 Sonoma, and 15 Sequoia. Native dual
               architecture.
             </p>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_universal.dmg"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/TruthBeacon_0.1.5_universal.dmg"
               class="card-btn-download" id="btn-download-mac-dmg">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -241,12 +248,12 @@
               <span>Download .DMG</span>
             </a>
             <div class="checksum-box">
-              <div class="checksum-content" title="9cba989294ef569443f5e26bb71fa7809df7e9b0fb27b68fa3a43d21cef8029c">
+              <div class="checksum-content" title="fe7eb4108720a06c97a4ab2778506f323dd859b412e23af8d2215f9d4dcc8c57">
                 <span>SHA-256:</span>
-                <span class="checksum-hash">1a7f83b2...107c5f94</span>
+                <span class="checksum-hash">fe7eb410...4dcc8c57</span>
               </div>
               <button type="button" class="btn-copy-checksum"
-                data-hash="9cba989294ef569443f5e26bb71fa7809df7e9b0fb27b68fa3a43d21cef8029c"
+                data-hash="fe7eb4108720a06c97a4ab2778506f323dd859b412e23af8d2215f9d4dcc8c57"
                 title="Copy SHA-256 Checksum" id="btn-copy-mac-dmg">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -274,7 +281,7 @@
               Standalone zipped <code style="font-size:0.8rem">TruthBeacon.app</code> bundle. Perfect for flash drives
               or portable testing without mounting a disk image.
             </p>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_macos_universal.zip"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/TruthBeacon_0.1.5_macos_universal.zip"
               class="card-btn-download" id="btn-download-mac-zip">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -284,12 +291,12 @@
               <span>Download .ZIP</span>
             </a>
             <div class="checksum-box">
-              <div class="checksum-content" title="f72e2fe3c68236f047ff82612688fb33651e95f198373cbe8389cc377c854537">
+              <div class="checksum-content" title="983e6e1f4a92213fdda88f285fdb61c3d4707ab09e76d4d987e6a0c0e7fff8ef">
                 <span>SHA-256:</span>
-                <span class="checksum-hash">f72e2fe3...c854537</span>
+                <span class="checksum-hash">983e6e1f...e7fff8ef</span>
               </div>
               <button type="button" class="btn-copy-checksum"
-                data-hash="f72e2fe3c68236f047ff82612688fb33651e95f198373cbe8389cc377c854537"
+                data-hash="983e6e1f4a92213fdda88f285fdb61c3d4707ab09e76d4d987e6a0c0e7fff8ef"
                 title="Copy SHA-256 Checksum" id="btn-copy-mac-zip">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -318,7 +325,7 @@
               Standard Windows single-click installer with automatic desktop shortcut, Start Menu integration, and clean
               uninstaller support.
             </p>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_x64-setup.exe"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/TruthBeacon_0.1.5_x64-setup.exe"
               class="card-btn-download" id="btn-download-win-exe">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -361,7 +368,7 @@
               Standard Microsoft Windows Installer package (`.msi`). Built for sysadmins and automated enterprise
               deployments via GPO or Intune.
             </p>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_x64_en-US.msi"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/TruthBeacon_0.1.5_x64_en-US.msi"
               class="card-btn-download" id="btn-download-win-msi">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -404,7 +411,7 @@
               Completely standalone executable. Runs instantly without touching the Windows Registry or requiring
               elevated admin permissions.
             </p>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon-Portable.exe"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/TruthBeacon-Portable.exe"
               class="card-btn-download" id="btn-download-win-portable">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -448,7 +455,7 @@
               Standalone portable bundle compatible with Ubuntu, Arch, Fedora, Debian, Mint, openSUSE, and Pop!_OS. Just
               chmod +x and run.
             </p>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_amd64.AppImage"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/TruthBeacon_0.1.5_amd64.AppImage"
               class="card-btn-download" id="btn-download-linux-appimage">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -491,7 +498,7 @@
               Native `.deb` package with FreeDesktop menu integration, XDG icons, and standard apt / dpkg dependency
               resolution.
             </p>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_amd64.deb"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/TruthBeacon_0.1.5_amd64.deb"
               class="card-btn-download" id="btn-download-linux-deb">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -534,7 +541,7 @@
               Standalone headless / command-line daemon binary containing combined x86_64 and arm64 slices. Perfect for
               background scripting.
             </p>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/truth-beacon-universal"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/truth-beacon-universal"
               class="card-btn-download" id="btn-download-mac-bin">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -544,12 +551,12 @@
               <span>Download CLI Binary</span>
             </a>
             <div class="checksum-box">
-              <div class="checksum-content" title="718dfae41e44a7c60bf7ea4b40ee6fbe3e0767da86619a697aa758d8a7e1f53a">
+              <div class="checksum-content" title="6a1c4249b2250e09660b1f69c0349d2dbffa08e2a66fd02a90581f00baea0549">
                 <span>SHA-256:</span>
-                <span class="checksum-hash">718dfae4...a7e1f53a</span>
+                <span class="checksum-hash">6a1c4249...baea0549</span>
               </div>
               <button type="button" class="btn-copy-checksum"
-                data-hash="718dfae41e44a7c60bf7ea4b40ee6fbe3e0767da86619a697aa758d8a7e1f53a"
+                data-hash="6a1c4249b2250e09660b1f69c0349d2dbffa08e2a66fd02a90581f00baea0549"
                 title="Copy SHA-256 Checksum" id="btn-copy-mac-bin">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -605,27 +612,27 @@
             </div>
             <div class="terminal-body">
               <pre><code id="verify-code-content"># Verify SHA-256 Checksum on macOS
-shasum -a 256 TruthBeacon_0.1.4_universal.dmg
+shasum -a 256 TruthBeacon_0.1.5_universal.dmg
 
 # Expected Output:
-# 6a52085d428e08c020924a86d1bcee5b8370e3a68a83e45851fe8f2962af5b13  TruthBeacon_0.1.4_universal.dmg</code></pre>
+# fe7eb4108720a06c97a4ab2778506f323dd859b412e23af8d2215f9d4dcc8c57  TruthBeacon_0.1.5_universal.dmg</code></pre>
             </div>
           </div>
 
           <div style="margin-top: 20px; display: flex; gap: 16px; flex-wrap: wrap;">
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/SHA256SUMS.txt"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/SHA256SUMS.txt"
               target="_blank" class="nav-cta"
               style="background:var(--bg-card); border:1px solid var(--border-medium); font-size:0.85rem;"
               id="link-download-sha-txt">
               Download SHA256SUMS.txt
             </a>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/SHA256SUMS.txt.asc"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/SHA256SUMS.txt.asc"
               target="_blank" class="nav-cta"
               style="background:var(--bg-card); border:1px solid var(--border-medium); font-size:0.85rem;"
               id="link-download-sha-asc">
               Download SHA256SUMS.txt.asc (GPG)
             </a>
-            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/RELEASE_MANIFEST.md"
+            <a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/RELEASE_MANIFEST.md"
               target="_blank" class="nav-cta"
               style="background:var(--bg-card); border:1px solid var(--border-medium); font-size:0.85rem;"
               id="link-download-manifest">
@@ -677,7 +684,7 @@ shasum -a 256 TruthBeacon_0.1.4_universal.dmg
             <h4>Linux AppImage Execution</h4>
             <p>
               After downloading the AppImage, grant execution permissions:
-              <code>chmod +x TruthBeacon_0.1.4_amd64.AppImage</code>. On Ubuntu 22.04+, ensure <code>libfuse2</code> is
+              <code>chmod +x TruthBeacon_0.1.5_amd64.AppImage</code>. On Ubuntu 22.04+, ensure <code>libfuse2</code> is
               installed: <code>sudo apt install libfuse2</code>.
             </p>
           </div>
@@ -758,12 +765,21 @@ shasum -a 256 TruthBeacon_0.1.4_universal.dmg
             </p>
           </div>
 
-          <div class="pillar-card" id="pillar-npm">
-            <div class="pillar-icon-box">📦</div>
-            <h3>Zero-npm Webview</h3>
+          <div class="pillar-card" id="pillar-vault">
+            <div class="pillar-icon-box">🔐</div>
+            <h3>Zero-Prompt AES-256-GCM Vault</h3>
             <p>
-              Zero dependency on npm runtime blobs or Node.js runtime vulnerabilities. Built with standard semantic
-              HTML, CSS, and Tauri 2 OS webviews for absolute supply-chain integrity.
+              Hardware-entropy bound authenticated credential vault with strict 0600 POSIX permissions. Zero annoying OS
+              keychain dialogs, zero disk exposure, zero cloud transmission.
+            </p>
+          </div>
+
+          <div class="pillar-card" id="pillar-updater">
+            <div class="pillar-icon-box">🔄</div>
+            <h3>Cryptographic Auto-Updater</h3>
+            <p>
+              Seamless, tamper-proof background and 1-click manual updates across macOS, Windows, and Linux powered by Tauri 2
+              and Ed25519 Minisign cryptographic verification.
             </p>
           </div>
 
@@ -773,15 +789,6 @@ shasum -a 256 TruthBeacon_0.1.4_universal.dmg
             <p>
               Powered by a multi-threaded Rust daemon executing homoglyph analysis, DCT frequency hashing, and fuzzy
               Levenshtein comparisons with sub-millisecond response times.
-            </p>
-          </div>
-
-          <div class="pillar-card" id="pillar-reproducible">
-            <div class="pillar-icon-box">📜</div>
-            <h3>Open Source & Auditable</h3>
-            <p>
-              Dual-licensed under MIT and Apache-2.0. Complete test suites with 100% test pass rate, license compliance
-              audits, and adversarial red-team simulations verifiable on GitHub.
             </p>
           </div>
         </div>
@@ -816,15 +823,15 @@ shasum -a 256 TruthBeacon_0.1.4_universal.dmg
         </div>
 
         <div class="footer-nav-col">
-          <h4>Release v0.1.4</h4>
+          <h4>Release v0.1.5</h4>
           <ul class="footer-links">
-            <li><a href="https://github.com/boredpolymath/truth-beacon/releases/tag/v0.1.4" target="_blank"
+            <li><a href="https://github.com/boredpolymath/truth-beacon/releases/tag/v0.1.5" target="_blank"
                 class="footer-link">GitHub Release Notes</a></li>
-            <li><a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/SHA256SUMS.txt"
+            <li><a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/SHA256SUMS.txt"
                 target="_blank" class="footer-link">SHA256SUMS.txt</a></li>
-            <li><a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/SHA256SUMS.txt.asc"
+            <li><a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/SHA256SUMS.txt.asc"
                 target="_blank" class="footer-link">GPG Detached Signature</a></li>
-            <li><a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/RELEASE_MANIFEST.md"
+            <li><a href="https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.5/RELEASE_MANIFEST.md"
                 target="_blank" class="footer-link">Staging Manifest</a></li>
           </ul>
         </div>

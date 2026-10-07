@@ -12,14 +12,14 @@
 <p align="center">
   <a href="https://github.com/boredpolymath/truth-beacon"><img src="https://img.shields.io/badge/GitHub-boredpolymath%2Ftruth--beacon-181717?style=flat-square&logo=github" alt="GitHub Repo"></a>
   <a href="https://boredpolymath.github.io/truth-beacon/"><img src="https://img.shields.io/badge/Web-truth--beacon-5865F2?style=flat-square" alt="Website"></a>
-  <img src="https://img.shields.io/badge/Version-v0.1.2-green?style=flat-square" alt="Version 0.1.2">
+  <img src="https://img.shields.io/badge/Version-v0.1.5-green?style=flat-square" alt="Version 0.1.5">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/Framework-Tauri%20v2-orange?style=flat-square" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Language-Rust%202021-red?style=flat-square" alt="Rust 2021">
   <img src="https://img.shields.io/badge/Database-SQLite%20(WAL)-blueviolet?style=flat-square" alt="SQLite WAL">
   <img src="https://img.shields.io/badge/Telemetry-Zero%20(100%25%20Local)-brightgreen?style=flat-square" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-success?style=flat-square" alt="WCAG AA">
-  <img src="https://img.shields.io/badge/Automated%20Tests-149%20Passing-brightgreen?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated%20Tests-150%20Passing-brightgreen?style=flat-square" alt="Tests">
 </p>
 
 ---
@@ -35,7 +35,7 @@ Most moderation tools today either:
 
 **TruthBeacon is different.** It is a friendly, quiet desktop app that acts like a trusted watchman at your community's door. It monitors member joins and profile changes locally on your computer, spots sneaky lookalikes in under 50 milliseconds, and presents clean side-by-side comparison cards so you can take action in seconds.
 
-Best of all? **It respects your privacy completely.** TruthBeacon has zero tracking, zero cloud telemetry, and keeps all sensitive tokens securely in your operating system's native keychain.
+Best of all? **It respects your privacy completely.** TruthBeacon has zero tracking, zero cloud telemetry, and keeps all sensitive tokens securely in an authenticated local AES-256-GCM vault with machine-unique key derivation and strict permissions.
 
 ---
 
@@ -59,7 +59,7 @@ Best of all? **It respects your privacy completely.** TruthBeacon has zero track
   - Press `[Esc]` to close dialogs
 
 - 🔒 **100% Local & Sovereign**  
-  Your data stays on your machine. Your Discord bot token is stored in your computer's secure keychain (macOS Keychain, Windows Credential Vault, or Linux Secret Service). No remote databases, no telemetry, no tracking. Ever.
+  Your data stays on your machine. Your Discord bot token is encrypted locally with authenticated AES-256-GCM bound to machine entropy with strict POSIX 0600 file permissions and zero plaintext disk exposure. No remote databases, no telemetry, no tracking. Ever.
 
 - 🛑 **Built-in Safety Brake (Circuit Breaker)**  
   Worried about an automated tool going wild during a server raid? TruthBeacon automatically limits rapid moderation actions to prevent moderation cascades and gives you a one-click manual reset right from the status bar or system tray.

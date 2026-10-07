@@ -1535,7 +1535,7 @@ function initAutoUpdater() {
         if (manual) {
           if (updateStatusText) updateStatusText.textContent = 'Up to date ✓';
           setTimeout(() => {
-            if (updateStatusText) updateStatusText.textContent = `v${res?.current_version || '0.1.4'}`;
+            if (updateStatusText) updateStatusText.textContent = `v${res?.current_version || '0.1.5'}`;
           }, 2500);
         }
       }
@@ -1544,7 +1544,7 @@ function initAutoUpdater() {
       if (manual && updateStatusText) {
         updateStatusText.textContent = 'Check Failed';
         setTimeout(() => {
-          if (updateStatusText) updateStatusText.textContent = 'v0.1.4';
+          if (updateStatusText) updateStatusText.textContent = 'v0.1.5';
         }, 2500);
       }
     } finally {

@@ -35,7 +35,7 @@
       </div>
       <button class="status-pill status-pill-update" id="btn-check-update" title="Check for updates" style="cursor: pointer; background: transparent; border: 1px solid var(--border-color, rgba(255,255,255,0.12)); color: var(--text-primary); font-family: inherit; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px;">
         <span class="status-dot" id="dot-update" style="background: #5865f2; width: 7px; height: 7px; border-radius: 50%;"></span>
-        <span id="update-status-text">v0.1.4</span>
+        <span id="update-status-text">v0.1.5</span>
       </button>
     </div>
   </header>
@@ -182,11 +182,11 @@
         </div>
 
         <div class="discord-hero-right">
-          <div class="enclave-security-pill" title="Protected by Hardware OS Keychain">
+          <div class="enclave-security-pill" title="Protected by Authenticated AES-256-GCM Machine Vault">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <span>OS Secure Enclave Active</span>
+            <span>Zero-Prompt AES-256-GCM Vault Active</span>
           </div>
-          <p class="enclave-subtext">Zero Plaintext Storage • Apple Keychain / DPAPI Encrypted</p>
+          <p class="enclave-subtext">Zero Plaintext Storage • Machine-Bound AES-256-GCM Vault • 0600 POSIX</p>
         </div>
       </div>
 
@@ -218,7 +218,7 @@
               </div>
               <p class="form-field-security-note">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span>Tokens are stored exclusively in your local OS Keychain. Never sent to any cloud server.</span>
+                <span>Tokens are encrypted locally using machine-bound AES-256-GCM (0600 POSIX). Never sent to any cloud server.</span>
               </p>
 
               <!-- Dynamic 1-Click Bot Authorization & Invite Assistant -->
@@ -275,7 +275,7 @@
                 <span id="btn-test-handshake-text">Test Handshake & Permissions</span>
               </button>
               <button type="button" class="btn btn-primary" id="btn-save-discord">Save & Connect</button>
-              <button type="button" class="btn btn-dismiss" id="btn-disconnect-discord" title="Disconnect and erase stored token from OS Keychain">Disconnect</button>
+              <button type="button" class="btn btn-dismiss" id="btn-disconnect-discord" title="Disconnect and purge stored token from encrypted vault">Disconnect</button>
             </div>
           </form>
 
@@ -540,7 +540,7 @@
             </div>
             <div class="faq-content">
               <h4>Is our Discord Bot Token ever transmitted to a cloud server?</h4>
-              <p>No. TruthBeacon has a <strong>zero-cloud-tracking, 100% sovereign policy</strong>. Your token is encrypted directly into your operating system's hardware Keychain (Apple Keychain on macOS, DPAPI on Windows). It is never sent to any external telemetry or logging service.</p>
+              <p>No. TruthBeacon has a <strong>zero-cloud-tracking, 100% sovereign policy</strong>. Your token is encrypted locally with zero-prompt authenticated AES-256-GCM (Ring AEAD) bound to machine entropy with strict POSIX 0600 permissions. It is never sent to any external telemetry or logging service.</p>
             </div>
           </div>
 

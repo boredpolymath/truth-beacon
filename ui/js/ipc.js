@@ -406,7 +406,7 @@ export async function invokeCommand(cmd, args = {}) {
     case 'check_for_updates': {
       return {
         should_update: false,
-        current_version: "0.1.4",
+        current_version: "0.1.5",
         latest_version: null,
         release_notes: null,
         release_date: null

@@ -1,9 +1,9 @@
-# TruthBeacon v0.1.4 — Official Release Staging Manifest
+# TruthBeacon v0.1.5 — Official Release Staging Manifest
 **Orange Heart Industries — Release Engineering Pipeline**
 
 ## Overview
 - **Application Name**: TruthBeacon
-- **Version**: 0.1.4
+- **Version**: 0.1.5
 - **Identifier**: `com.orangeheartindustries.truthbeacon`
 - **Frontend Engine**: Tauri 2 (Webkit / Cocoa WebView, zero npm blobs)
 - **Backend Architecture**: Rust 1.98.1 (Universal 2: `x86_64` + `aarch64`)
@@ -15,15 +15,15 @@
 
 | Artifact File | Architecture | Size | SHA-256 Checksum | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `TruthBeacon_0.1.4_universal.dmg` | Universal 2 (Intel + Apple Silicon) | ~27 MB | `6a52085d428e08c020924a86d1bcee5b8370e3a68a83e45851fe8f2962af5b13` | Apple Developer ID signed drag-and-drop macOS installer |
-| `TruthBeacon_0.1.4_macos_universal.zip` | Universal 2 (Intel + Apple Silicon) | ~26 MB | `eef1d345dbaaaea8ab6594afbd1356ed354dd5b0df351b403cdd47514e2c4cbf` | Standalone portable macOS `.app` bundle archive |
-| `TruthBeacon_0.1.4_universal.app.tar.gz` | Universal 2 (Intel + Apple Silicon) | ~27 MB | `c42f4912fe5bf3123db5f0ec6399a544862813bd1c1777947951aa7e51908ff9` | Standalone macOS auto-updater tarball archive |
-| `truth-beacon-universal` | Universal 2 (Intel + Apple Silicon) | ~54 MB | `675652bb8a414e676f500df3bc21b8f0b41149b1550e55624e746834512a49c2` | Standalone Mach-O fat binary |
-| `TruthBeacon_0.1.4_x64-setup.exe` | Windows x64 (MSVC) | ~9.5 MB | `6f36a65df228544edaa36111ea7ae5eac11baa754fae81adc62956953267586e` | Windows NSIS single-executable installer |
-| `TruthBeacon_0.1.4_x64_en-US.msi` | Windows x64 (MSVC) | ~12 MB | `436d9f7be2f5776455e9fe06b111c079c703f184ce56c9bc5ee570ea3e64aaad` | Windows WiX MSI enterprise installer |
+| `TruthBeacon_0.1.5_universal.dmg` | Universal 2 (Intel + Apple Silicon) | ~28 MB | `fe7eb4108720a06c97a4ab2778506f323dd859b412e23af8d2215f9d4dcc8c57` | Apple Developer ID signed drag-and-drop macOS installer |
+| `TruthBeacon_0.1.5_macos_universal.zip` | Universal 2 (Intel + Apple Silicon) | ~27 MB | `983e6e1f4a92213fdda88f285fdb61c3d4707ab09e76d4d987e6a0c0e7fff8ef` | Standalone portable macOS `.app` bundle archive |
+| `TruthBeacon_0.1.5_universal.app.tar.gz` | Universal 2 (Intel + Apple Silicon) | ~27 MB | `2ad028862ff61c4f4e5facf2f7b4e5492fd5c576402e8307ea464422106d227f` | Standalone macOS auto-updater tarball archive |
+| `truth-beacon-universal` | Universal 2 (Intel + Apple Silicon) | ~57 MB | `6a1c4249b2250e09660b1f69c0349d2dbffa08e2a66fd02a90581f00baea0549` | Standalone Mach-O fat binary |
+| `TruthBeacon_0.1.5_x64-setup.exe` | Windows x64 (MSVC) | ~9.5 MB | `6f36a65df228544edaa36111ea7ae5eac11baa754fae81adc62956953267586e` | Windows NSIS single-executable installer |
+| `TruthBeacon_0.1.5_x64_en-US.msi` | Windows x64 (MSVC) | ~12 MB | `436d9f7be2f5776455e9fe06b111c079c703f184ce56c9bc5ee570ea3e64aaad` | Windows WiX MSI enterprise installer |
 | `TruthBeacon-Portable.exe` | Windows x64 (MSVC) | ~24 MB | `03858df78e645d9c3d38ea1ac0c146d86e8aa843f22fcba8678f59d39985a098` | Standalone portable Windows executable |
-| `TruthBeacon_0.1.4_amd64.deb` | Linux x86_64 | ~14 MB | `3173c92fa36016171fa7d1efabeb2b1c67b82e7ad2e490f6426d7bbebbb94136` | Debian / Ubuntu `.deb` package |
-| `TruthBeacon_0.1.4_amd64.AppImage` | Linux x86_64 | ~86 MB | `ec3203b01db76b58b2c55311ea5fdbfeca4c97111cc8207073038c382ca9d3c3` | Standalone cross-distro AppImage executable |
+| `TruthBeacon_0.1.5_amd64.deb` | Linux x86_64 | ~14 MB | `3173c92fa36016171fa7d1efabeb2b1c67b82e7ad2e490f6426d7bbebbb94136` | Debian / Ubuntu `.deb` package |
+| `TruthBeacon_0.1.5_amd64.AppImage` | Linux x86_64 | ~86 MB | `ec3203b01db76b58b2c55311ea5fdbfeca4c97111cc8207073038c382ca9d3c3` | Standalone cross-distro AppImage executable |
 
 ---
 
