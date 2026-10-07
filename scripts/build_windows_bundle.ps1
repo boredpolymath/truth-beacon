@@ -34,7 +34,12 @@ python scripts/generate_installer_assets.py
 Write-Host "==> [3/4] Building WiX MSI & NSIS Installers via cargo-tauri..." -ForegroundColor Yellow
 Set-Location $SrcTauriDir
 if ($SkipSign) {
-    cargo tauri build --target x86_64-pc-windows-msvc --no-sign
+    if ($env:TAURI_SIGNING_PRIVATE_KEY) {
+        $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
+        cargo tauri build --target x86_64-pc-windows-msvc
+    } else {
+        cargo tauri build --target x86_64-pc-windows-msvc --no-sign
+    }
 } else {
     cargo tauri build --target x86_64-pc-windows-msvc
 }

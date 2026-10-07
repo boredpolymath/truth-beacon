@@ -63,11 +63,20 @@ cd "${SRC_TAURI_DIR}"
 
 # In Linux build environments (e.g. CI or native host)
 if [[ "$(uname -s)" == "Linux" ]]; then
-  cargo tauri build --bundles deb,appimage
+  if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+    echo "==> TAURI_SIGNING_PRIVATE_KEY detected; building with updater artifacts..."
+    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+    cargo tauri build --bundles deb,appimage
+  else
+    echo "==> TAURI_SIGNING_PRIVATE_KEY not set; building bundles with --no-sign..."
+    unset TAURI_SIGNING_PRIVATE_KEY 2>/dev/null || true
+    unset TAURI_SIGNING_PRIVATE_KEY_PASSWORD 2>/dev/null || true
+    cargo tauri build --bundles deb,appimage --no-sign
+  fi
   echo "======================================================================"
   echo " Linux AppImage & Debian packaging completed successfully!"
   echo " Generated Artifacts:"
-  find "${SRC_TAURI_DIR}/target/release/bundle" -name "*.deb" -o -name "*.AppImage" || true
+  find "${SRC_TAURI_DIR}/target/release/bundle" -name "*.deb" -o -name "*.AppImage" -o -name "*.tar.gz*" || true
   echo "======================================================================"
 else
   echo "Note: Host OS is not Linux ($(uname -s)). Linux binaries/AppImages are packaged on Ubuntu runner in CI."

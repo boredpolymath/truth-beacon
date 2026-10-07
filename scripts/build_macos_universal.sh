@@ -58,8 +58,11 @@ if [ -d "${APP_DIR}/TruthBeacon.app" ]; then
     UPDATER_TAR="${APP_DIR}/TruthBeacon_${VERSION}_universal.app.tar.gz"
     tar -czf "${UPDATER_TAR}" -C "${APP_DIR}" TruthBeacon.app
     if [ -f "${ROOT_DIR}/scripts/.keys/truthbeacon_updater.key" ]; then
-        echo "==> Signing updater archive with minisign release key..."
+        echo "==> Signing updater archive with minisign release key file..."
         cargo tauri signer sign -f "${ROOT_DIR}/scripts/.keys/truthbeacon_updater.key" -p "" --app-version "${VERSION}" "${UPDATER_TAR}"
+    elif [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+        echo "==> Signing updater archive with TAURI_SIGNING_PRIVATE_KEY environment variable..."
+        cargo tauri signer sign -p "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" --app-version "${VERSION}" "${UPDATER_TAR}"
     fi
     cp -f "${UPDATER_TAR}" "${ROOT_DIR}/release/" 2>/dev/null || true
     if [ -f "${UPDATER_TAR}.sig" ]; then
