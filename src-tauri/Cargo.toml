@@ -26,7 +26,7 @@ unicode-normalization = "0.1"
 deunicode = "1.6"
 image = "0.25"
 img_hash = "3.2"
-keyring = "4.2"
+ring = "0.17"
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2.0"
 log = "0.4"

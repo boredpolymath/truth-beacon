@@ -185,12 +185,15 @@ def test_cold_launch_and_shutdown():
         text=True
     )
 
-    # Allow cold-launch initialization
-    time.sleep(2.0)
+    # Allow cold-launch initialization and poll for database creation (up to 8s)
+    db_created = False
+    for _ in range(40):
+        if os.path.exists(DB_PATH):
+            db_created = True
+            break
+        time.sleep(0.2)
     check(proc.poll() is None, "Cold launch process is running cleanly without crash")
-
-    # Verify database was initialized on clean-slate launch
-    check(os.path.exists(DB_PATH), f"SQLite database created at {DB_PATH}")
+    check(db_created, f"SQLite database created at {DB_PATH}")
 
     # Query schema version from SQLite
     conn = sqlite3.connect(DB_PATH)
