@@ -40,8 +40,8 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                use tauri_plugin_updater::UpdaterExt;
                 use tauri::Emitter;
+                use tauri_plugin_updater::UpdaterExt;
                 if let Ok(updater) = app_handle.updater() {
                     if let Ok(Some(update)) = updater.check().await {
                         log::info!("TruthBeacon update available: v{}", update.version);

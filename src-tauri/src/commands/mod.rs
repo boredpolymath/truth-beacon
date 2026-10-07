@@ -813,7 +813,12 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateCheckResul
     let current_version = app.package_info().version.to_string();
     let updater = match app.updater() {
         Ok(u) => u,
-        Err(e) => return Err(CommandError::InternalError(format!("Updater initialization failed: {}", e))),
+        Err(e) => {
+            return Err(CommandError::InternalError(format!(
+                "Updater initialization failed: {}",
+                e
+            )))
+        }
     };
 
     match updater.check().await {
@@ -831,7 +836,10 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateCheckResul
             release_notes: None,
             release_date: None,
         }),
-        Err(e) => Err(CommandError::InternalError(format!("Update check failed: {}", e))),
+        Err(e) => Err(CommandError::InternalError(format!(
+            "Update check failed: {}",
+            e
+        ))),
     }
 }
 
@@ -840,10 +848,19 @@ pub async fn install_update(app: tauri::AppHandle) -> Result<bool, CommandError>
     use tauri_plugin_updater::UpdaterExt;
     let updater = match app.updater() {
         Ok(u) => u,
-        Err(e) => return Err(CommandError::InternalError(format!("Updater initialization failed: {}", e))),
+        Err(e) => {
+            return Err(CommandError::InternalError(format!(
+                "Updater initialization failed: {}",
+                e
+            )))
+        }
     };
 
-    if let Some(update) = updater.check().await.map_err(|e| CommandError::InternalError(e.to_string()))? {
+    if let Some(update) = updater
+        .check()
+        .await
+        .map_err(|e| CommandError::InternalError(e.to_string()))?
+    {
         update
             .download_and_install(|_chunk, _total| {}, || {})
             .await
