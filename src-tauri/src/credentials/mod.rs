@@ -135,6 +135,13 @@ impl CredentialManager {
 
     /// Helper to retrieve the list of guild IDs stored in the vault registry (IDs only, never tokens).
     fn get_registered_guild_ids() -> Result<Vec<String>, CredentialError> {
+        // Check in-memory cache first to eliminate repeated OS Keychain queries
+        if let Ok(mem) = MEMORY_GUILD_REGISTRY.read() {
+            if !mem.is_empty() {
+                return Ok(mem.clone());
+            }
+        }
+
         if let Ok(entry) = Entry::new(SERVICE_NAME, GUILD_REGISTRY_KEY) {
             match entry.get_password() {
                 Ok(json_str) => {
@@ -151,12 +158,6 @@ impl CredentialManager {
                 Err(e) => {
                     log::warn!("Keyring access warning for registry: {}", e);
                 }
-            }
-        }
-
-        if let Ok(mem) = MEMORY_GUILD_REGISTRY.read() {
-            if !mem.is_empty() {
-                return Ok(mem.clone());
             }
         }
 
@@ -222,7 +223,14 @@ impl CredentialManager {
 
     /// Retrieve platform bot token from the OS keychain as a raw String. Never logged or stored in SQLite.
     pub fn get_token(guild_id: &str) -> Result<String, CredentialError> {
-        // Try OS Keychain first
+        // Check zeroized in-memory cache first to avoid continuous OS Keychain calls
+        if let Ok(cache) = MEMORY_TOKEN_CACHE.read() {
+            if let Some(token) = cache.get(guild_id) {
+                return Ok(token.as_str().to_string());
+            }
+        }
+
+        // Try OS Keychain
         if let Ok(entry) = Entry::new(SERVICE_NAME, guild_id) {
             match entry.get_password() {
                 Ok(token) => {
@@ -235,13 +243,6 @@ impl CredentialManager {
                 Err(e) => {
                     log::warn!("OS Keychain lookup warning for guild {}: {}", guild_id, e);
                 }
-            }
-        }
-
-        // Fallback to in-memory secure zeroized cache
-        if let Ok(cache) = MEMORY_TOKEN_CACHE.read() {
-            if let Some(token) = cache.get(guild_id) {
-                return Ok(token.as_str().to_string());
             }
         }
 
