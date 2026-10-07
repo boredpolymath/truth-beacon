@@ -131,7 +131,7 @@ pub fn spawn_background_avatar_fetch(
     benchmark_id: String,
     avatar_url: String,
 ) {
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
@@ -302,7 +302,7 @@ pub fn start_periodic_avatar_refresh(
 ) -> broadcast::Sender<()> {
     let (shutdown_tx, mut shutdown_rx) = broadcast::channel::<()>(1);
 
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let mut ticker = tokio::time::interval(interval);
         // Tick once immediately to advance ticker past startup
         ticker.tick().await;

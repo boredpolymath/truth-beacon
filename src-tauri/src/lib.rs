@@ -28,7 +28,7 @@ pub fn run() {
             if let Ok(guilds) = credentials::CredentialManager::list_registered_guilds() {
                 if let Some(first_guild) = guilds.first() {
                     if let Ok(token) = credentials::CredentialManager::get_token(first_guild) {
-                        tokio::spawn(async move {
+                        tauri::async_runtime::spawn(async move {
                             gateway::daemon::start_global_daemon(&token).await;
                         });
                     }
