@@ -403,6 +403,20 @@ export async function invokeCommand(cmd, args = {}) {
       return true;
     }
 
+    case 'check_for_updates': {
+      return {
+        should_update: false,
+        current_version: "0.1.4",
+        latest_version: null,
+        release_notes: null,
+        release_date: null
+      };
+    }
+
+    case 'install_update': {
+      return true;
+    }
+
     default:
       console.warn(`[TruthBeacon Mock IPC] Unhandled command: ${cmd}`);
       return null;

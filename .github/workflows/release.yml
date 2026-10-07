@@ -88,6 +88,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
       - name: Upload macOS Bundles
         uses: actions/upload-artifact@v7
@@ -97,6 +98,8 @@ jobs:
             src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
             src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
             src-tauri/target/universal-apple-darwin/release/truth-beacon
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz*
+            release/*.tar.gz*
 
   build-windows:
     name: Build Windows 64-bit (WiX MSI, NSIS EXE, Portable)
@@ -124,6 +127,8 @@ jobs:
 
       - name: Build Windows Installers & Portable Executable
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           if ("${{ secrets.WINDOWS_CERT_BASE64 }}" -ne "") {
             $certBytes = [System.Convert]::FromBase64String("${{ secrets.WINDOWS_CERT_BASE64 }}")
@@ -141,6 +146,7 @@ jobs:
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/portable/*.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.zip*
 
   build-linux:
     name: Build Linux 64-bit (Debian .deb & AppImage)
@@ -170,6 +176,8 @@ jobs:
         run: cargo install tauri-cli --version "^2.0.0" --locked
 
       - name: Build Linux Bundles
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: ./scripts/build_linux_bundle.sh
 
       - name: Upload Linux Bundles
@@ -178,7 +186,8 @@ jobs:
           name: truthbeacon-linux-x86_64
           path: |
             src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/appimage/*.AppImage*
+            src-tauri/target/release/bundle/appimage/*.tar.gz*
 
   stage-and-verify-integrity:
     name: Sign Release Manifest & Verify Integrity
@@ -216,6 +225,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: python3 scripts/sign_release_artifacts.py
 
       - name: Upload Release Checksums & Signatures
@@ -227,6 +237,7 @@ jobs:
             release/SHA256SUMS.txt.asc
             release/RELEASE_MANIFEST.md
             release/RELEASE_MANIFEST.md.asc
+            release/latest.json
 
   publish-github-release:
     name: Publish Release Assets to GitHub Release
@@ -248,7 +259,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p dist
-          find release-dist -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.msi" -o -name "*.deb" -o -name "*.AppImage" -o -name "truth-beacon*" -o -name "SHA256SUMS*" -o -name "RELEASE_MANIFEST*" \) -exec cp -f {} dist/ \;
+          find release-dist -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" -o -name "*.msi" -o -name "*.deb" -o -name "*.AppImage" -o -name "*.tar.gz" -o -name "*.sig" -o -name "*.json" -o -name "truth-beacon*" -o -name "SHA256SUMS*" -o -name "RELEASE_MANIFEST*" \) -exec cp -f {} dist/ \;
           echo "==> Release artifacts ready for publishing:"
           ls -la dist/
 

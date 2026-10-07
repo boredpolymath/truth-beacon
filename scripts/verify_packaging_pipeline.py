@@ -61,6 +61,13 @@ def test_config():
     assert any("webkit" in d for d in deps), "Debian missing webview dependency (libwebkit2gtk)"
     print("  ✓ Linux Debian tray, credentials, and webview dependencies verified")
 
+    # Cross-platform Auto-Updater
+    plugins = conf.get("plugins", {})
+    updater = plugins.get("updater", {})
+    assert updater.get("pubkey"), "Auto-updater pubkey missing in tauri.conf.json"
+    assert updater.get("endpoints"), "Auto-updater endpoints missing in tauri.conf.json"
+    print("  ✓ Cross-platform auto-updater configuration verified")
+
 def test_installer_assets():
     print("==> [2/5] Validating Installer Graphics & Dimensions...")
     assets = [

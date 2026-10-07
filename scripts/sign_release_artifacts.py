@@ -27,7 +27,7 @@ CHECKSUMS_FILE = os.path.join(RELEASE_DIR, "SHA256SUMS.txt")
 MANIFEST_FILE = os.path.join(RELEASE_DIR, "RELEASE_MANIFEST.md")
 KEYS_DIR = os.path.join(ROOT_DIR, "scripts", ".keys")
 
-SIGNABLE_EXTENSIONS = {".dmg", ".zip", ".exe", ".msi", ".deb", ".AppImage"}
+SIGNABLE_EXTENSIONS = {".dmg", ".zip", ".exe", ".msi", ".deb", ".AppImage", ".gz"}
 SIGNABLE_NAMES = {"truth-beacon-universal", "TruthBeacon-Portable.exe"}
 
 def compute_sha256(filepath):
@@ -241,6 +241,15 @@ def main():
     print("======================================================================")
     print(" TruthBeacon: Release Artifact Integrity & Signing Pipeline (Phase 24.3)")
     print("======================================================================")
+    
+    # Generate Tauri 2 latest.json auto-updater manifest
+    manifest_script = os.path.join(ROOT_DIR, "scripts", "generate_updater_manifest.py")
+    if os.path.exists(manifest_script):
+        try:
+            subprocess.run([sys.executable, manifest_script], check=True)
+        except Exception as e:
+            print(f"  Warning: updater manifest generation: {e}")
+
     update_checksums()
     gpg_sign_files()
     print("======================================================================")

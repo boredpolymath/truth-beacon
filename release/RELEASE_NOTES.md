@@ -19,6 +19,12 @@ TruthBeacon v0.1.4 is a critical stability patch resolving an immediate startup 
 - **Fix**: Replaced direct `tokio::spawn` calls in `src/lib.rs` with `tauri::async_runtime::spawn`. Tauri manages its own background Tokio runtime handle, allowing asynchronous tasks to be safely scheduled from synchronous main-thread setup routines.
 - **Defense-in-Depth**: Also hardened `spawn_background_avatar_fetch` and `start_periodic_avatar_refresh` in `src/vault/avatar_sync.rs` to use `tauri::async_runtime::spawn`, guaranteeing that background avatar hashing and periodic sync routines can never panic if invoked from synchronous threads.
 
+#### 2. Cross-Platform Cryptographic Auto-Updater Engine (macOS, Windows, Linux)
+- **Tauri 2 Plugin Updater Integration**: Integrated `tauri-plugin-updater` with cryptographically enforced Minisign signature verification to protect operators against MITM tampering.
+- **Passive Background & 1-Click Manual Updates**: The desktop client executes a silent background update check 5 seconds after launch and provides an interactive version badge button in the main header.
+- **Interactive Update Notification**: Operators receive an in-app notification card with release highlights and a 1-click "Download & Install" workflow to seamlessly relaunch the updated application.
+- **Full Platform Parity**: Supported and staged across macOS (Universal 2 `.app.tar.gz`), Windows (NSIS `.zip`), and Linux (AppImage `.tar.gz`) alongside public `latest.json` release manifests.
+
 ---
 
 ### Previous Highlights from v0.1.3 & v0.1.2

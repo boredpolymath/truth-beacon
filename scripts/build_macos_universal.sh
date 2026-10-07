@@ -50,6 +50,23 @@ cd "${SRC_TAURI_DIR}"
 cargo tauri build --target universal-apple-darwin --no-sign -b app
 python3 "${SCRIPT_DIR}/package_macos_dmg.py"
 
+# Package and sign macOS updater bundle (.app.tar.gz)
+VERSION=$(grep '^version =' "${SRC_TAURI_DIR}/Cargo.toml" | head -n 1 | cut -d '"' -f 2)
+APP_DIR="${SRC_TAURI_DIR}/target/universal-apple-darwin/release/bundle/macos"
+if [ -d "${APP_DIR}/TruthBeacon.app" ]; then
+    echo "==> Generating macOS auto-updater archive (.app.tar.gz)..."
+    UPDATER_TAR="${APP_DIR}/TruthBeacon_${VERSION}_universal.app.tar.gz"
+    tar -czf "${UPDATER_TAR}" -C "${APP_DIR}" TruthBeacon.app
+    if [ -f "${ROOT_DIR}/scripts/.keys/truthbeacon_updater.key" ]; then
+        echo "==> Signing updater archive with minisign release key..."
+        cargo tauri signer sign -f "${ROOT_DIR}/scripts/.keys/truthbeacon_updater.key" -p "" --app-version "${VERSION}" "${UPDATER_TAR}"
+    fi
+    cp -f "${UPDATER_TAR}" "${ROOT_DIR}/release/" 2>/dev/null || true
+    if [ -f "${UPDATER_TAR}.sig" ]; then
+        cp -f "${UPDATER_TAR}.sig" "${ROOT_DIR}/release/" 2>/dev/null || true
+    fi
+fi
+
 # Optional: Execute Code Signing & Notarization if configured
 if [[ "${SIGN_RELEASE:-false}" == "true" || -n "${APPLE_SIGNING_IDENTITY:-}" ]]; then
     echo "==> Code signing and notarization configured; executing sign_and_notarize_macos.sh..."
@@ -57,8 +74,8 @@ if [[ "${SIGN_RELEASE:-false}" == "true" || -n "${APPLE_SIGNING_IDENTITY:-}" ]];
 fi
 
 echo "======================================================================"
-echo " macOS Universal 2 DMG packaging completed successfully!"
+echo " macOS Universal 2 packaging & updater artifacts completed successfully!"
 echo " Output artifacts:"
-find "${SRC_TAURI_DIR}/target/universal-apple-darwin/release/bundle" -name "*.dmg" -o -name "*.app" || true
+find "${SRC_TAURI_DIR}/target/universal-apple-darwin/release/bundle" -name "*.dmg" -o -name "*.app" -o -name "*.tar.gz*" || true
 echo "======================================================================"
 

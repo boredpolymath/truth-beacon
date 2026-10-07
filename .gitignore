@@ -41,6 +41,7 @@ release/*.exe
 release/*.msi
 release/*.deb
 release/*.AppImage
+release/*.tar.gz*
 
 # Cryptographic keys and certificates
 scripts/.keys/

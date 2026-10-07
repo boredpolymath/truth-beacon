@@ -798,6 +798,62 @@ pub fn execute_notification_action(
         .map_err(|e| CommandError::InternalError(e.to_string()))
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateCheckResult {
+    pub should_update: bool,
+    pub current_version: String,
+    pub latest_version: Option<String>,
+    pub release_notes: Option<String>,
+    pub release_date: Option<String>,
+}
+
+#[tauri::command]
+pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateCheckResult, CommandError> {
+    use tauri_plugin_updater::UpdaterExt;
+    let current_version = app.package_info().version.to_string();
+    let updater = match app.updater() {
+        Ok(u) => u,
+        Err(e) => return Err(CommandError::InternalError(format!("Updater initialization failed: {}", e))),
+    };
+
+    match updater.check().await {
+        Ok(Some(update)) => Ok(UpdateCheckResult {
+            should_update: true,
+            current_version,
+            latest_version: Some(update.version),
+            release_notes: update.body,
+            release_date: update.date.map(|d| d.to_string()),
+        }),
+        Ok(None) => Ok(UpdateCheckResult {
+            should_update: false,
+            current_version,
+            latest_version: None,
+            release_notes: None,
+            release_date: None,
+        }),
+        Err(e) => Err(CommandError::InternalError(format!("Update check failed: {}", e))),
+    }
+}
+
+#[tauri::command]
+pub async fn install_update(app: tauri::AppHandle) -> Result<bool, CommandError> {
+    use tauri_plugin_updater::UpdaterExt;
+    let updater = match app.updater() {
+        Ok(u) => u,
+        Err(e) => return Err(CommandError::InternalError(format!("Updater initialization failed: {}", e))),
+    };
+
+    if let Some(update) = updater.check().await.map_err(|e| CommandError::InternalError(e.to_string()))? {
+        update
+            .download_and_install(|_chunk, _total| {}, || {})
+            .await
+            .map_err(|e| CommandError::InternalError(format!("Failed to install update: {}", e)))?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

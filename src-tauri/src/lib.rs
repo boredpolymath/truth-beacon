@@ -15,6 +15,7 @@ pub mod tray;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             // Initialize local SQLite storage and run startup integrity verification (Phase 11.3 & 25.3)
             let storage = storage::StorageManager::default_instance()
@@ -34,6 +35,28 @@ pub fn run() {
                     }
                 }
             }
+
+            // Spawn background auto-updater check 5 seconds after startup
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                use tauri_plugin_updater::UpdaterExt;
+                use tauri::Emitter;
+                if let Ok(updater) = app_handle.updater() {
+                    if let Ok(Some(update)) = updater.check().await {
+                        log::info!("TruthBeacon update available: v{}", update.version);
+                        let _ = app_handle.emit(
+                            "truthbeacon://update-available",
+                            serde_json::json!({
+                                "version": update.version,
+                                "body": update.body,
+                                "date": update.date.map(|d| d.to_string()),
+                            }),
+                        );
+                    }
+                }
+            });
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -65,7 +88,9 @@ pub fn run() {
             get_discord_config,
             save_discord_config,
             disconnect_discord,
-            fetch_bot_guilds
+            fetch_bot_guilds,
+            check_for_updates,
+            install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running TruthBeacon application");

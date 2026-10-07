@@ -15,23 +15,23 @@ const RELEASE_BASE_URL = 'https://github.com/boredpolymath/truth-beacon/releases
 const ASSETS = {
   mac_dmg: {
     filename: 'TruthBeacon_0.1.4_universal.dmg',
-    size: '27.5 MB',
+    size: '28.8 MB',
     arch: 'Universal 2 (Apple Silicon & Intel)',
     label: 'Download for macOS',
     sub: 'Universal DMG (macOS 10.15+)',
-    hash: '9cba989294ef569443f5e26bb71fa7809df7e9b0fb27b68fa3a43d21cef8029c'
+    hash: '6a52085d428e08c020924a86d1bcee5b8370e3a68a83e45851fe8f2962af5b13'
   },
   mac_zip: {
     filename: 'TruthBeacon_0.1.4_macos_universal.zip',
-    size: '26 MB',
+    size: '27.2 MB',
     arch: 'Universal 2 (.app Portable)',
-    hash: '1f8a059fdab0f2503b9b97f008f0f43bfaed743f9484d963c8e776472beae3a8'
+    hash: 'eef1d345dbaaaea8ab6594afbd1356ed354dd5b0df351b403cdd47514e2c4cbf'
   },
   mac_bin: {
     filename: 'truth-beacon-universal',
-    size: '54.8 MB',
+    size: '57.6 MB',
     arch: 'Mach-O Universal Fat Binary',
-    hash: '407428cd8c36a3e32970b41889e941f8c3c8eaea86a8ec1b15fa7e1578925267'
+    hash: '675652bb8a414e676f500df3bc21b8f0b41149b1550e55624e746834512a49c2'
   },
   win_exe: {
     filename: 'TruthBeacon_0.1.4_x64-setup.exe',
@@ -142,7 +142,7 @@ function initPlatformTabs() {
 const VERIFY_SNIPPETS = {
   macos: {
     title: 'terminal — zsh (macOS)',
-    code: `# Verify SHA-256 Checksum on macOS\nshasum -a 256 TruthBeacon_0.1.4_universal.dmg\n\n# Expected Output:\n# 9cba989294ef569443f5e26bb71fa7809df7e9b0fb27b68fa3a43d21cef8029c  TruthBeacon_0.1.4_universal.dmg`
+    code: `# Verify SHA-256 Checksum on macOS\nshasum -a 256 TruthBeacon_0.1.4_universal.dmg\n\n# Expected Output:\n# 6a52085d428e08c020924a86d1bcee5b8370e3a68a83e45851fe8f2962af5b13  TruthBeacon_0.1.4_universal.dmg`
   },
   linux: {
     title: 'bash — terminal (Linux)',

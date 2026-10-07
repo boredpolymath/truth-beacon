@@ -1,0 +1,23 @@
+{
+  "version": "v0.1.4",
+  "notes": "TruthBeacon v0.1.4: Critical fix for startup Tokio reactor panic on Keychain auto-connect, and integrated native auto-updater engine across macOS, Windows, and Linux.",
+  "pub_date": "2026-10-07T14:13:17Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTV2ZFdVBrR2JieTkxTXBxY0Fma0RLMUV5MGlRcCtaL3dqTzFYa3hLTDBTejZZQzB4a2FsQnpUMUdEZFpzVDJHSDJMRnNYMHlpUEd5ektCWVVtTVVFcDRObW5SbXVBbUFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMzgyMzc0CWZpbGU6VHJ1dGhCZWFjb25fMC4xLjRfdW5pdmVyc2FsLmFwcC50YXIuZ3oJdmVyc2lvbjowLjEuNAp6ay91VEs0dllkMjMvOXlLWVpMY1JVMmxMMDZwd0RySHphMkRnRnl6SHQyMWhlTWtGdVZGdW84Z2V6ZEVOU3ZaMit5ajQzNmN2QXVLM3lsNXNYWU9CZz09Cg==",
+      "url": "https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_universal.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTV2ZFdVBrR2JieTkxTXBxY0Fma0RLMUV5MGlRcCtaL3dqTzFYa3hLTDBTejZZQzB4a2FsQnpUMUdEZFpzVDJHSDJMRnNYMHlpUEd5ektCWVVtTVVFcDRObW5SbXVBbUFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMzgyMzc0CWZpbGU6VHJ1dGhCZWFjb25fMC4xLjRfdW5pdmVyc2FsLmFwcC50YXIuZ3oJdmVyc2lvbjowLjEuNAp6ay91VEs0dllkMjMvOXlLWVpMY1JVMmxMMDZwd0RySHphMkRnRnl6SHQyMWhlTWtGdVZGdW84Z2V6ZEVOU3ZaMit5ajQzNmN2QXVLM3lsNXNYWU9CZz09Cg==",
+      "url": "https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_universal.app.tar.gz"
+    },
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTV2ZFdVBrR2JieTkxTXBxY0Fma0RLMUV5MGlRcCtaL3dqTzFYa3hLTDBTejZZQzB4a2FsQnpUMUdEZFpzVDJHSDJMRnNYMHlpUEd5ektCWVVtTVVFcDRObW5SbXVBbUFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMzgyMzc0CWZpbGU6VHJ1dGhCZWFjb25fMC4xLjRfdW5pdmVyc2FsLmFwcC50YXIuZ3oJdmVyc2lvbjowLjEuNAp6ay91VEs0dllkMjMvOXlLWVpMY1JVMmxMMDZwd0RySHphMkRnRnl6SHQyMWhlTWtGdVZGdW84Z2V6ZEVOU3ZaMit5ajQzNmN2QXVLM3lsNXNYWU9CZz09Cg==",
+      "url": "https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_x64-setup.nsis.zip"
+    },
+    "linux-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTV2ZFdVBrR2JieTkxTXBxY0Fma0RLMUV5MGlRcCtaL3dqTzFYa3hLTDBTejZZQzB4a2FsQnpUMUdEZFpzVDJHSDJMRnNYMHlpUEd5ektCWVVtTVVFcDRObW5SbXVBbUFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMzgyMzc0CWZpbGU6VHJ1dGhCZWFjb25fMC4xLjRfdW5pdmVyc2FsLmFwcC50YXIuZ3oJdmVyc2lvbjowLjEuNAp6ay91VEs0dllkMjMvOXlLWVpMY1JVMmxMMDZwd0RySHphMkRnRnl6SHQyMWhlTWtGdVZGdW84Z2V6ZEVOU3ZaMit5ajQzNmN2QXVLM3lsNXNYWU9CZz09Cg==",
+      "url": "https://github.com/boredpolymath/truth-beacon/releases/download/v0.1.4/TruthBeacon_0.1.4_amd64.AppImage.tar.gz"
+    }
+  }
+}

@@ -1510,3 +1510,127 @@ appState.subscribe(updateView);
 updateView();
 loadDiscordConfig();
 
+// Auto-Updater Integration
+function initAutoUpdater() {
+  const btnCheckUpdate = document.getElementById('btn-check-update');
+  const updateStatusText = document.getElementById('update-status-text');
+  const dotUpdate = document.getElementById('dot-update');
+
+  async function performUpdateCheck(manual = false) {
+    if (btnCheckUpdate) {
+      btnCheckUpdate.disabled = true;
+      if (manual && updateStatusText) updateStatusText.textContent = 'Checking...';
+    }
+
+    try {
+      const res = await invokeCommand('check_for_updates');
+      if (res && res.should_update) {
+        if (updateStatusText) updateStatusText.textContent = `Update: v${res.latest_version}`;
+        if (dotUpdate) {
+          dotUpdate.style.background = '#f2a900';
+          dotUpdate.style.boxShadow = '0 0 8px rgba(242, 169, 0, 0.8)';
+        }
+        showUpdateToast(res);
+      } else {
+        if (manual) {
+          if (updateStatusText) updateStatusText.textContent = 'Up to date ✓';
+          setTimeout(() => {
+            if (updateStatusText) updateStatusText.textContent = `v${res?.current_version || '0.1.4'}`;
+          }, 2500);
+        }
+      }
+    } catch (err) {
+      console.warn('Update check note:', err);
+      if (manual && updateStatusText) {
+        updateStatusText.textContent = 'Check Failed';
+        setTimeout(() => {
+          if (updateStatusText) updateStatusText.textContent = 'v0.1.4';
+        }, 2500);
+      }
+    } finally {
+      if (btnCheckUpdate) btnCheckUpdate.disabled = false;
+    }
+  }
+
+  function showUpdateToast(updateInfo) {
+    if (!toastContainer) return;
+    const existing = document.getElementById('toast-app-update');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'desktop-toast elevated';
+    toast.id = 'toast-app-update';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+      <div class="toast-header">
+        <div class="toast-brand-row">
+          <img src="assets/truthbeacon_emblem.png" class="toast-brand-icon" alt="TruthBeacon">
+          <span class="toast-brand-title">TruthBeacon Update</span>
+        </div>
+        <div class="toast-header-right">
+          <span class="toast-risk-badge" style="background: rgba(88,101,242,0.2); color: #8ea1ff; border: 1px solid rgba(88,101,242,0.4);">v${updateInfo.latest_version}</span>
+          <button class="toast-close-btn" data-action="close" title="Dismiss" aria-label="Close">&times;</button>
+        </div>
+      </div>
+      <div class="toast-body">
+        <p style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 4px;">
+          A new version <strong>v${updateInfo.latest_version}</strong> is ready to download and install.
+        </p>
+        ${updateInfo.release_notes ? `<p style="font-size: 0.78rem; color: var(--text-secondary); max-height: 60px; overflow-y: auto;">${updateInfo.release_notes}</p>` : ''}
+      </div>
+      <div class="toast-actions-row">
+        <button class="btn-toast btn-toast-inspect" id="btn-install-update" style="flex: 2; background: #5865f2; color: #fff;">
+          Download & Install
+        </button>
+        <button class="btn-toast btn-toast-dismiss" data-action="close" style="flex: 1;">
+          Later
+        </button>
+      </div>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    toast.querySelector('#btn-install-update')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.textContent = 'Installing update...';
+      try {
+        await invokeCommand('install_update');
+        btn.textContent = 'Restarting...';
+      } catch (err) {
+        console.error('Update installation failed:', err);
+        btn.textContent = 'Install Failed';
+        alert(`Failed to install update: ${err?.message || err}`);
+      }
+    });
+
+    toast.querySelector('.toast-close-btn')?.addEventListener('click', () => {
+      closeToastWithAnimation(toast);
+    });
+    toast.querySelector('[data-action="close"]')?.addEventListener('click', () => {
+      closeToastWithAnimation(toast);
+    });
+  }
+
+  btnCheckUpdate?.addEventListener('click', () => performUpdateCheck(true));
+
+  // Listen for backend background update event
+  if (window.__TAURI__?.event?.listen) {
+    window.__TAURI__.event.listen('truthbeacon://update-available', (event) => {
+      if (event?.payload) {
+        showUpdateToast({
+          latest_version: event.payload.version,
+          release_notes: event.payload.body,
+        });
+      }
+    });
+  }
+
+  // Initial passive check after 4 seconds
+  setTimeout(() => {
+    performUpdateCheck(false);
+  }, 4000);
+}
+
+initAutoUpdater();
+
