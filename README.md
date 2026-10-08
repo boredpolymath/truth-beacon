@@ -397,7 +397,7 @@ truth-beacon/
 
 ## Community & Stewardship
 
-TruthBeacon is proudly created by **Orange Heart Industries** with the belief that online communities deserve safe, healthy spaces to gather without fear of deceit or manipulation.
+TruthBeacon is proudly created by **Bored Polymath Studios** with the belief that online communities deserve safe, healthy spaces to gather without fear of deceit or manipulation.
 
 - 💛 **Community Edition:** Free for volunteer-run groups, open-source communities, indie creators, and gaming clubs.
 - 🕊️ **Charity & Faith Grant:** 100% free access to all advanced features for registered non-profits, shelters, food banks, and faith communities.
