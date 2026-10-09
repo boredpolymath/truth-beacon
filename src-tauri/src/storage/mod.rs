@@ -96,7 +96,10 @@ impl StorageManager {
             path,
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         ) {
-            Ok(c) => c,
+            Ok(c) => {
+                let _ = c.busy_timeout(std::time::Duration::from_millis(10000));
+                c
+            }
             Err(e) => {
                 return DatabaseIntegrityStatus::CheckFailed {
                     error: format!("Unable to open database for integrity verification: {}", e),
@@ -215,6 +218,7 @@ impl StorageManager {
         }
 
         let mut conn = Connection::open(&db_path)?;
+        let _ = conn.busy_timeout(std::time::Duration::from_millis(10000));
         migrations::run_migrations(&mut conn)?;
 
         // Phase 11.3: Automatic database integrity check on startup
@@ -266,9 +270,19 @@ impl StorageManager {
         tb_dir.join("truthbeacon.local.db")
     }
 
-    /// Resolves and initializes default local SQLite storage manager.
+    /// Resolves and initializes default local SQLite storage manager with retry backoff for test concurrency.
     pub fn default_instance() -> Result<Self> {
-        Self::init(Self::default_db_path())
+        let mut attempts = 0;
+        loop {
+            match Self::init(Self::default_db_path()) {
+                Ok(instance) => return Ok(instance),
+                Err(e) if attempts < 10 && e.to_string().to_lowercase().contains("locked") => {
+                    attempts += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(100 * attempts));
+                }
+                Err(e) => return Err(e),
+            }
+        }
     }
 
     /// Retrieve thread-safe handle to the primary writer connection.
@@ -293,6 +307,7 @@ impl StorageManager {
                 &self.db_path,
                 OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
             )?;
+            let _ = conn.busy_timeout(std::time::Duration::from_millis(10000));
             migrations::configure_pragmas(&conn)?;
             Ok(conn)
         }
