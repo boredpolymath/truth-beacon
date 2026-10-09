@@ -49,8 +49,9 @@ def build_manifest():
     print(f"==> Building Tauri 2 Auto-Updater Manifest (latest.json) for v{VERSION}...")
     
     notes = (
-        f"TruthBeacon v{VERSION}: Critical fix for startup Tokio reactor panic on Keychain auto-connect, "
-        "and integrated native auto-updater engine across macOS, Windows, and Linux."
+        f"TruthBeacon v{VERSION}: Major security, resilience & release hardening including forensic SQLite quarantine, "
+        "domain-bound AES-256-GCM vault, multi-keyframe pHash inspection, UTR #39 homoglyph detection, "
+        "multi-guild gateway resumption, and sandboxed IPC."
     )
     
     strict = "--strict" in sys.argv or os.environ.get("STRICT_MANIFEST") == "1"

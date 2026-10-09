@@ -1,3 +1,44 @@
+# TruthBeacon v0.2.0 — Major Security, Resilience & Release Hardening
+**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+
+---
+
+### Overview
+TruthBeacon v0.2.0 is a major security, resilience, testability, and release-hardening release. It addresses comprehensive application-security audit findings, eliminates trust assumptions between webview and native core, enforces domain-bound authenticated encryption on credentials, preserves database integrity under corruption, hardens multi-guild gateway connections, and expands automated regression coverage to 176 passing tests.
+
+---
+
+### What's New & Hardened in v0.2.0
+
+#### 1. Database Integrity & Non-Destructive Forensic Quarantine
+- **Pre-Flight Integrity Gate**: Startup now runs `PRAGMA integrity_check` before applying schema migrations, preventing migration runs on corrupted databases.
+- **Safe Forensic Quarantine**: Corrupted databases and active WAL/SHM frames are automatically copied to a timestamped file (`<path>.corrupt.<timestamp>.db`) rather than being silently deleted or overwritten, preserving evidence for recovery.
+- **Native Online Backup & Pruning**: Implemented `backup_to(&self, dest)` using SQLite's online backup API to take consistent snapshots without blocking concurrent readers, and added configurable data retention pruning.
+
+#### 2. Authenticated Credential Vault with AAD Domain Binding
+- **AES-256-GCM Domain Separation**: Vault payloads are authenticated using domain-bound Associated Data (`TruthBeacon:EncryptedVault:v1`), preventing cross-context ciphertext replay.
+- **Tamper & Corruption Detection**: The vault loader strictly validates authentication tags and AAD context, returning explicit `VaultCorruptedOrTampered` errors on tampered bytes without overwriting corrupted payloads.
+- **Argon2id Key Isolation**: Vault keys are derived via Argon2id with salt-scoped caching, preventing memory-key collisions in multi-threaded environments. Sensitive tokens are strictly redacted (`[REDACTED]`) in all logs and displays.
+
+#### 3. Backend Moderation Authority & Incident Anti-Replay
+- **Authoritative Database Validation**: The `resolve_incident` IPC command now resolves targets, guild associations, and incident statuses directly against SQLite rather than trusting webview parameters.
+- **Anti-Replay Safeguards**: Moderation commands reject already-resolved incidents to eliminate command replay risks.
+- **Operator Attribution Requirement**: Consequential actions (`Ban`, `Exclude`) strictly require a non-empty, identified operator.
+- **Persistent Circuit Breaker**: Trip state and cooldowns are reconstructed from persisted audit logs on startup, preventing bypasses by restarting the application.
+
+#### 4. Multi-Guild Gateway Lifecycle & Event Deduplication
+- **Gateway Connection Registry**: Replaced single-guild startup logic with `GatewayConnectionRegistry`, automatically restoring daemons for all registered guilds while deduplicating shared bot tokens to a single resilient connection.
+- **Event Deduplication**: Gateway Opcode 0 event dispatch deduplicates incoming events using an LRU session ring buffer, preventing double-processing on network reconnects.
+
+#### 5. Resource Bounds & IPC Sandboxing
+- **Avatar Memory Limits**: Remote avatar downloads and processing are constrained to 8 MB maximum buffer size, 4096 px maximum dimension, 16M maximum pixels, and a 10-second download timeout.
+- **Tauri Capability Sandboxing**: Constrained `shell:allow-open` to trusted Discord and TruthBeacon GitHub URLs, and removed unnecessary origins from the webview CSP.
+
+#### 6. Dependency Supply Chain Hardening
+- **Documented Audit Policy**: Transitive dependency advisory `RUSTSEC-2023-0080` (in `transpose` via `img_hash` 8x8 DCT) is formally documented with bounds proofs in `.cargo/audit.toml`, enabling clean zero-flag `cargo audit` execution.
+
+---
+
 # TruthBeacon v0.1.5 — Official Release Notes
 **Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
 
