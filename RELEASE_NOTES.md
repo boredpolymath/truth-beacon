@@ -4,7 +4,7 @@
 ---
 
 ### Overview
-TruthBeacon v0.2.0 is a major security, resilience, testability, and release-hardening release. It addresses comprehensive application-security audit findings, eliminates trust assumptions between webview and native core, enforces domain-bound authenticated encryption on credentials, preserves database integrity under corruption, hardens multi-guild gateway connections, and expands automated regression coverage to 176 passing tests.
+TruthBeacon v0.2.0 is a major security, resilience, testability, and release-hardening release. It addresses comprehensive application-security audit findings, eliminates trust assumptions between webview and native core, enforces domain-bound authenticated encryption on credentials, preserves database integrity under corruption, hardens multi-guild gateway connections, and expands automated regression coverage to 177 passing tests.
 
 ---
 

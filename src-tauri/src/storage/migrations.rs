@@ -21,6 +21,42 @@ pub fn get_user_version(conn: &Connection) -> Result<i32> {
     conn.query_row("PRAGMA user_version;", [], |row| row.get(0))
 }
 
+/// Checks if a column exists in a given SQLite table
+pub fn table_has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({});", table))?;
+    let mut rows = stmt.query([])?;
+    while let Some(row) = rows.next()? {
+        let name: String = row.get(1)?;
+        if name.eq_ignore_ascii_case(column) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Safely and idempotently adds a column to an existing SQLite table
+pub fn add_column_if_not_exists(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    col_def: &str,
+) -> Result<()> {
+    if !table_has_column(conn, table, column)? {
+        let sql = format!("ALTER TABLE {} ADD COLUMN {} {};", table, column, col_def);
+        match conn.execute(&sql, []) {
+            Ok(_) => {}
+            Err(rusqlite::Error::SqliteFailure(_err, Some(ref msg)))
+                if msg.contains("duplicate column name") =>
+            {
+                // Column was added concurrently by another connection or thread
+                log::debug!("Column {}.{} already added concurrently", table, column);
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(())
+}
+
 /// Runs atomic, non-destructive embedded migrations up to CURRENT_SCHEMA_VERSION
 pub fn run_migrations(conn: &mut Connection) -> Result<()> {
     configure_pragmas(conn)?;
@@ -95,17 +131,21 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
         version = 1;
     }
 
-    // Migration Step 2 (Schema Evolution): Non-destructive column additions
+    // Migration Step 2 (Schema Evolution): Non-destructive idempotent column additions
     if version < 2 {
-        let tx = conn.transaction()?;
-        tx.execute_batch(
-            "
-            ALTER TABLE benchmarks ADD COLUMN sensitivity_override REAL DEFAULT NULL;
-            ALTER TABLE incidents ADD COLUMN composite_risk_score REAL DEFAULT 0.0;
-            PRAGMA user_version = 2;
-            ",
+        add_column_if_not_exists(
+            conn,
+            "benchmarks",
+            "sensitivity_override",
+            "REAL DEFAULT NULL",
         )?;
-        tx.commit()?;
+        add_column_if_not_exists(
+            conn,
+            "incidents",
+            "composite_risk_score",
+            "REAL DEFAULT 0.0",
+        )?;
+        conn.execute("PRAGMA user_version = 2;", [])?;
     }
 
     Ok(())
@@ -290,5 +330,32 @@ mod tests {
             res.is_err(),
             "Foreign key constraint must prevent orphan incidents"
         );
+    }
+
+    #[test]
+    fn test_migration_idempotency_and_duplicate_column_safety() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        run_migrations(&mut conn).unwrap();
+
+        // Calling run_migrations again on an already-migrated database must succeed without errors
+        assert!(run_migrations(&mut conn).is_ok());
+
+        // Calling add_column_if_not_exists on columns that already exist must be a no-op and succeed
+        assert!(add_column_if_not_exists(
+            &conn,
+            "benchmarks",
+            "sensitivity_override",
+            "REAL DEFAULT NULL"
+        )
+        .is_ok());
+        assert!(add_column_if_not_exists(
+            &conn,
+            "incidents",
+            "composite_risk_score",
+            "REAL DEFAULT 0.0"
+        )
+        .is_ok());
+        assert!(table_has_column(&conn, "benchmarks", "sensitivity_override").unwrap());
+        assert!(table_has_column(&conn, "incidents", "composite_risk_score").unwrap());
     }
 }

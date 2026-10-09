@@ -30,7 +30,7 @@
 ## Verification & Pipeline Audits
 
 1. **Unit & Integration Test Suite**:
-   - `cargo test --all-targets`: **176 passed, 0 failed, 0 ignored** (100% pass rate).
+   - `cargo test --all-targets`: **177 passed, 0 failed, 0 ignored** (100% pass rate).
 2. **Packaging Pipeline Verification**:
    - `scripts/verify_packaging_pipeline.py`: **5/5 checks passed** (DMG layout, NSIS/WiX assets, Freedesktop compliance, multi-res icons, automation scripts).
 3. **Software Bill of Materials (SBOM) & License Audit**:
