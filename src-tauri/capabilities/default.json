@@ -3,9 +3,20 @@
   "identifier": "default",
   "description": "Default permissions for TruthBeacon desktop frontend",
   "windows": ["main"],
+  "webviews": ["main"],
+  "remote": {
+    "urls": []
+  },
   "permissions": [
     "core:default",
-    "shell:allow-open",
+    {
+      "identifier": "shell:allow-open",
+      "allow": [
+        { "href": "https://discord.com/**" },
+        { "href": "https://*.discord.com/**" },
+        { "href": "https://github.com/boredpolymath/truth-beacon/**" }
+      ]
+    },
     "updater:default"
   ]
 }

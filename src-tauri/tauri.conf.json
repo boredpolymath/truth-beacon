@@ -20,7 +20,9 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; img-src 'self' data: https://cdn.discordapp.com https://images.unsplash.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' wss://gateway.discord.gg https://discord.com;"
+      "csp": "default-src 'self'; script-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' wss://gateway.discord.gg https://discord.com; frame-src 'none'; object-src 'none'; base-uri 'self';",
+      "capabilities": ["default"],
+      "freezePrototype": true
     }
   },
   "bundle": {

@@ -6,7 +6,7 @@
 //! - **Triage Stream Promotion**: One-click promotion from the incident stream directly into the benchmark vault,
 //!   synchronizing incident resolution and audit logs.
 
-use crate::detection::perceptual_hash::compute_perceptual_hash;
+use crate::detection::perceptual_hash::compute_perceptual_hash_async;
 use crate::models::{CanonicalBenchmark, CreateBenchmarkInput, UpdateBenchmarkInput};
 use crate::vault::{VaultError, VaultManager};
 use rusqlite::params;
@@ -318,7 +318,7 @@ impl IngestionClient {
             return None;
         }
         let bytes = res.bytes().await.ok()?;
-        compute_perceptual_hash(&bytes).ok()
+        compute_perceptual_hash_async(bytes.to_vec()).await.ok()
     }
 }
 

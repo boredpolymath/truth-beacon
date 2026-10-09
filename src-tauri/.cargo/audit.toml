@@ -1,0 +1,7 @@
+# Cargo Audit Configuration for TruthBeacon
+[advisories]
+ignore = [
+    # RUSTSEC-2023-0080: Buffer overflow in transpose due to integer overflow on huge slices.
+    # TruthBeacon uses fixed 8x8 DCT perceptual hashing which never encounters large slices.
+    "RUSTSEC-2023-0080",
+]

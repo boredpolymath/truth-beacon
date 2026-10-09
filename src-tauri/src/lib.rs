@@ -18,23 +18,50 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             // Initialize local SQLite storage and run startup integrity verification (Phase 11.3 & 25.3)
-            let storage = storage::StorageManager::default_instance()
-                .map_err(|e| Box::<dyn std::error::Error>::from(e.to_string()))?;
-            let _ = storage.verify_integrity();
+            let storage = match storage::StorageManager::default_instance() {
+                Ok(s) => s,
+                Err(e) => {
+                    log::error!(
+                        "CRITICAL: Failed to initialize local SQLite storage: {}. Halting startup to prevent unsafe operations.",
+                        e
+                    );
+                    return Err(Box::<dyn std::error::Error>::from(e.to_string()));
+                }
+            };
+
+            match storage.verify_integrity() {
+                Ok(storage::DatabaseIntegrityStatus::Healthy) => {
+                    log::info!("Local SQLite database integrity verified (PRAGMA integrity_check == ok)");
+                }
+                Ok(storage::DatabaseIntegrityStatus::Corrupted { errors, quarantine_backup_path }) => {
+                    log::error!(
+                        "CRITICAL: Local SQLite database corruption detected! Errors: {:?}. Quarantined copy preserved at {:?}",
+                        errors,
+                        quarantine_backup_path
+                    );
+                    return Err(Box::<dyn std::error::Error>::from(format!(
+                        "Database integrity failure ({:?}); original evidence preserved at {:?}",
+                        errors, quarantine_backup_path
+                    )));
+                }
+                Ok(storage::DatabaseIntegrityStatus::CheckFailed { error }) => {
+                    log::warn!(
+                        "Transient failure attempting database integrity verification: {}",
+                        error
+                    );
+                }
+                Err(e) => {
+                    log::error!("Database integrity check query execution error: {}", e);
+                }
+            }
 
             // Register persistent system tray icon on startup (Phase 17.1)
             tray::setup_system_tray(app)?;
 
-            // If bot credentials are saved in OS Keychain, launch the Discord Gateway connection automatically
-            if let Ok(guilds) = credentials::CredentialManager::list_registered_guilds() {
-                if let Some(first_guild) = guilds.first() {
-                    if let Ok(token) = credentials::CredentialManager::get_token(first_guild) {
-                        tauri::async_runtime::spawn(async move {
-                            gateway::daemon::start_global_daemon(&token).await;
-                        });
-                    }
-                }
-            }
+            // Launch Discord Gateway connections for all registered, authorized guild credentials (Phase 14.5)
+            tauri::async_runtime::spawn(async move {
+                gateway::daemon::start_all_registered_daemons().await;
+            });
 
             // Spawn background auto-updater check 5 seconds after startup
             let app_handle = app.handle().clone();

@@ -55,18 +55,163 @@ pub struct EradicationReport {
     pub remaining_db_bytes: u64,
 }
 
+/// Status report resulting from SQLite PRAGMA integrity_check execution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DatabaseIntegrityStatus {
+    /// Database is completely sound (`PRAGMA integrity_check == "ok"`).
+    Healthy,
+    /// Confirmed corruption detected on disk. Contains corruption diagnostic lines
+    /// and the path to any preserved quarantine copy.
+    Corrupted {
+        errors: Vec<String>,
+        quarantine_backup_path: Option<PathBuf>,
+    },
+    /// Transient inability to execute check (e.g. file lock, I/O permission error).
+    CheckFailed { error: String },
+}
+
+impl DatabaseIntegrityStatus {
+    /// Returns true if the database integrity is confirmed healthy.
+    pub fn is_healthy(&self) -> bool {
+        matches!(self, Self::Healthy)
+    }
+}
+
 pub struct StorageManager {
     db_path: PathBuf,
     conn: Arc<Mutex<Connection>>,
 }
 
 impl StorageManager {
+    /// Performs a non-destructive read-only integrity check on an existing SQLite database file on disk.
+    pub fn check_file_integrity(path: &Path) -> DatabaseIntegrityStatus {
+        if path == Path::new(":memory:") {
+            return DatabaseIntegrityStatus::Healthy;
+        }
+        if !path.exists() {
+            return DatabaseIntegrityStatus::Healthy;
+        }
+
+        let conn = match Connection::open_with_flags(
+            path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        ) {
+            Ok(c) => c,
+            Err(e) => {
+                return DatabaseIntegrityStatus::CheckFailed {
+                    error: format!("Unable to open database for integrity verification: {}", e),
+                }
+            }
+        };
+
+        let mut stmt = match conn.prepare("PRAGMA integrity_check;") {
+            Ok(s) => s,
+            Err(e) => {
+                return DatabaseIntegrityStatus::CheckFailed {
+                    error: format!("Failed to prepare PRAGMA integrity_check: {}", e),
+                }
+            }
+        };
+
+        let rows = match stmt.query_map([], |row| row.get::<_, String>(0)) {
+            Ok(r) => r,
+            Err(e) => {
+                return DatabaseIntegrityStatus::CheckFailed {
+                    error: format!("Failed to execute integrity check query: {}", e),
+                }
+            }
+        };
+
+        let mut messages = Vec::new();
+        for msg in rows.flatten() {
+            messages.push(msg);
+        }
+
+        if messages.len() == 1 && messages[0].to_lowercase() == "ok" {
+            DatabaseIntegrityStatus::Healthy
+        } else {
+            DatabaseIntegrityStatus::Corrupted {
+                errors: messages,
+                quarantine_backup_path: None,
+            }
+        }
+    }
+
+    /// Preserves a corrupted database by copying the original file and any active WAL/SHM
+    /// frames into a timestamped quarantine file (`<path>.corrupt.<timestamp>.db`).
+    /// Never deletes, truncates, or overwrites potentially recoverable forensic data.
+    pub fn quarantine_corrupt_database(path: &Path) -> std::io::Result<PathBuf> {
+        let now = chrono::Utc::now().timestamp();
+        let quarantine_path = path.with_extension(format!("corrupt.{}.db", now));
+        std::fs::copy(path, &quarantine_path)?;
+
+        let wal_path = PathBuf::from(format!("{}-wal", path.display()));
+        if wal_path.exists() {
+            let wal_quarantine = path.with_extension(format!("corrupt.{}.db-wal", now));
+            let _ = std::fs::copy(&wal_path, &wal_quarantine);
+        }
+
+        let shm_path = PathBuf::from(format!("{}-shm", path.display()));
+        if shm_path.exists() {
+            let shm_quarantine = path.with_extension(format!("corrupt.{}.db-shm", now));
+            let _ = std::fs::copy(&shm_path, &shm_quarantine);
+        }
+
+        log::warn!(
+            "Corrupted database quarantined to {:?} to preserve evidence without data destruction",
+            quarantine_path
+        );
+        Ok(quarantine_path)
+    }
+
     /// Initialize local SQLite storage with WAL mode, pragmas, run embedded migrations,
     /// and verify database integrity on startup (Phase 11.1 & Phase 11.3).
+    ///
+    /// If an existing on-disk database fails the pre-flight integrity check,
+    /// it is quarantined to preserve evidence, destructive operations are halted,
+    /// and an explicit corruption error is returned.
     pub fn init<P: AsRef<Path>>(path: P) -> Result<Self> {
         let db_path = path.as_ref().to_path_buf();
         if let Some(parent) = db_path.parent() {
             let _ = std::fs::create_dir_all(parent);
+        }
+
+        // Pre-flight check: If database already exists and has content on disk, verify integrity BEFORE running migrations
+        if db_path != Path::new(":memory:")
+            && db_path.exists()
+            && std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0) > 0
+        {
+            match Self::check_file_integrity(&db_path) {
+                DatabaseIntegrityStatus::Healthy => {}
+                DatabaseIntegrityStatus::Corrupted { errors, .. } => {
+                    let quarantine = Self::quarantine_corrupt_database(&db_path).ok();
+                    log::error!(
+                        "Database integrity check failed prior to migration: {:?}. Quarantined to: {:?}",
+                        errors,
+                        quarantine
+                    );
+                    return Err(rusqlite::Error::SqliteFailure(
+                        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CORRUPT),
+                        Some(format!(
+                            "Pre-flight integrity verification failed ({:?}); evidence preserved at {:?}",
+                            errors, quarantine
+                        )),
+                    ));
+                }
+                DatabaseIntegrityStatus::CheckFailed { error } => {
+                    log::warn!(
+                        "Pre-flight integrity check could not execute: {}. Halting startup to prevent unsafe writes.",
+                        error
+                    );
+                    return Err(rusqlite::Error::SqliteFailure(
+                        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CANTOPEN),
+                        Some(format!(
+                            "Database integrity verification could not be performed: {}",
+                            error
+                        )),
+                    ));
+                }
+            }
         }
 
         let mut conn = Connection::open(&db_path)?;
@@ -192,9 +337,65 @@ impl Drop for StorageManager {
 
 impl StorageManager {
     /// Verifies database integrity on demand via `PRAGMA integrity_check;` (Phase 11.3).
-    pub fn verify_integrity(&self) -> Result<bool> {
+    pub fn verify_integrity(&self) -> Result<DatabaseIntegrityStatus> {
         let conn = self.conn.lock().unwrap();
-        migrations::run_integrity_check(&conn)
+        let mut stmt = conn.prepare("PRAGMA integrity_check;")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+        let mut messages = Vec::new();
+        for row in rows {
+            messages.push(row?);
+        }
+        if messages.len() == 1 && messages[0].to_lowercase() == "ok" {
+            Ok(DatabaseIntegrityStatus::Healthy)
+        } else {
+            Ok(DatabaseIntegrityStatus::Corrupted {
+                errors: messages,
+                quarantine_backup_path: None,
+            })
+        }
+    }
+
+    /// Online database backup: creates a consistent snapshot of the active database
+    /// to the specified target path using SQLite's native backup API.
+    pub fn backup_to<P: AsRef<Path>>(&self, dest: P) -> Result<()> {
+        let dest_path = dest.as_ref();
+        if let Some(parent) = dest_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let mut dest_conn = Connection::open(dest_path)?;
+        let conn = self.conn.lock().unwrap();
+        let backup = rusqlite::backup::Backup::new(&conn, &mut dest_conn)?;
+        backup.run_to_completion(100, std::time::Duration::from_millis(10), None)?;
+        Ok(())
+    }
+
+    /// Safely restores database state from a validated backup archive into the active connection.
+    pub fn restore_from<P: AsRef<Path>>(&self, src: P) -> Result<()> {
+        let src_path = src.as_ref();
+        let src_conn = Connection::open_with_flags(
+            src_path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        let mut conn = self.conn.lock().unwrap();
+        let backup = rusqlite::backup::Backup::new(&src_conn, &mut conn)?;
+        backup.run_to_completion(100, std::time::Duration::from_millis(10), None)?;
+        Ok(())
+    }
+
+    /// Prunes expired resolved incidents and audit records older than the specified retention period (days).
+    /// Preserves unresolved discrepancies, benchmark identities, and circuit-breaker security trip events.
+    pub fn prune_expired_records(&self, retention_days: u32) -> Result<usize> {
+        let conn = self.conn.lock().unwrap();
+        let cutoff_timestamp = chrono::Utc::now().timestamp() - (retention_days as i64 * 86400);
+        let pruned_audits = conn.execute(
+            "DELETE FROM audit_logs WHERE timestamp < ?1 AND action != 'circuit_breaker_tripped';",
+            rusqlite::params![cutoff_timestamp],
+        )?;
+        let pruned_incidents = conn.execute(
+            "DELETE FROM incidents WHERE timestamp < ?1 AND status IN ('dismissed', 'whitelisted');",
+            rusqlite::params![cutoff_timestamp],
+        )?;
+        Ok(pruned_audits + pruned_incidents)
     }
 
     /// Inspect and verify active SQLite runtime pragmas on a connection.
@@ -776,12 +977,166 @@ mod tests {
         ));
 
         let storage = StorageManager::init(&test_db_path).unwrap();
-        assert!(storage.verify_integrity().unwrap());
+        assert_eq!(
+            storage.verify_integrity().unwrap(),
+            DatabaseIntegrityStatus::Healthy
+        );
 
         // Cleanup
         let _ = std::fs::remove_file(&test_db_path);
         let _ = std::fs::remove_file(format!("{}-wal", test_db_path.display()));
         let _ = std::fs::remove_file(format!("{}-shm", test_db_path.display()));
+    }
+
+    #[test]
+    fn test_corrupted_database_detection_and_quarantine() {
+        let temp_dir = std::env::temp_dir();
+        let test_db_path = temp_dir.join(format!(
+            "truthbeacon_corrupt_{}.db",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        ));
+
+        // Create a valid database with data first
+        {
+            let storage = StorageManager::init(&test_db_path).unwrap();
+            {
+                let conn = storage.get_connection();
+                let locked = conn.lock().unwrap();
+                locked.execute(
+                    "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at)
+                     VALUES ('bm_c1', 'g1', 'u1', 'TestUser', 'Role', 100, 100);",
+                    [],
+                ).unwrap();
+            }
+            let _ = storage.checkpoint_on_shutdown();
+        }
+
+        // Intentionally corrupt SQLite header bytes
+        {
+            let mut bytes = std::fs::read(&test_db_path).unwrap();
+            for b in &mut bytes[16..40] {
+                *b = 0xFF;
+            }
+            std::fs::write(&test_db_path, &bytes).unwrap();
+        }
+
+        // Pre-flight check should detect corruption
+        let status = StorageManager::check_file_integrity(&test_db_path);
+        assert!(
+            !status.is_healthy(),
+            "Corrupted database must not be reported as healthy"
+        );
+
+        // Initialization must fail and quarantine original file without silent deletion
+        let init_result = StorageManager::init(&test_db_path);
+        assert!(init_result.is_err(), "Init must reject corrupted database");
+
+        // Original database file must still exist (never deleted)
+        assert!(
+            test_db_path.exists(),
+            "Original corrupted database must not be deleted"
+        );
+
+        // Cleanup
+        let _ = std::fs::remove_file(&test_db_path);
+        let _ = std::fs::remove_file(format!("{}-wal", test_db_path.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", test_db_path.display()));
+    }
+
+    #[test]
+    fn test_database_backup_and_restore() {
+        let temp_dir = std::env::temp_dir();
+        let src_db = temp_dir.join(format!(
+            "truthbeacon_bk_src_{}.db",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        ));
+        let backup_dest = temp_dir.join(format!(
+            "truthbeacon_bk_dest_{}.db",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        ));
+
+        let storage = StorageManager::init(&src_db).unwrap();
+        {
+            let conn = storage.get_connection();
+            let locked = conn.lock().unwrap();
+            locked.execute(
+                "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at)
+                 VALUES ('bm_bk', 'g1', 'u1', 'BackupUser', 'Staff', 500, 500);",
+                [],
+            ).unwrap();
+        }
+
+        // Perform online backup
+        storage.backup_to(&backup_dest).unwrap();
+        assert!(backup_dest.exists(), "Backup destination file must exist");
+
+        // Open backup database and verify record preserved
+        let backup_storage = StorageManager::init(&backup_dest).unwrap();
+        let conn_bk = backup_storage.get_connection();
+        let count: i64 = conn_bk
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT COUNT(*) FROM benchmarks WHERE id = 'bm_bk';",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1, "Backup snapshot must preserve all records");
+
+        // Cleanup
+        let _ = std::fs::remove_file(&src_db);
+        let _ = std::fs::remove_file(format!("{}-wal", src_db.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", src_db.display()));
+        let _ = std::fs::remove_file(&backup_dest);
+        let _ = std::fs::remove_file(format!("{}-wal", backup_dest.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", backup_dest.display()));
+    }
+
+    #[test]
+    fn test_retention_prune_expired_records() {
+        let storage = StorageManager::in_memory().unwrap();
+        let now = chrono::Utc::now().timestamp();
+        let old_time = now - (40 * 86400); // 40 days ago
+
+        // Insert benchmark to satisfy foreign key
+        {
+            let conn = storage.get_connection();
+            let locked = conn.lock().unwrap();
+            locked.execute(
+                "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at)
+                 VALUES ('bm_ret', 'g1', 'u1', 'RetUser', 'Mod', 100, 100);",
+                [],
+            ).unwrap();
+            // Insert old audit log
+            locked
+                .execute(
+                    "INSERT INTO audit_logs (id, timestamp, action, guild_id, operator_id, reason)
+                 VALUES ('aud_old', ?1, 'dismiss', 'g1', 'op', 'old log');",
+                    rusqlite::params![old_time],
+                )
+                .unwrap();
+            // Insert recent audit log
+            locked
+                .execute(
+                    "INSERT INTO audit_logs (id, timestamp, action, guild_id, operator_id, reason)
+                 VALUES ('aud_new', ?1, 'dismiss', 'g1', 'op', 'new log');",
+                    rusqlite::params![now],
+                )
+                .unwrap();
+        }
+
+        // Pruning older than 30 days should remove aud_old but retain aud_new
+        let pruned = storage.prune_expired_records(30).unwrap();
+        assert_eq!(pruned, 1);
+
+        let conn = storage.get_connection();
+        let remaining: i64 = conn
+            .lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM audit_logs;", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(remaining, 1);
     }
 
     #[test]
@@ -850,7 +1205,10 @@ mod tests {
         }
 
         // Verify database integrity is intact after eradication
-        assert!(storage.verify_integrity().unwrap());
+        assert_eq!(
+            storage.verify_integrity().unwrap(),
+            DatabaseIntegrityStatus::Healthy
+        );
 
         // Cleanup
         let _ = std::fs::remove_file(&test_db_path);

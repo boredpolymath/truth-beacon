@@ -180,6 +180,17 @@ pub fn normalize_and_deobfuscate(input: &str) -> String {
     deunicode::deunicode(&stripped).trim().to_lowercase()
 }
 
+/// Generates canonical visual skeletons using standard Unicode Technical Report #39 (TR39 / UTS #39)
+/// confusable data tables (via `unicode_security::confusable_detection::skeleton`).
+///
+/// Strips invisible/zero-width/bidi artifacts first, decomposes characters according to TR39,
+/// and normalizes case/whitespace.
+pub fn tr39_canonical_skeleton(input: &str) -> String {
+    let stripped = strip_deobfuscate_unicode(input);
+    let skel: String = unicode_security::confusable_detection::skeleton(&stripped).collect();
+    skel.trim().to_lowercase()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -322,5 +333,44 @@ mod tests {
             assert_eq!(strip_deobfuscate_unicode(name), name);
             assert_eq!(normalize_and_deobfuscate(name), name.to_lowercase());
         }
+    }
+
+    #[test]
+    fn test_tr39_canonical_skeleton() {
+        // Cyrillic lookalikes: 'Р' (Cyrillic Er), 'а' (Cyrillic a), 'о' (Cyrillic o) in 'Pаstоr'
+        let cyrillic_pastor = "\u{0420}\u{0430}st\u{043E}r";
+        assert_eq!(
+            tr39_canonical_skeleton(cyrillic_pastor),
+            tr39_canonical_skeleton("pastor")
+        );
+
+        // Greek lookalike: 'Αdmin' (Greek Alpha) vs Latin 'admin' vs digraph 'adrnin'
+        let greek_admin = "\u{0391}dmin";
+        assert_eq!(
+            tr39_canonical_skeleton(greek_admin),
+            tr39_canonical_skeleton("admin")
+        );
+        // TR39 canonical tables map 'm' and 'rn' to the same canonical sequence ("rn")
+        assert_eq!(
+            tr39_canonical_skeleton("admin"),
+            tr39_canonical_skeleton("adrnin")
+        );
+
+        // Mathematical lookalikes and fullwidth characters
+        let math_lead = "𝑷𝒂𝒔𝒕𝒐𝒓";
+        assert_eq!(
+            tr39_canonical_skeleton(math_lead),
+            tr39_canonical_skeleton("pastor")
+        );
+
+        // Clean Latin names remain canonical
+        assert_eq!(
+            tr39_canonical_skeleton("DanWard"),
+            tr39_canonical_skeleton("danward")
+        );
+        assert_eq!(
+            tr39_canonical_skeleton("TruthBeacon"),
+            tr39_canonical_skeleton("truthbeacon")
+        );
     }
 }

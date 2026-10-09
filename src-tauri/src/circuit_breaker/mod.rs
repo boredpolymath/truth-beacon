@@ -147,9 +147,18 @@ pub struct CircuitBreaker {
 
 static GLOBAL_CIRCUIT_BREAKER: std::sync::OnceLock<CircuitBreaker> = std::sync::OnceLock::new();
 
-/// Returns the global shared instance of the Operational Circuit Breaker
+/// Returns the global shared instance of the Operational Circuit Breaker.
+/// Restores active trip status from SQLite audit logs on startup to prevent circumvention across UI/process restarts.
 pub fn get_global_circuit_breaker() -> &'static CircuitBreaker {
-    GLOBAL_CIRCUIT_BREAKER.get_or_init(CircuitBreaker::default)
+    GLOBAL_CIRCUIT_BREAKER.get_or_init(|| {
+        let cb = CircuitBreaker::default();
+        if let Ok(storage) = crate::storage::StorageManager::default_instance() {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            cb.restore_from_db(&conn);
+        }
+        cb
+    })
 }
 
 #[derive(Debug)]
@@ -172,6 +181,39 @@ impl Default for CircuitBreaker {
 }
 
 impl CircuitBreaker {
+    /// Restores persistent trip state from SQLite audit logs to prevent circumvention across process restarts.
+    pub fn restore_from_db(&self, conn: &Connection) {
+        let mut inner = self.state.lock().unwrap();
+        let cooldown_secs = inner.config.cooldown_duration.as_secs();
+        let now = chrono::Utc::now().timestamp();
+        let cutoff = now - cooldown_secs as i64;
+
+        let last_event: rusqlite::Result<(i64, String)> = conn.query_row(
+            "SELECT timestamp, action FROM audit_logs
+             WHERE action IN ('circuit_breaker_tripped', 'circuit_breaker_reset')
+               AND timestamp >= ?1
+             ORDER BY timestamp DESC, id DESC LIMIT 1;",
+            rusqlite::params![cutoff],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        );
+
+        if let Ok((ts, action)) = last_event {
+            if action == "circuit_breaker_tripped" {
+                let elapsed_secs = (now - ts).max(0) as u64;
+                if elapsed_secs < cooldown_secs {
+                    let remaining = Duration::from_secs(cooldown_secs - elapsed_secs);
+                    inner.state = CircuitState::Open;
+                    inner.tripped_at =
+                        Some(Instant::now() - (inner.config.cooldown_duration - remaining));
+                    log::warn!(
+                        "Restored persistent circuit breaker Open trip state from SQLite audit logs: {}s cooldown remaining",
+                        remaining.as_secs()
+                    );
+                }
+            }
+        }
+    }
+
     /// Creates a new circuit breaker with specified limits
     pub fn new(max_actions: usize, window_secs: u64, cooldown_secs: u64) -> Self {
         Self::with_config(CircuitBreakerConfig {

@@ -193,48 +193,131 @@ impl DiscordGatewayDaemon {
     }
 }
 
+use std::collections::HashMap;
 use std::sync::LazyLock;
 
-static GLOBAL_DAEMON: LazyLock<Arc<Mutex<Option<Arc<DiscordGatewayDaemon>>>>> =
-    LazyLock::new(|| Arc::new(Mutex::new(None)));
+/// Managed connection registry for multi-guild or multi-token deployments (Phase 14.5).
+/// Deduplicates connections so that guilds sharing the same bot token run a single Gateway WebSocket,
+/// while guilds with distinct tokens run independent, isolated, managed daemon instances.
+#[derive(Default)]
+pub struct GatewayConnectionRegistry {
+    /// Maps bot_token -> running daemon
+    daemons: HashMap<String, Arc<DiscordGatewayDaemon>>,
+    /// Maps guild_id -> bot_token
+    guild_tokens: HashMap<String, String>,
+}
+
+impl GatewayConnectionRegistry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub async fn register_and_start(
+        &mut self,
+        guild_id: &str,
+        token: &str,
+    ) -> Arc<DiscordGatewayDaemon> {
+        let clean_token = token.trim();
+        self.guild_tokens
+            .insert(guild_id.to_string(), clean_token.to_string());
+
+        if let Some(existing) = self.daemons.get(clean_token) {
+            return existing.clone();
+        }
+
+        let config = GatewayConfig {
+            bot_token: clean_token.to_string(),
+            ..GatewayConfig::default()
+        };
+        let (tx, _rx) = mpsc::channel(128);
+        let (daemon, _session) = DiscordGatewayDaemon::new(config, tx);
+        let daemon = Arc::new(daemon);
+        self.daemons.insert(clean_token.to_string(), daemon.clone());
+
+        let daemon_run = daemon.clone();
+        tokio::spawn(async move {
+            if let Err(e) = daemon_run.run().await {
+                log::warn!("Discord Gateway Daemon run loop exited: {}", e);
+            }
+        });
+
+        daemon
+    }
+
+    pub async fn stop_guild(&mut self, guild_id: &str) {
+        if let Some(token) = self.guild_tokens.remove(guild_id) {
+            // Check if any other registered guild uses this same token
+            let still_in_use = self.guild_tokens.values().any(|t| t == &token);
+            if !still_in_use {
+                if let Some(daemon) = self.daemons.remove(&token) {
+                    daemon.stop().await;
+                }
+            }
+        }
+    }
+
+    pub async fn stop_all(&mut self) {
+        self.guild_tokens.clear();
+        for (_, daemon) in self.daemons.drain() {
+            daemon.stop().await;
+        }
+    }
+
+    pub fn active_connection_count(&self) -> usize {
+        self.daemons.len()
+    }
+
+    pub fn is_any_running(&self) -> bool {
+        self.daemons.values().any(|d| d.is_running())
+    }
+}
+
+static GLOBAL_REGISTRY: LazyLock<Arc<Mutex<GatewayConnectionRegistry>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(GatewayConnectionRegistry::new())));
 static GLOBAL_DAEMON_RUNNING: LazyLock<Arc<AtomicBool>> =
     LazyLock::new(|| Arc::new(AtomicBool::new(false)));
+
+/// Restores Gateway connections for all registered guilds from the credential vault.
+/// Deduplicates shared tokens across guilds and starts independent daemons for distinct tokens.
+pub async fn start_all_registered_daemons() {
+    if let Ok(guilds) = crate::credentials::CredentialManager::list_registered_guilds() {
+        let mut reg = GLOBAL_REGISTRY.lock().await;
+        for gid in guilds {
+            if let Ok(token) = crate::credentials::CredentialManager::get_token(&gid) {
+                if !token.trim().is_empty() {
+                    reg.register_and_start(&gid, &token).await;
+                }
+            }
+        }
+        GLOBAL_DAEMON_RUNNING.store(reg.is_any_running(), Ordering::SeqCst);
+    }
+}
 
 pub async fn start_global_daemon(token: &str) {
     let clean_token = token.trim();
     if clean_token.is_empty() {
         return;
     }
-    let config = GatewayConfig {
-        bot_token: clean_token.to_string(),
-        ..GatewayConfig::default()
-    };
-    let (tx, _rx) = mpsc::channel(128);
-    let (daemon, _session) = DiscordGatewayDaemon::new(config, tx);
-    let daemon = Arc::new(daemon);
-
-    let mut guard = GLOBAL_DAEMON.lock().await;
-    if let Some(existing) = guard.take() {
-        existing.stop().await;
-    }
-    *guard = Some(daemon.clone());
+    let mut reg = GLOBAL_REGISTRY.lock().await;
+    reg.register_and_start("global_primary", clean_token).await;
     GLOBAL_DAEMON_RUNNING.store(true, Ordering::SeqCst);
-
-    let daemon_run = daemon.clone();
-    tokio::spawn(async move {
-        if let Err(e) = daemon_run.run().await {
-            log::warn!("Discord Gateway Daemon run loop exited: {}", e);
-        }
-        GLOBAL_DAEMON_RUNNING.store(false, Ordering::SeqCst);
-    });
 }
 
 pub async fn stop_global_daemon() {
-    let mut guard = GLOBAL_DAEMON.lock().await;
-    if let Some(existing) = guard.take() {
-        existing.stop().await;
-    }
+    let mut reg = GLOBAL_REGISTRY.lock().await;
+    reg.stop_all().await;
     GLOBAL_DAEMON_RUNNING.store(false, Ordering::SeqCst);
+}
+
+pub async fn stop_guild_daemon(guild_id: &str) {
+    let mut reg = GLOBAL_REGISTRY.lock().await;
+    reg.stop_guild(guild_id).await;
+    GLOBAL_DAEMON_RUNNING.store(reg.is_any_running(), Ordering::SeqCst);
+}
+
+pub async fn get_active_connections_count() -> usize {
+    let reg = GLOBAL_REGISTRY.lock().await;
+    reg.active_connection_count()
 }
 
 pub fn is_global_daemon_running_sync() -> bool {
@@ -385,5 +468,47 @@ mod tests {
             "Binary startup to listening state must complete in < 2.5 seconds (took {}ms)",
             elapsed_millis
         );
+    }
+
+    #[tokio::test]
+    async fn test_gateway_connection_registry_deduplication_and_lifecycle() {
+        let mut registry = GatewayConnectionRegistry::new();
+        assert_eq!(registry.active_connection_count(), 0);
+
+        let shared_token = format!(
+            "Bot {}.{}.{}",
+            "TEST_DEDUP_GATEWAY_TOKEN_SEG1", "HMAC01", "MOCK_SHARED_SIGNATURE_PAYLOAD_ABC123456"
+        );
+        let distinct_token = format!(
+            "Bot {}.{}.{}",
+            "TEST_DEDUP_GATEWAY_TOKEN_SEG2", "HMAC02", "MOCK_DISTINCT_SIGNATURE_PAYLOAD_XYZ789"
+        );
+
+        // Register two guilds sharing the same bot token
+        let daemon_g1 = registry.register_and_start("guild_1", &shared_token).await;
+        let daemon_g2 = registry.register_and_start("guild_2", &shared_token).await;
+
+        // Both guilds share the same daemon instance and connection count is 1
+        assert!(Arc::ptr_eq(&daemon_g1, &daemon_g2));
+        assert_eq!(registry.active_connection_count(), 1);
+
+        // Register a third guild with a distinct token
+        let daemon_g3 = registry
+            .register_and_start("guild_3", &distinct_token)
+            .await;
+        assert!(!Arc::ptr_eq(&daemon_g1, &daemon_g3));
+        assert_eq!(registry.active_connection_count(), 2);
+
+        // Stopping guild_1 should NOT stop the shared daemon since guild_2 still uses it
+        registry.stop_guild("guild_1").await;
+        assert_eq!(registry.active_connection_count(), 2);
+
+        // Stopping guild_2 should now tear down the shared daemon
+        registry.stop_guild("guild_2").await;
+        assert_eq!(registry.active_connection_count(), 1);
+
+        // Stopping all clears all active daemons
+        registry.stop_all().await;
+        assert_eq!(registry.active_connection_count(), 0);
     }
 }

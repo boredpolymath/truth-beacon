@@ -66,12 +66,32 @@ pub async fn fetch_and_hash_avatar(client: &reqwest::Client, avatar_url: &str) -
         log::warn!("Rejected insecure cleartext avatar URL: {}", avatar_url);
         return None;
     }
-    let res = client.get(avatar_url).send().await.ok()?;
+    let res = client
+        .get(avatar_url)
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .ok()?;
     if !res.status().is_success() {
         return None;
     }
+    if let Some(cl) = res.content_length() {
+        if cl as usize > crate::detection::perceptual_hash::MAX_AVATAR_BYTE_SIZE {
+            log::warn!("Rejected remote avatar exceeding size limit: {} bytes", cl);
+            return None;
+        }
+    }
     let bytes = res.bytes().await.ok()?;
-    compute_hash_from_bytes(&bytes)
+    if bytes.len() > crate::detection::perceptual_hash::MAX_AVATAR_BYTE_SIZE {
+        log::warn!(
+            "Downloaded avatar bytes exceeded size limit: {} bytes",
+            bytes.len()
+        );
+        return None;
+    }
+    crate::detection::perceptual_hash::compute_perceptual_hash_async(bytes.to_vec())
+        .await
+        .ok()
 }
 
 /// Synchronizes the avatar and DCT perceptual hash for a single benchmark profile.
@@ -379,10 +399,12 @@ mod tests {
         assert!(hash_b.is_some());
         assert_ne!(hash_a, hash_b);
 
-        // Verify hex formatting (64-bit hex is 16 chars)
+        // Verify hex formatting of components
         let a_str = hash_a.unwrap();
-        assert_eq!(a_str.len(), 16);
-        assert!(u64::from_str_radix(&a_str, 16).is_ok());
+        let parts: Vec<&str> = a_str.split(':').collect();
+        assert!(parts.len() >= 2);
+        assert_eq!(parts[0].len(), 16);
+        assert!(u64::from_str_radix(parts[0], 16).is_ok());
     }
 
     #[tokio::test]

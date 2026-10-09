@@ -56,13 +56,25 @@ jobs:
 
       - name: Security Vulnerability Audit (cargo audit)
         working-directory: src-tauri
-        run: cargo audit --ignore RUSTSEC-2023-0080
+        run: cargo audit
 
       - name: License & Asset Integrity Audit (Python)
         run: python3 scripts/audit_licenses.py
 
       - name: Verify Packaging Pipeline Specifications
         run: python3 scripts/verify_packaging_pipeline.py
+
+      - name: Verify Version Consistency
+        run: |
+          python3 -c "
+          import json
+          with open('src-tauri/tauri.conf.json') as f:
+              tauri_ver = json.load(f)['version']
+          with open('truthbeacon.config.json') as f:
+              cfg_ver = json.load(f)['application']['version']
+          assert tauri_ver == cfg_ver, f'Mismatch: tauri {tauri_ver} vs config {cfg_ver}'
+          print(f'✓ Version consistency verified across manifests: v{tauri_ver}')
+          "
 
   matrix-test:
     name: Build & Test (${{ matrix.os }})

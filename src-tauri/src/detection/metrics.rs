@@ -156,32 +156,66 @@ pub fn strip_authority_affixes(input: &str) -> Option<&str> {
     None
 }
 
-/// Evaluates string distance and similarity metrics between two normalized string fields,
-/// incorporating authority affix spoofing detection.
+/// Evaluates string distance and similarity metrics between two string fields,
+/// generating canonical skeletons using standard Unicode Technical Report #39 (TR39)
+/// confusable data tables before fuzzy-string comparisons, and incorporating
+/// authority affix spoofing detection.
 pub fn evaluate_string_metrics(candidate: &str, benchmark: &str) -> StringSimilarityResult {
     let base_res = evaluate_string_metrics_raw(candidate, benchmark);
 
+    // Generate canonical TR39 skeletons before fuzzy-string comparisons to detect
+    // cross-script homoglyphs and confusable substitutions under edit distance / similarity metrics
+    let cand_skel = crate::detection::unicode::tr39_canonical_skeleton(candidate);
+    let bm_skel = crate::detection::unicode::tr39_canonical_skeleton(benchmark);
+    let skel_res = if cand_skel != candidate || bm_skel != benchmark {
+        Some(evaluate_string_metrics_raw(&cand_skel, &bm_skel))
+    } else {
+        None
+    };
+
+    let best_res = if let Some(sr) = skel_res {
+        if sr.composite_score > base_res.composite_score {
+            sr
+        } else {
+            base_res
+        }
+    } else {
+        base_res
+    };
+
     // Check authority/impersonation affix spoofing (e.g. `DanWard_Official` vs `DanWard`)
-    if let Some(stripped_cand) = strip_authority_affixes(candidate) {
+    if let Some(stripped_cand) =
+        strip_authority_affixes(candidate).or_else(|| strip_authority_affixes(&cand_skel))
+    {
         let stripped_res = evaluate_string_metrics_raw(stripped_cand, benchmark);
-        // If the core identity is an exact or near-identical match (>= 0.88),
-        // elevate candidate composite score to reflect authoritative impersonation
-        if stripped_res.composite_score >= 0.88 {
-            let elevated = stripped_res.composite_score.max(0.94);
+        let stripped_skel_res = evaluate_string_metrics_raw(
+            &crate::detection::unicode::tr39_canonical_skeleton(stripped_cand),
+            &bm_skel,
+        );
+        let max_stripped_score = stripped_res
+            .composite_score
+            .max(stripped_skel_res.composite_score);
+        if max_stripped_score >= 0.88 {
+            let elevated = max_stripped_score.max(0.94);
             return StringSimilarityResult {
-                jaro_winkler_score: base_res
+                jaro_winkler_score: best_res
                     .jaro_winkler_score
-                    .max(stripped_res.jaro_winkler_score),
-                damerau_distance: base_res.damerau_distance,
-                normalized_damerau_score: base_res
+                    .max(stripped_res.jaro_winkler_score)
+                    .max(stripped_skel_res.jaro_winkler_score),
+                damerau_distance: best_res
+                    .damerau_distance
+                    .min(stripped_res.damerau_distance)
+                    .min(stripped_skel_res.damerau_distance),
+                normalized_damerau_score: best_res
                     .normalized_damerau_score
-                    .max(stripped_res.normalized_damerau_score),
+                    .max(stripped_res.normalized_damerau_score)
+                    .max(stripped_skel_res.normalized_damerau_score),
                 composite_score: (elevated * 10000.0).round() / 10000.0,
             };
         }
     }
 
-    base_res
+    best_res
 }
 
 /// Raw string distance and similarity metric evaluator:
@@ -331,11 +365,11 @@ mod tests {
     #[test]
     fn test_damerau_levenshtein_transposition() {
         // Damerau-Levenshtein treats adjacent character swap as distance 1 (not 2)
-        let swap = evaluate_string_metrics("elder", "edler");
+        let swap = evaluate_string_metrics_raw("elder", "edler");
         assert_eq!(swap.damerau_distance, 1);
         assert_eq!(swap.normalized_damerau_score, 0.8); // 1.0 - (1 / 5)
 
-        let swap2 = evaluate_string_metrics("admin", "admni");
+        let swap2 = evaluate_string_metrics_raw("admin", "admni");
         assert_eq!(swap2.damerau_distance, 1);
         assert_eq!(swap2.normalized_damerau_score, 0.8);
     }
@@ -343,12 +377,12 @@ mod tests {
     #[test]
     fn test_damerau_levenshtein_insertion_and_deletion() {
         // Insertion of single character
-        let insert = evaluate_string_metrics("mark", "markk");
+        let insert = evaluate_string_metrics_raw("mark", "markk");
         assert_eq!(insert.damerau_distance, 1);
         assert_eq!(insert.normalized_damerau_score, 0.8); // 1.0 - (1 / 5)
 
         // Deletion of single character
-        let delete = evaluate_string_metrics("pastor", "pstor");
+        let delete = evaluate_string_metrics_raw("pastor", "pstor");
         assert_eq!(delete.damerau_distance, 1);
         assert_eq!(delete.normalized_damerau_score, 0.8333);
     }
@@ -466,5 +500,31 @@ mod tests {
         // Unrelated string ending with _official should not be boosted
         let unrelated = evaluate_string_metrics("randomgaming_official", "danward");
         assert!(unrelated.composite_score < 0.50);
+    }
+
+    #[test]
+    fn test_tr39_skeleton_fuzzy_comparison() {
+        // Cyrillic lookalike: 'DаnWard' (Cyrillic а) vs 'DanWard'
+        let cyrillic_cand = "D\u{0430}nWard";
+        let res_exact = evaluate_string_metrics(cyrillic_cand, "DanWard");
+        assert_eq!(
+            res_exact.damerau_distance, 0,
+            "TR39 skeleton canonicalizes Cyrillic lookalike to distance 0"
+        );
+        assert_eq!(res_exact.composite_score, 1.0);
+
+        // Cyrillic lookalike + 1-character typo/insertion: 'DаnWarrd' vs 'DanWard'
+        let cyrillic_typo = "D\u{0430}nWarrd";
+        let res_typo = evaluate_string_metrics(cyrillic_typo, "DanWard");
+        assert_eq!(
+            res_typo.damerau_distance, 1,
+            "TR39 skeleton resolves confusable first, so distance reflects only the single edit"
+        );
+        assert!(res_typo.composite_score > 0.90);
+
+        // Cross-script confusable with authority affix: 'DаnWard_Official' vs 'DanWard'
+        let affix_confusable = "D\u{0430}nWard_Official";
+        let res_affix = evaluate_string_metrics(affix_confusable, "DanWard");
+        assert!(res_affix.composite_score >= 0.94);
     }
 }

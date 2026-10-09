@@ -1,4 +1,5 @@
 use reqwest::header::HeaderMap;
+use ring::rand::{SecureRandom, SystemRandom};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -7,6 +8,43 @@ use std::time::{Duration, Instant};
 /// Global Discord REST API rate limit: 50 requests per second
 pub const GLOBAL_RATE_LIMIT_CAPACITY: u32 = 50;
 pub const GLOBAL_RATE_LIMIT_REFILL_PER_SEC: f64 = 50.0;
+
+/// Generates a randomized jitter ratio in [0.05, 0.25] (5% to 25%) to prevent thundering herd spikes.
+pub fn generate_jitter_ratio() -> f64 {
+    let rand = SystemRandom::new();
+    let mut bytes = [0u8; 4];
+    if rand.fill(&mut bytes).is_ok() {
+        let val = u32::from_ne_bytes(bytes);
+        0.05 + 0.20 * ((val as f64) / (u32::MAX as f64))
+    } else {
+        0.15
+    }
+}
+
+/// Computes jittered exponential backoff duration for HTTP requests.
+///
+/// Respects the `X-RateLimit-Reset-After` / `Retry-After` header when provided,
+/// using it as the authoritative minimum wait duration while adding randomized jitter.
+/// Otherwise, applies canonical exponential backoff `base_delay * 2^attempt` plus jitter.
+pub fn calculate_jittered_backoff(
+    attempt: u32,
+    reset_after: Option<Duration>,
+    base_delay: Duration,
+    max_delay: Duration,
+) -> Duration {
+    let jitter_ratio = generate_jitter_ratio();
+    if let Some(reset) = reset_after {
+        let jitter_nanos = (reset.as_nanos() as f64 * jitter_ratio) as u64;
+        let jitter = Duration::from_nanos(jitter_nanos.clamp(5_000_000, 250_000_000)); // 5ms - 250ms
+        reset + jitter
+    } else {
+        let mult = 2f64.powi(attempt.min(8) as i32);
+        let exp_nanos =
+            (base_delay.as_nanos() as f64 * mult).min(max_delay.as_nanos() as f64) as u64;
+        let jitter_nanos = (exp_nanos as f64 * jitter_ratio) as u64;
+        Duration::from_nanos(exp_nanos) + Duration::from_nanos(jitter_nanos)
+    }
+}
 
 /// Route-aware token bucket rate limiter and Discord 429 Retry-After handler (Phase 14.3).
 /// Enforces compliance with Discord REST API limits (50 requests/sec global + route-specific buckets)
@@ -189,18 +227,18 @@ impl DiscordRateLimiter {
             .map(|s| s.eq_ignore_ascii_case("true") || s == "1")
             .unwrap_or(false);
 
-        // 1. Try 'retry-after' header
-        if let Some(val) = headers.get("retry-after").and_then(|v| v.to_str().ok()) {
+        // 1. Try 'x-ratelimit-reset-after' header (primary Discord REST reset interval)
+        if let Some(val) = headers
+            .get("x-ratelimit-reset-after")
+            .and_then(|v| v.to_str().ok())
+        {
             if let Some(secs) = Self::parse_retry_after_str(val) {
                 return Some((secs, is_global));
             }
         }
 
-        // 2. Try 'x-ratelimit-reset-after' header
-        if let Some(val) = headers
-            .get("x-ratelimit-reset-after")
-            .and_then(|v| v.to_str().ok())
-        {
+        // 2. Try 'retry-after' header
+        if let Some(val) = headers.get("retry-after").and_then(|v| v.to_str().ok()) {
             if let Some(secs) = Self::parse_retry_after_str(val) {
                 return Some((secs, is_global));
             }
@@ -239,6 +277,16 @@ impl DiscordRateLimiter {
         }
     }
 
+    /// Calculates jittered exponential backoff respecting the reset-after duration.
+    pub fn jittered_backoff(&self, attempt: u32, reset_after: Option<Duration>) -> Duration {
+        calculate_jittered_backoff(
+            attempt,
+            reset_after,
+            Duration::from_millis(200),
+            Duration::from_secs(60),
+        )
+    }
+
     /// Outbound Dispatcher execution helper: executes an asynchronous network operation
     /// with rate-limit adherence, retrying on 429 without dropping the request from the queue.
     /// Executes an outbound operation after waiting for rate limiter token availability.
@@ -251,8 +299,9 @@ impl DiscordRateLimiter {
         op().await
     }
 
-    /// Executes an outbound request against a route, automatically retrying if the operation
-    /// signals a rate limit (e.g. 429) with Retry-After duration, without dropping the request.
+    /// Executes an outbound request against a route, automatically retrying with jittered
+    /// exponential backoff respecting the `X-RateLimit-Reset-After` / `Retry-After` header,
+    /// without dropping the request from the outbound queue.
     pub async fn execute_with_retry_after<F, Fut, T, E>(
         &self,
         route: &str,
@@ -262,13 +311,16 @@ impl DiscordRateLimiter {
         F: FnMut() -> Fut,
         Fut: std::future::Future<Output = Result<T, (E, Option<(Duration, bool)>)>>,
     {
+        let mut attempt = 0;
         loop {
             self.acquire_or_wait(route).await;
             match op().await {
                 Ok(val) => return Ok(val),
                 Err((_err, Some((retry_after, is_global)))) => {
                     self.handle_rate_limit_response(route, retry_after.as_secs_f64(), is_global);
-                    tokio::time::sleep(retry_after).await;
+                    let backoff = self.jittered_backoff(attempt, Some(retry_after));
+                    tokio::time::sleep(backoff).await;
+                    attempt = attempt.saturating_add(1);
                 }
                 Err((err, None)) => return Err(err),
             }
@@ -425,5 +477,66 @@ mod tests {
 
         assert_eq!(result, Ok("Success"));
         assert_eq!(attempts, 2);
+    }
+
+    #[test]
+    fn test_jittered_exponential_backoff_respects_reset_after() {
+        let reset_after = Duration::from_millis(500);
+
+        // 1. When X-RateLimit-Reset-After is specified, backoff must strictly be >= reset_after
+        let delay = calculate_jittered_backoff(
+            0,
+            Some(reset_after),
+            Duration::from_millis(200),
+            Duration::from_secs(60),
+        );
+        assert!(
+            delay >= reset_after,
+            "Jittered backoff {:?} must respect reset-after {:?}",
+            delay,
+            reset_after
+        );
+        // Jitter should add up to 250ms (or 25% of reset)
+        assert!(
+            delay <= reset_after + Duration::from_millis(300),
+            "Jitter must be bounded within reasonable margin"
+        );
+
+        // 2. Exponential backoff progression when no reset_after is present
+        let d0 = calculate_jittered_backoff(
+            0,
+            None,
+            Duration::from_millis(100),
+            Duration::from_secs(60),
+        );
+        let d1 = calculate_jittered_backoff(
+            1,
+            None,
+            Duration::from_millis(100),
+            Duration::from_secs(60),
+        );
+        let d2 = calculate_jittered_backoff(
+            2,
+            None,
+            Duration::from_millis(100),
+            Duration::from_secs(60),
+        );
+
+        assert!(d0 >= Duration::from_millis(100));
+        assert!(d1 >= Duration::from_millis(200));
+        assert!(d2 >= Duration::from_millis(400));
+    }
+
+    #[test]
+    fn test_parse_x_ratelimit_reset_after_header() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-ratelimit-reset-after", HeaderValue::from_static("2.5"));
+        headers.insert("x-ratelimit-global", HeaderValue::from_static("true"));
+
+        let parsed = DiscordRateLimiter::parse_retry_after(&headers, None);
+        assert!(parsed.is_some());
+        let (secs, is_global) = parsed.unwrap();
+        assert_eq!(secs, 2.5);
+        assert!(is_global);
     }
 }

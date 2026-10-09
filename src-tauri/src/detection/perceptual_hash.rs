@@ -9,7 +9,13 @@
 //!   - `5..=10`: **Notable Similarity** (minor tint, crop, watermark, or compression artifact).
 //!   - `> 10`: **Dissimilar** (distinct visual assets).
 
+use image::codecs::gif::GifDecoder;
+use image::codecs::png::PngDecoder;
+use image::codecs::webp::WebPDecoder;
+use image::AnimationDecoder;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::io::Cursor;
 use thiserror::Error;
 
 /// Errors occurring during perceptual hash calculation or comparison.
@@ -19,6 +25,41 @@ pub enum HashError {
     DecodeFailed,
     #[error("Failed to parse hex hash")]
     ParseFailed,
+    #[error("Image buffer exceeds maximum allowed size ({size} bytes, limit {limit} bytes)")]
+    BufferTooLarge { size: usize, limit: usize },
+    #[error("Image dimensions exceed allowed bounds ({width}x{height}, max dimension {max_dim}, max pixels {max_pixels})")]
+    DimensionsExceeded {
+        width: u32,
+        height: u32,
+        max_dim: u32,
+        max_pixels: u64,
+    },
+}
+
+/// Maximum allowed avatar byte buffer size (8 MB).
+pub const MAX_AVATAR_BYTE_SIZE: usize = 8 * 1024 * 1024;
+
+/// Maximum allowed single dimension (width or height in pixels) for avatar analysis.
+pub const MAX_IMAGE_DIMENSION: u32 = 4096;
+
+/// Maximum total allowed pixels (16 Megapixels, e.g. 4096 x 4096).
+pub const MAX_TOTAL_PIXELS: u64 = 16_777_216;
+
+/// Validates that an image's dimensions and pixel count do not exceed resource limits.
+#[inline]
+pub fn validate_frame_dimensions(img: &image::DynamicImage) -> Result<(), HashError> {
+    let w = img.width();
+    let h = img.height();
+    let pixels = (w as u64) * (h as u64);
+    if w > MAX_IMAGE_DIMENSION || h > MAX_IMAGE_DIMENSION || pixels > MAX_TOTAL_PIXELS {
+        return Err(HashError::DimensionsExceeded {
+            width: w,
+            height: h,
+            max_dim: MAX_IMAGE_DIMENSION,
+            max_pixels: MAX_TOTAL_PIXELS,
+        });
+    }
+    Ok(())
 }
 
 /// Visual similarity classification based on bitwise Hamming distance between 64-bit DCT perceptual hashes.
@@ -64,12 +105,76 @@ pub fn classify_hamming_distance(distance: u32) -> VisualSimilarityTier {
     }
 }
 
-/// Computes Hamming distance between two 64-bit hex hash strings.
+/// Parses a 16-hex string into a 64-bit integer and calculates bitwise XOR popcount.
+fn calculate_single_hash_hamming(h_a: &str, h_b: &str) -> Result<u32, HashError> {
+    let val_a = u64::from_str_radix(h_a.trim(), 16).map_err(|_| HashError::ParseFailed)?;
+    let val_b = u64::from_str_radix(h_b.trim(), 16).map_err(|_| HashError::ParseFailed)?;
+    Ok((val_a ^ val_b).count_ones())
+}
+
+/// Computes the visual Hamming distance between two frame representations.
+///
+/// Combines DCT perceptual hashing (pHash) with average hashing (aHash) and color histogram checks
+/// to prevent false negatives from simple contrast or brightness manipulations.
+fn calculate_frame_distance(f_a: &str, f_b: &str) -> Result<u32, HashError> {
+    let parts_a: Vec<&str> = f_a.split(':').collect();
+    let parts_b: Vec<&str> = f_b.split(':').collect();
+
+    // Standard 64-bit hex legacy comparison
+    if parts_a.len() == 1 && parts_b.len() == 1 {
+        return calculate_single_hash_hamming(parts_a[0], parts_b[0]);
+    }
+
+    // pHash check (DCT frequency domain)
+    let dist_p = calculate_single_hash_hamming(parts_a[0], parts_b[0])?;
+
+    // aHash check (luminance mean threshold domain, highly invariant to contrast/brightness)
+    let dist_a = if parts_a.len() >= 2 && parts_b.len() >= 2 {
+        Some(calculate_single_hash_hamming(parts_a[1], parts_b[1])?)
+    } else {
+        None
+    };
+
+    // Color histogram check (chromatic palette domain)
+    let dist_c = if parts_a.len() >= 3 && parts_b.len() >= 3 {
+        Some(calculate_single_hash_hamming(parts_a[2], parts_b[2])?)
+    } else {
+        None
+    };
+
+    let mut min_dist = dist_p;
+    if let Some(da) = dist_a {
+        min_dist = min_dist.min(da);
+    }
+    if let Some(dc) = dist_c {
+        min_dist = min_dist.min(dc);
+    }
+
+    Ok(min_dist)
+}
+
+/// Computes Hamming distance between two perceptual hash strings.
+/// Supports single 64-bit hex hashes, composite pHash:aHash:color hashes, and multi-keyframe animations.
 /// Lower distance indicates higher visual similarity.
 pub fn calculate_hamming_distance(hash_a: &str, hash_b: &str) -> Result<u32, HashError> {
-    let val_a = u64::from_str_radix(hash_a.trim(), 16).map_err(|_| HashError::ParseFailed)?;
-    let val_b = u64::from_str_radix(hash_b.trim(), 16).map_err(|_| HashError::ParseFailed)?;
-    Ok((val_a ^ val_b).count_ones())
+    let keyframes_a: Vec<&str> = hash_a.trim().split(';').filter(|s| !s.is_empty()).collect();
+    let keyframes_b: Vec<&str> = hash_b.trim().split(';').filter(|s| !s.is_empty()).collect();
+
+    if keyframes_a.is_empty() || keyframes_b.is_empty() {
+        return Err(HashError::ParseFailed);
+    }
+
+    let mut min_dist = u32::MAX;
+    for ka in &keyframes_a {
+        for kb in &keyframes_b {
+            let dist = calculate_frame_distance(ka, kb)?;
+            if dist < min_dist {
+                min_dist = dist;
+            }
+        }
+    }
+
+    Ok(min_dist)
 }
 
 /// Compares two 64-bit perceptual hashes and returns a comprehensive [`PerceptualHashComparison`].
@@ -117,33 +222,197 @@ pub fn compare_perceptual_hashes(
     })
 }
 
-/// Decodes an image in-memory safely (no temporary files or disk writes) and calculates
-/// a 64-bit Discrete Cosine Transform (DCT) perceptual hash formatted as a 16-char hex string.
-pub fn compute_perceptual_hash(image_bytes: &[u8]) -> Result<String, HashError> {
-    // Decode via modern image crate supporting PNG, JPEG, WebP, GIF, AVIF
-    let hash = if let Ok(dyn_img) = image::load_from_memory(image_bytes) {
-        let rgba = dyn_img.to_rgba8();
+/// Computes a 64-bit color histogram palette hash.
+/// Quantizes RGB into 64 bins (4 bins/channel) and flags bins above average density.
+pub fn compute_color_hash(img: &image::DynamicImage) -> String {
+    let rgba = img.to_rgba8();
+    let mut bins = [0u32; 64];
+    let total_pixels = (rgba.width() * rgba.height()).max(1);
+
+    for pixel in rgba.pixels() {
+        let r_bin = (pixel[0] / 64).min(3) as usize;
+        let g_bin = (pixel[1] / 64).min(3) as usize;
+        let b_bin = (pixel[2] / 64).min(3) as usize;
+        let bin = (r_bin << 4) | (g_bin << 2) | b_bin;
+        bins[bin] += 1;
+    }
+
+    let threshold = total_pixels / 64;
+    let mut hash_val: u64 = 0;
+    for (i, count) in bins.iter().enumerate() {
+        if *count > threshold {
+            hash_val |= 1u64 << (63 - i);
+        }
+    }
+
+    format!("{:016x}", hash_val)
+}
+
+/// Samples 2–3 keyframes from animated frames:
+/// - If 1 frame: samples `[0]`
+/// - If 2 frames: samples `[0, 1]`
+/// - If >= 3 frames: samples `[0, N / 2, N - 1]` (start, middle, end)
+///
+/// Thwarts adversaries who place an innocuous first frame followed by an impersonating animation.
+fn sample_keyframes(frames: Vec<image::DynamicImage>) -> Vec<image::DynamicImage> {
+    let n = frames.len();
+    if n <= 2 {
+        frames
+    } else {
+        vec![
+            frames[0].clone(),
+            frames[n / 2].clone(),
+            frames[n - 1].clone(),
+        ]
+    }
+}
+
+/// Safely extracts sampled keyframes from image bytes without writing to disk.
+/// Inspects animated GIF, animated WebP, APNG, or falls back to static decoding.
+fn extract_sampled_keyframes(image_bytes: &[u8]) -> Result<Vec<image::DynamicImage>, HashError> {
+    if image_bytes.len() > MAX_AVATAR_BYTE_SIZE {
+        return Err(HashError::BufferTooLarge {
+            size: image_bytes.len(),
+            limit: MAX_AVATAR_BYTE_SIZE,
+        });
+    }
+
+    // 1. Animated GIF decoder
+    if let Ok(decoder) = GifDecoder::new(Cursor::new(image_bytes)) {
+        if let Ok(frames) = decoder.into_frames().collect_frames() {
+            if !frames.is_empty() {
+                return Ok(sample_keyframes(
+                    frames
+                        .into_iter()
+                        .map(|f| image::DynamicImage::ImageRgba8(f.into_buffer()))
+                        .collect(),
+                ));
+            }
+        }
+    }
+
+    // 2. Animated WebP decoder
+    if let Ok(decoder) = WebPDecoder::new(Cursor::new(image_bytes)) {
+        if let Ok(frames) = decoder.into_frames().collect_frames() {
+            if !frames.is_empty() {
+                return Ok(sample_keyframes(
+                    frames
+                        .into_iter()
+                        .map(|f| image::DynamicImage::ImageRgba8(f.into_buffer()))
+                        .collect(),
+                ));
+            }
+        }
+    }
+
+    // 3. APNG (Animated PNG) decoder
+    if let Ok(decoder) = PngDecoder::new(Cursor::new(image_bytes)) {
+        if let Ok(apng) = decoder.apng() {
+            if let Ok(frames) = apng.into_frames().collect_frames() {
+                if !frames.is_empty() {
+                    return Ok(sample_keyframes(
+                        frames
+                            .into_iter()
+                            .map(|f| image::DynamicImage::ImageRgba8(f.into_buffer()))
+                            .collect(),
+                    ));
+                }
+            }
+        }
+    }
+
+    // 4. Standard static image decoding (PNG, JPEG, WebP, etc.)
+    if let Ok(dyn_img) = image::load_from_memory(image_bytes) {
+        return Ok(vec![dyn_img]);
+    }
+
+    // 5. Fallback bundled decoder
+    if let Ok(bundled_img) = img_hash::image::load_from_memory(image_bytes) {
+        let rgba = bundled_img.to_rgba8();
         let (w, h) = rgba.dimensions();
         let raw = rgba.into_raw();
-        let img = img_hash::image::ImageBuffer::<img_hash::image::Rgba<u8>, _>::from_raw(w, h, raw)
-            .ok_or(HashError::DecodeFailed)?;
-        let hasher = img_hash::HasherConfig::new().hash_size(8, 8).to_hasher();
-        hasher.hash_image(&img)
-    } else {
-        // Fallback to img_hash's bundled decoder
-        let img =
-            img_hash::image::load_from_memory(image_bytes).map_err(|_| HashError::DecodeFailed)?;
-        let hasher = img_hash::HasherConfig::new().hash_size(8, 8).to_hasher();
-        hasher.hash_image(&img)
-    };
-
-    let bytes = hash.as_bytes();
-    if bytes.len() == 8 {
-        let val = u64::from_be_bytes(bytes.try_into().unwrap());
-        Ok(format!("{:016x}", val))
-    } else {
-        Ok(hash.to_base64())
+        if let Some(buf) = image::RgbaImage::from_raw(w, h, raw) {
+            return Ok(vec![image::DynamicImage::ImageRgba8(buf)]);
+        }
     }
+
+    Err(HashError::DecodeFailed)
+}
+
+/// Computes the composite hash representation for a single frame:
+/// `<phash_hex>:<ahash_hex>:<color_hex>`
+fn compute_single_frame_hash(dyn_img: &image::DynamicImage) -> Result<String, HashError> {
+    validate_frame_dimensions(dyn_img)?;
+    let rgba = dyn_img.to_rgba8();
+    let (w, h) = rgba.dimensions();
+    let raw = rgba.into_raw();
+    let img = img_hash::image::ImageBuffer::<img_hash::image::Rgba<u8>, _>::from_raw(w, h, raw)
+        .ok_or(HashError::DecodeFailed)?;
+
+    // 1. 64-bit Discrete Cosine Transform (DCT) Perceptual Hash (pHash)
+    let p_hasher = img_hash::HasherConfig::new()
+        .preproc_dct()
+        .hash_alg(img_hash::HashAlg::Gradient)
+        .hash_size(8, 8)
+        .to_hasher();
+    let hash_p = p_hasher.hash_image(&img);
+    let bytes_p = hash_p.as_bytes();
+    let val_p = if bytes_p.len() == 8 {
+        u64::from_be_bytes(bytes_p.try_into().unwrap())
+    } else {
+        0
+    };
+    let phash_hex = format!("{:016x}", val_p);
+
+    // 2. 64-bit Average Hash (aHash) - Mean luminance thresholding invariant to brightness & contrast
+    let a_hasher = img_hash::HasherConfig::new()
+        .hash_alg(img_hash::HashAlg::Mean)
+        .hash_size(8, 8)
+        .to_hasher();
+    let hash_a = a_hasher.hash_image(&img);
+    let bytes_a = hash_a.as_bytes();
+    let val_a = if bytes_a.len() == 8 {
+        u64::from_be_bytes(bytes_a.try_into().unwrap())
+    } else {
+        0
+    };
+    let ahash_hex = format!("{:016x}", val_a);
+
+    // 3. 64-bit Color Histogram Hash
+    let color_hex = compute_color_hash(dyn_img);
+
+    Ok(format!("{}:{}:{}", phash_hex, ahash_hex, color_hex))
+}
+
+/// Decodes an image in-memory safely (no temporary files or disk writes) and calculates
+/// visual perceptual hashes across 2-3 sampled keyframes using Rayon parallel worker pools.
+pub fn compute_perceptual_hash(image_bytes: &[u8]) -> Result<String, HashError> {
+    let keyframes = extract_sampled_keyframes(image_bytes)?;
+
+    // Image resizing and DCT calculations execute on Rayon dedicated worker pool
+    let hashes: Vec<String> = keyframes
+        .into_par_iter()
+        .map(|frame| compute_single_frame_hash(&frame))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(hashes.join(";"))
+}
+
+/// Computes perceptual hash asynchronously off the Tokio event loop via `spawn_blocking`.
+pub async fn compute_perceptual_hash_async(image_bytes: Vec<u8>) -> Result<String, HashError> {
+    tokio::task::spawn_blocking(move || compute_perceptual_hash(&image_bytes))
+        .await
+        .map_err(|_| HashError::DecodeFailed)?
+}
+
+/// Compares two perceptual hashes asynchronously off the Tokio event loop via `spawn_blocking`.
+pub async fn compare_perceptual_hashes_async(
+    hash_a: String,
+    hash_b: String,
+) -> Result<PerceptualHashComparison, HashError> {
+    tokio::task::spawn_blocking(move || compare_perceptual_hashes(&hash_a, &hash_b))
+        .await
+        .map_err(|_| HashError::ParseFailed)?
 }
 
 #[cfg(test)]
@@ -269,8 +538,14 @@ mod tests {
         let png_bytes = cursor.into_inner();
 
         let hash_str = compute_perceptual_hash(&png_bytes).unwrap();
-        assert_eq!(hash_str.len(), 16);
-        assert!(u64::from_str_radix(&hash_str, 16).is_ok());
+        let parts: Vec<&str> = hash_str.split(':').collect();
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts[0].len(), 16);
+        assert_eq!(parts[1].len(), 16);
+        assert_eq!(parts[2].len(), 16);
+        assert!(u64::from_str_radix(parts[0], 16).is_ok());
+        assert!(u64::from_str_radix(parts[1], 16).is_ok());
+        assert!(u64::from_str_radix(parts[2], 16).is_ok());
     }
 
     #[test]
@@ -410,7 +685,206 @@ mod tests {
             "Compound perturbed avatar Hamming distance {} should be <= 10",
             compound_dist
         );
-        let comparison = compare_perceptual_hashes(&base_hash, &compound_hash).unwrap();
-        assert!(comparison.is_notable_similarity);
+    }
+
+    #[test]
+    fn test_animated_avatar_keyframe_sampling_catches_first_frame_evasion() {
+        use image::codecs::gif::GifEncoder;
+        use image::{Frame, Rgba, RgbaImage};
+
+        let width = 64;
+        let height = 64;
+
+        // 1. Create canonical benchmark avatar
+        let mut benchmark_img = RgbaImage::new(width, height);
+        for x in 0..width {
+            for y in 0..height {
+                let r = ((x * 255) / width) as u8;
+                let g = ((y * 255) / height) as u8;
+                let b = if (x + y) % 8 < 4 { 220 } else { 40 };
+                benchmark_img.put_pixel(x, y, Rgba([r, g, b, 255]));
+            }
+        }
+        let mut bm_cursor = std::io::Cursor::new(Vec::new());
+        benchmark_img
+            .write_to(&mut bm_cursor, image::ImageFormat::Png)
+            .unwrap();
+        let benchmark_hash = compute_perceptual_hash(bm_cursor.get_ref()).unwrap();
+
+        // 2. Adversary builds animated avatar:
+        // - Frame 0: Completely innocent decoy pattern (distinct checkerboard avatar)
+        // - Frame 1: Impersonating benchmark clone
+        // - Frame 2: Impersonating clone with minor compression artifact
+        let mut decoy_frame = RgbaImage::new(width, height);
+        for x in 0..width {
+            for y in 0..height {
+                let v = if (x / 8) % 2 == (y / 8) % 2 { 240 } else { 20 };
+                decoy_frame.put_pixel(x, y, Rgba([v, v, v, 255]));
+            }
+        }
+
+        let clone_frame = benchmark_img.clone();
+
+        let mut clone_artifact_frame = benchmark_img.clone();
+        for (i, p) in clone_artifact_frame.pixels_mut().enumerate() {
+            if i % 10 == 0 {
+                *p = Rgba([p[0].saturating_add(5), p[1], p[2], 255]);
+            }
+        }
+
+        // Encode multi-frame GIF in memory
+        let mut gif_bytes = Vec::new();
+        {
+            let mut encoder = GifEncoder::new(&mut gif_bytes);
+            encoder
+                .set_repeat(image::codecs::gif::Repeat::Infinite)
+                .unwrap();
+            encoder
+                .encode_frame(Frame::new(decoy_frame.clone()))
+                .unwrap();
+            encoder.encode_frame(Frame::new(clone_frame)).unwrap();
+            encoder
+                .encode_frame(Frame::new(clone_artifact_frame))
+                .unwrap();
+        }
+
+        // Compute perceptual hash for the animated avatar
+        let anim_hash = compute_perceptual_hash(&gif_bytes).unwrap();
+
+        // Multi-frame animated hash contains keyframes separated by ';'
+        let keyframe_segments: Vec<&str> = anim_hash.split(';').collect();
+        assert_eq!(
+            keyframe_segments.len(),
+            3,
+            "Must sample 3 keyframes (first, middle, last)"
+        );
+
+        // Print hashes
+        println!("kf0: {}", keyframe_segments[0]);
+        println!("bm: {}", benchmark_hash);
+        let frame0_dist =
+            calculate_hamming_distance(keyframe_segments[0], &benchmark_hash).unwrap();
+        println!("frame0_dist: {}", frame0_dist);
+        assert!(
+            frame0_dist > 10,
+            "Frame 0 alone has high distance {} (innocuous decoy)",
+            frame0_dist
+        );
+
+        // But overall multi-keyframe analysis checks all sampled frames and detects the clone!
+        let distance = calculate_hamming_distance(&benchmark_hash, &anim_hash).unwrap();
+        assert_eq!(
+            distance, 0,
+            "Keyframe sampling must identify the impersonating clone in keyframes"
+        );
+        let comparison = compare_perceptual_hashes(&benchmark_hash, &anim_hash).unwrap();
+        assert_eq!(
+            comparison.similarity_tier,
+            VisualSimilarityTier::HighDuplicate
+        );
+        assert!(comparison.is_high_duplicate);
+    }
+
+    #[test]
+    fn test_contrast_and_brightness_manipulation_resilience() {
+        use image::{Rgba, RgbaImage};
+
+        let width = 64;
+        let height = 64;
+        let mut base_img = RgbaImage::new(width, height);
+        for x in 0..width {
+            for y in 0..height {
+                let r = ((x * 255) / width) as u8;
+                let g = ((y * 255) / height) as u8;
+                let b = if (x + y) % 8 < 4 { 180 } else { 60 };
+                base_img.put_pixel(x, y, Rgba([r, g, b, 255]));
+            }
+        }
+
+        let mut base_bytes = std::io::Cursor::new(Vec::new());
+        base_img
+            .write_to(&mut base_bytes, image::ImageFormat::Png)
+            .unwrap();
+        let base_hash = compute_perceptual_hash(base_bytes.get_ref()).unwrap();
+
+        // Apply severe contrast stretching (1.8x) and brightness shift (+50)
+        let mut cb_img = base_img.clone();
+        for p in cb_img.pixels_mut() {
+            let r = (((p[0] as f32 - 128.0) * 1.8 + 128.0) + 50.0).clamp(0.0, 255.0) as u8;
+            let g = (((p[1] as f32 - 128.0) * 1.8 + 128.0) + 50.0).clamp(0.0, 255.0) as u8;
+            let b = (((p[2] as f32 - 128.0) * 1.8 + 128.0) + 50.0).clamp(0.0, 255.0) as u8;
+            *p = Rgba([r, g, b, 255]);
+        }
+
+        let mut cb_bytes = std::io::Cursor::new(Vec::new());
+        cb_img
+            .write_to(&mut cb_bytes, image::ImageFormat::Png)
+            .unwrap();
+        let cb_hash = compute_perceptual_hash(cb_bytes.get_ref()).unwrap();
+
+        // Combined pHash + aHash ensures distance remains low (<= 10), preventing false negatives
+        let dist = calculate_hamming_distance(&base_hash, &cb_hash).unwrap();
+        assert!(
+            dist <= 10,
+            "Contrast & brightness shifted image Hamming distance {} must be <= 10",
+            dist
+        );
+        let comparison = compare_perceptual_hashes(&base_hash, &cb_hash).unwrap();
+        assert!(
+            comparison.is_notable_similarity,
+            "Must be classified as notable similarity or duplicate"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_worker_pool_async_offloading() {
+        let mut img = image::RgbImage::new(16, 16);
+        for pixel in img.pixels_mut() {
+            *pixel = image::Rgb([120, 200, 50]);
+        }
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut cursor, image::ImageFormat::Png).unwrap();
+        let png_bytes = cursor.into_inner();
+
+        // Asynchronously offloads to dedicated worker pool
+        let hash_a = compute_perceptual_hash_async(png_bytes.clone())
+            .await
+            .unwrap();
+        let hash_b = compute_perceptual_hash_async(png_bytes).await.unwrap();
+
+        let comparison = compare_perceptual_hashes_async(hash_a, hash_b)
+            .await
+            .unwrap();
+        assert_eq!(comparison.hamming_distance, 0);
+        assert_eq!(
+            comparison.similarity_tier,
+            VisualSimilarityTier::HighDuplicate
+        );
+    }
+
+    #[test]
+    fn test_oversized_avatar_buffer_rejection() {
+        let oversized = vec![0u8; MAX_AVATAR_BYTE_SIZE + 1];
+        let err = compute_perceptual_hash(&oversized).unwrap_err();
+        match err {
+            HashError::BufferTooLarge { size, limit } => {
+                assert_eq!(size, MAX_AVATAR_BYTE_SIZE + 1);
+                assert_eq!(limit, MAX_AVATAR_BYTE_SIZE);
+            }
+            _ => panic!("Expected BufferTooLarge error, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_oversized_avatar_dimensions_rejection() {
+        let img = image::DynamicImage::new_rgba8(MAX_IMAGE_DIMENSION + 1, 10);
+        let err = validate_frame_dimensions(&img).unwrap_err();
+        match err {
+            HashError::DimensionsExceeded { width, max_dim, .. } => {
+                assert_eq!(width, MAX_IMAGE_DIMENSION + 1);
+                assert_eq!(max_dim, MAX_IMAGE_DIMENSION);
+            }
+            _ => panic!("Expected DimensionsExceeded error, got {:?}", err),
+        }
     }
 }

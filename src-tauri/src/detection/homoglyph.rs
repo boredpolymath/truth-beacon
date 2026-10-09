@@ -123,9 +123,11 @@ pub fn map_visual_confusables(input: &str) -> String {
 /// Transforms an input string into a canonical visual skeleton by reducing digraphs
 /// and mapping visually confusable characters into canonical equivalence classes.
 pub fn to_visual_skeleton(input: &str) -> String {
-    // 1. Strip zero-width, bidi, control chars and map visual confusables before phonetic deunicode
+    // 1. Strip zero-width, bidi, control chars and apply standard Unicode Technical Report #39 (TR39)
+    // confusable data tables (via unicode_security) to generate canonical visual skeletons.
     let stripped = crate::detection::unicode::strip_deobfuscate_unicode(input);
-    let visually_mapped = map_visual_confusables(&stripped);
+    let tr39_skel: String = unicode_security::confusable_detection::skeleton(&stripped).collect();
+    let visually_mapped = map_visual_confusables(&tr39_skel);
     let lower = deunicode::deunicode(&visually_mapped).trim().to_lowercase();
 
     // 2. Reduce common visual digraphs

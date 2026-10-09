@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/Database-SQLite%20(WAL)-blueviolet?style=flat-square" alt="SQLite WAL">
   <img src="https://img.shields.io/badge/Telemetry-Zero%20(100%25%20Local)-brightgreen?style=flat-square" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-success?style=flat-square" alt="WCAG AA">
-  <img src="https://img.shields.io/badge/Automated%20Tests-150%20Passing-brightgreen?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated%20Tests-176%20Passing-brightgreen?style=flat-square" alt="Tests">
 </p>
 
 ---
@@ -144,7 +144,7 @@ Whether you love building sleek web interfaces or writing blazingly fast systems
 ### 🦀 Rust & Systems Engineers
 - Modern, clean codebase using **Rust 2021**, **Tokio**, and **Tauri v2**.
 - High-performance, memory-safe heuristics (< 50ms evaluation budget).
-- Comprehensive test suite with **149 passing automated tests** ready to validate your changes.
+- Comprehensive test suite with **176 passing automated tests** ready to validate your changes.
 - Safe concurrency with SQLite Write-Ahead Logging (WAL) and native OS Keychain bindings.
 
 ### 🌟 Great Ways to Jump In
@@ -199,7 +199,7 @@ We take reliability seriously so communities can trust TruthBeacon in production
 ```bash
 cd src-tauri
 
-# Run all 149 automated unit and integration tests
+# Run all 176 automated unit and integration tests
 cargo test --all-targets
 
 # Check code formatting
@@ -243,7 +243,7 @@ You can adjust sensitivity thresholds, rate limits, and safety settings directly
 {
   "application": {
     "name": "TruthBeacon",
-    "version": "0.1.2",
+    "version": "0.1.5",
     "vendor": "Orange Heart Industries",
     "description": "Community Impersonation Defense & Identity Protection Console"
   },
@@ -324,7 +324,7 @@ TruthBeacon delivers first-class, native desktop installers across all major ope
 ```
 truth-beacon/
 ├── README.md                      # Project overview and getting started guide
-├── RELEASE_NOTES.md               # Version 0.1.2 release notes & distribution summary
+├── RELEASE_NOTES.md               # Version 0.1.5 release notes & distribution summary
 ├── truthbeacon.config.json        # Custom detection thresholds and safety limits
 ├── .github/                       # GitHub Actions CI/CD workflows
 │   └── workflows/
@@ -342,8 +342,8 @@ truth-beacon/
 │   ├── 08-local-storage-architecture-and-migration-strategy.md # SQLite schema & migrations
 │   └── 09-cross-platform-packaging-and-release-staging.md # Build bundling & packaging specification
 ├── release/                       # Staged production release binaries & verification artifacts
-│   ├── TruthBeacon_0.1.2_universal.dmg     # Universal 2 drag-and-drop installer
-│   ├── TruthBeacon_0.1.2_macos_universal.zip # Standalone universal application bundle
+│   ├── TruthBeacon_0.1.5_universal.dmg     # Universal 2 drag-and-drop installer
+│   ├── TruthBeacon_0.1.5_macos_universal.zip # Standalone universal application bundle
 │   ├── truth-beacon-universal              # Standalone fat binary (x86_64 + arm64)
 │   ├── RELEASE_MANIFEST.md                 # Production build metadata & dependency audit
 │   ├── RELEASE_NOTES.md                    # Platform release documentation

@@ -53,17 +53,28 @@ def build_manifest():
         "and integrated native auto-updater engine across macOS, Windows, and Linux."
     )
     
+    strict = "--strict" in sys.argv or os.environ.get("STRICT_MANIFEST") == "1"
     mac_tar = os.path.join(RELEASE_DIR, f"TruthBeacon_{VERSION}_universal.app.tar.gz")
     mac_sig = get_signature(mac_tar)
     if not mac_sig:
-        # Fallback dummy signature placeholder if file not present during validation tests
+        if strict:
+            sys.exit(f"ERROR: Missing required updater signature for {mac_tar}")
+        # Fallback dummy signature placeholder if file not present during local validation dry runs
         mac_sig = "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkK"
     
     win_zip = os.path.join(RELEASE_DIR, f"TruthBeacon_{VERSION}_x64-setup.nsis.zip")
-    win_sig = get_signature(win_zip) or mac_sig
+    win_sig = get_signature(win_zip)
+    if not win_sig:
+        if strict:
+            sys.exit(f"ERROR: Missing required updater signature for {win_zip}")
+        win_sig = mac_sig
     
     linux_tar = os.path.join(RELEASE_DIR, f"TruthBeacon_{VERSION}_amd64.AppImage.tar.gz")
-    linux_sig = get_signature(linux_tar) or mac_sig
+    linux_sig = get_signature(linux_tar)
+    if not linux_sig:
+        if strict:
+            sys.exit(f"ERROR: Missing required updater signature for {linux_tar}")
+        linux_sig = mac_sig
 
     manifest = {
         "version": f"v{VERSION}",

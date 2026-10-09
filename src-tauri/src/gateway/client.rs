@@ -16,6 +16,7 @@ use crate::gateway::payload::{
 };
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashSet, VecDeque};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex, RwLock};
@@ -66,6 +67,82 @@ pub enum OpcodeAction {
     },
 }
 
+pub const DEFAULT_EVENT_RING_BUFFER_CAPACITY: usize = 256;
+
+/// Fixed-capacity ring buffer tracking recent Discord Gateway event IDs and sequences.
+/// Enables seamless session resumption via Opcode 6 (RESUME) while preventing duplicate
+/// event processing and eliminating the need for an expensive full GUILD_MEMBERS_CHUNK re-sync.
+#[derive(Debug, Clone)]
+pub struct EventRingBuffer {
+    capacity: usize,
+    events: VecDeque<RecentEventRecord>,
+    seen_ids: HashSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecentEventRecord {
+    pub sequence: u64,
+    pub event_id: String,
+    pub event_name: String,
+    pub received_at: std::time::Instant,
+}
+
+impl Default for EventRingBuffer {
+    fn default() -> Self {
+        Self::new(DEFAULT_EVENT_RING_BUFFER_CAPACITY)
+    }
+}
+
+impl EventRingBuffer {
+    pub fn new(capacity: usize) -> Self {
+        let cap = capacity.max(16);
+        Self {
+            capacity: cap,
+            events: VecDeque::with_capacity(cap.min(512)),
+            seen_ids: HashSet::with_capacity(cap.min(512)),
+        }
+    }
+
+    /// Records an event into the ring buffer.
+    /// Returns `true` if the event is newly seen, or `false` if it was already recorded.
+    pub fn push(&mut self, sequence: u64, event_id: String, event_name: String) -> bool {
+        let is_new = self.seen_ids.insert(event_id.clone());
+        if self.events.len() >= self.capacity {
+            if let Some(evicted) = self.events.pop_front() {
+                self.seen_ids.remove(&evicted.event_id);
+            }
+        }
+        self.events.push_back(RecentEventRecord {
+            sequence,
+            event_id,
+            event_name,
+            received_at: std::time::Instant::now(),
+        });
+        is_new
+    }
+
+    pub fn contains(&self, event_id: &str) -> bool {
+        self.seen_ids.contains(event_id)
+    }
+
+    pub fn len(&self) -> usize {
+        self.events.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+
+    pub fn clear(&mut self) {
+        self.events.clear();
+        self.seen_ids.clear();
+    }
+
+    pub fn recent_event_ids(&self) -> Vec<String> {
+        self.events.iter().map(|e| e.event_id.clone()).collect()
+    }
+}
+
 /// Active Gateway Session metadata
 #[derive(Debug, Clone, Default)]
 pub struct GatewaySessionState {
@@ -75,6 +152,8 @@ pub struct GatewaySessionState {
     pub heartbeat_interval_ms: Arc<AtomicU64>,
     pub heartbeat_acked: Arc<AtomicBool>,
     pub has_received_hello: Arc<AtomicBool>,
+    pub recent_events: Arc<RwLock<EventRingBuffer>>,
+    pub is_resumed: Arc<AtomicBool>,
 }
 
 impl GatewaySessionState {
@@ -86,9 +165,48 @@ impl GatewaySessionState {
             heartbeat_interval_ms: Arc::new(AtomicU64::new(41250)),
             heartbeat_acked: Arc::new(AtomicBool::new(true)),
             has_received_hello: Arc::new(AtomicBool::new(false)),
+            recent_events: Arc::new(RwLock::new(EventRingBuffer::new(
+                DEFAULT_EVENT_RING_BUFFER_CAPACITY,
+            ))),
+            is_resumed: Arc::new(AtomicBool::new(false)),
         }
     }
 
+    /// Records an event in the session's internal ring buffer.
+    pub async fn record_event(&self, sequence: u64, event_id: String, event_name: String) -> bool {
+        let mut buf = self.recent_events.write().await;
+        buf.push(sequence, event_id, event_name)
+    }
+
+    /// Checks if a recent event ID exists in the ring buffer.
+    pub async fn has_seen_event(&self, event_id: &str) -> bool {
+        let buf = self.recent_events.read().await;
+        buf.contains(event_id)
+    }
+
+    /// Returns the number of events in the ring buffer.
+    pub async fn ring_buffer_len(&self) -> usize {
+        let buf = self.recent_events.read().await;
+        buf.len()
+    }
+
+    /// Returns `true` if the session can be resumed via Opcode 6 (RESUME).
+    pub async fn can_resume(&self) -> bool {
+        let sess_guard = self.session_id.read().await;
+        sess_guard.is_some() && self.last_sequence.load(Ordering::SeqCst) > 0
+    }
+
+    /// Marks the session as successfully resumed via Opcode 6 (RESUME).
+    pub fn mark_resumed(&self) {
+        self.is_resumed.store(true, Ordering::SeqCst);
+    }
+
+    /// Checks if the active session was successfully resumed without requiring a full re-sync.
+    pub fn is_session_resumed(&self) -> bool {
+        self.is_resumed.load(Ordering::SeqCst)
+    }
+
+    /// Resets the session state on unrecoverable disconnects (e.g. non-resumable Opcode 9).
     pub async fn reset_session(&self) {
         {
             let mut sess_id_guard = self.session_id.write().await;
@@ -98,9 +216,14 @@ impl GatewaySessionState {
             let mut resume_url_guard = self.resume_gateway_url.write().await;
             *resume_url_guard = None;
         }
+        {
+            let mut buf = self.recent_events.write().await;
+            buf.clear();
+        }
         self.last_sequence.store(0, Ordering::SeqCst);
         self.heartbeat_acked.store(true, Ordering::SeqCst);
         self.has_received_hello.store(false, Ordering::SeqCst);
+        self.is_resumed.store(false, Ordering::SeqCst);
     }
 }
 
@@ -129,6 +252,27 @@ impl Default for GatewayConfig {
 pub struct GatewayProtocolHandler {
     config: GatewayConfig,
     session: GatewaySessionState,
+}
+
+/// Extracts a unique event identifier from an incoming Gateway Dispatch payload.
+pub fn extract_event_id(event_name: &str, seq: u64, data: &serde_json::Value) -> String {
+    if let Some(id) = data.get("id").and_then(|v| v.as_str()) {
+        id.to_string()
+    } else if let Some(user_id) = data
+        .get("user")
+        .and_then(|u| u.get("id"))
+        .and_then(|v| v.as_str())
+    {
+        if let Some(guild_id) = data.get("guild_id").and_then(|v| v.as_str()) {
+            format!("{}:{}:{}", event_name, guild_id, user_id)
+        } else {
+            format!("{}:{}", event_name, user_id)
+        }
+    } else if let Some(guild_id) = data.get("guild_id").and_then(|v| v.as_str()) {
+        format!("{}:{}:{}", event_name, guild_id, seq)
+    } else {
+        format!("{}:{}", event_name, seq)
+    }
 }
 
 impl GatewayProtocolHandler {
@@ -192,7 +336,8 @@ impl GatewayProtocolHandler {
 
             // Opcode 0: Dispatch
             GatewayOpcode::Dispatch => {
-                if let Some(seq) = payload.s {
+                let seq = payload.s.unwrap_or(0);
+                if seq > 0 {
                     self.session.last_sequence.store(seq, Ordering::SeqCst);
                 }
 
@@ -201,6 +346,7 @@ impl GatewayProtocolHandler {
 
                 // Handle session caching on READY event
                 if event_name == "READY" {
+                    self.session.is_resumed.store(false, Ordering::SeqCst);
                     if let Ok(ready) =
                         serde_json::from_value::<GatewayReadyData>(event_data.clone())
                     {
@@ -211,7 +357,26 @@ impl GatewayProtocolHandler {
                             *url_guard = Some(resume_url);
                         }
                     }
+                } else if event_name == "RESUMED" {
+                    self.session.mark_resumed();
+                    log::info!(
+                        "Gateway session successfully resumed via Opcode 6 (RESUME); internal ring buffer preserved and skipping full GUILD_MEMBERS_CHUNK re-sync."
+                    );
                 }
+
+                // Extract event identifier and store in internal ring buffer
+                let event_id = extract_event_id(&event_name, seq, &event_data);
+                if self.session.has_seen_event(&event_id).await {
+                    log::debug!(
+                        "Skipping duplicate gateway event: {} ({})",
+                        event_name,
+                        event_id
+                    );
+                    return Ok(OpcodeAction::None);
+                }
+                self.session
+                    .record_event(seq, event_id, event_name.clone())
+                    .await;
 
                 Ok(OpcodeAction::DispatchEvent {
                     event_name,
@@ -229,9 +394,7 @@ impl GatewayProtocolHandler {
             GatewayOpcode::InvalidSession => {
                 let is_resumable = payload.d.and_then(|v| v.as_bool()).unwrap_or(false);
                 if !is_resumable {
-                    let mut sess_guard = self.session.session_id.write().await;
-                    *sess_guard = None;
-                    self.session.last_sequence.store(0, Ordering::SeqCst);
+                    self.session.reset_session().await;
                 }
                 Ok(OpcodeAction::Reconnect {
                     resume: is_resumable,
@@ -636,5 +799,125 @@ mod tests {
         assert_eq!(inv_fresh_action, OpcodeAction::Reconnect { resume: false });
         assert!(session.session_id.read().await.is_none());
         assert_eq!(session.last_sequence.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn test_event_ring_buffer_fifo_eviction_and_deduplication() {
+        let mut ring = EventRingBuffer::new(16);
+
+        // Insert 16 unique events
+        for seq in 1..=16 {
+            let id = format!("event_{}", seq);
+            let is_new = ring.push(seq, id.clone(), "GUILD_MEMBER_ADD".into());
+            assert!(is_new, "Event {} must be newly recorded", seq);
+            assert!(ring.contains(&id));
+        }
+
+        assert_eq!(ring.len(), 16);
+
+        // Re-inserting an already seen event returns false (duplicate detected)
+        let dup = ring.push(16, "event_16".into(), "GUILD_MEMBER_ADD".into());
+        assert!(!dup, "Duplicate event must return false");
+
+        // Push 17th event: should evict oldest (event_1)
+        let is_new = ring.push(17, "event_17".into(), "GUILD_MEMBER_UPDATE".into());
+        assert!(is_new);
+        assert_eq!(ring.len(), 16);
+        assert!(
+            !ring.contains("event_1"),
+            "event_1 must be evicted via FIFO"
+        );
+        assert!(
+            ring.contains("event_17"),
+            "event_17 must be present in ring buffer"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_session_resumed_opcode_6_preserves_ring_buffer_without_full_resync() {
+        let config = GatewayConfig::default();
+        let session = GatewaySessionState::new();
+
+        // 1. Establish session
+        {
+            let mut s = session.session_id.write().await;
+            *s = Some("active_sess_555".into());
+        }
+        session.last_sequence.store(42, Ordering::SeqCst);
+
+        // 2. Pre-populate ring buffer with dispatched events
+        session
+            .record_event(40, "evt_40".into(), "GUILD_MEMBER_ADD".into())
+            .await;
+        session
+            .record_event(41, "evt_41".into(), "GUILD_MEMBER_UPDATE".into())
+            .await;
+        session
+            .record_event(42, "evt_42".into(), "USER_UPDATE".into())
+            .await;
+        assert_eq!(session.ring_buffer_len().await, 3);
+        assert!(session.can_resume().await);
+
+        let handler = GatewayProtocolHandler::new(config.clone(), session.clone());
+
+        // 3. Receive Opcode 10 Hello -> handler issues Opcode 6 Resume
+        let hello = GatewayPayload {
+            op: GatewayOpcode::Hello,
+            d: Some(serde_json::json!({ "heartbeat_interval": 30000 })),
+            s: None,
+            t: None,
+        };
+        let action = handler.handle_incoming(hello).await.unwrap();
+        match action {
+            OpcodeAction::Send(payload) => {
+                assert_eq!(payload.op, GatewayOpcode::Resume);
+                let d = payload.d.unwrap();
+                assert_eq!(d["session_id"], "active_sess_555");
+                assert_eq!(d["seq"], 42);
+            }
+            other => panic!("Expected OpcodeAction::Send(Resume), got {:?}", other),
+        }
+
+        // 4. Discord responds with RESUMED (Dispatch with t: "RESUMED")
+        let resumed_payload = GatewayPayload {
+            op: GatewayOpcode::Dispatch,
+            d: Some(serde_json::json!({})),
+            s: Some(43),
+            t: Some("RESUMED".into()),
+        };
+        let resumed_action = handler.handle_incoming(resumed_payload).await.unwrap();
+        assert!(matches!(resumed_action, OpcodeAction::DispatchEvent { .. }));
+
+        // 5. Verify session is marked resumed, ring buffer is preserved, no full re-sync needed
+        assert!(
+            session.is_session_resumed(),
+            "Session must be marked resumed"
+        );
+        assert_eq!(
+            session.ring_buffer_len().await,
+            4,
+            "Ring buffer must preserve existing events and append RESUMED event"
+        );
+        assert!(session.has_seen_event("evt_40").await);
+        assert!(session.has_seen_event("evt_41").await);
+        assert!(session.has_seen_event("evt_42").await);
+        assert_eq!(session.last_sequence.load(Ordering::SeqCst), 43);
+
+        // 6. If an invalid non-resumable session arrives later, ring buffer must be wiped
+        let invalid_payload = GatewayPayload {
+            op: GatewayOpcode::InvalidSession,
+            d: Some(serde_json::Value::Bool(false)),
+            s: None,
+            t: None,
+        };
+        let inv_action = handler.handle_incoming(invalid_payload).await.unwrap();
+        assert_eq!(inv_action, OpcodeAction::Reconnect { resume: false });
+        assert_eq!(
+            session.ring_buffer_len().await,
+            0,
+            "Ring buffer must be wiped on fresh re-sync"
+        );
+        assert!(!session.is_session_resumed());
+        assert!(!session.can_resume().await);
     }
 }

@@ -141,13 +141,59 @@ pub fn resolve_incident(
     operator_id: Option<String>,
     target_benchmark_id: Option<String>,
 ) -> Result<bool, CommandError> {
-    if incident_id.trim().is_empty() {
+    let clean_incident_id = incident_id.trim();
+    if clean_incident_id.is_empty() {
         return Err(CommandError::ValidationFailed(
             "Incident ID cannot be empty".into(),
         ));
     }
 
-    // 1. Safety Circuit Breaker check for mitigation actions (Phase 16.3: Ban / Restrict)
+    let storage = crate::storage::StorageManager::default_instance()
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+
+    // 1. Authoritative verification: Fetch existing incident record. Reject forged or non-existent requests.
+    let existing = storage
+        .get_incident(clean_incident_id)
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?
+        .ok_or_else(|| CommandError::IncidentNotFound(clean_incident_id.to_string()))?;
+
+    // 2. Anti-Replay Guard: Reject already-resolved incidents to prevent replaying stale or duplicate commands.
+    if existing.status != IncidentStatus::Pending {
+        return Err(CommandError::ValidationFailed(format!(
+            "Incident '{}' has already been resolved with status '{:?}'",
+            clean_incident_id, existing.status
+        )));
+    }
+
+    // 3. Authoritative validation of targets and guild membership
+    let guild_id = existing.guild_id.trim().to_string();
+    if guild_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Target incident is missing an authoritative guild ID".into(),
+        ));
+    }
+    let target_user_id = existing.discrepancy.suspect_user_id.trim().to_string();
+    if target_user_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Target incident is missing an authoritative suspect user ID".into(),
+        ));
+    }
+
+    // 4. Consequential Moderation Action Guard (Phase 16.3: Ban / Restrict):
+    // Requires verified operator identity and acquires circuit-breaker quota.
+    let op = match operator_id {
+        Some(ref id) if !id.trim().is_empty() => id.trim().to_string(),
+        _ => {
+            if matches!(status, IncidentStatus::Banned | IncidentStatus::Excluded) {
+                return Err(CommandError::ValidationFailed(
+                    "Consequential moderation actions (Ban/Exclude) require an explicit, identified operator"
+                        .into(),
+                ));
+            }
+            "LocalSteward".to_string()
+        }
+    };
+
     if matches!(status, IncidentStatus::Banned | IncidentStatus::Excluded) {
         let breaker = crate::circuit_breaker::get_global_circuit_breaker();
         let acquired =
@@ -159,34 +205,13 @@ pub fn resolve_incident(
         }
     }
 
-    let storage = crate::storage::StorageManager::default_instance()
-        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
-
     let now = chrono::Utc::now().timestamp();
-    let op = operator_id.unwrap_or_else(|| "LocalSteward".to_string());
+    let suspect_username = Some(existing.discrepancy.suspect_username.clone());
+    let matched_bm_id = Some(existing.discrepancy.matched_benchmark_id.clone());
 
-    // 2. Fetch existing incident record if stored
-    let existing_opt = storage
-        .get_incident(&incident_id)
-        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
-
-    let target_user_id = existing_opt
-        .as_ref()
-        .map(|i| i.discrepancy.suspect_user_id.clone());
-    let guild_id = existing_opt
-        .as_ref()
-        .map(|i| i.guild_id.clone())
-        .unwrap_or_default();
-    let suspect_username = existing_opt
-        .as_ref()
-        .map(|i| i.discrepancy.suspect_username.clone());
-    let matched_bm_id = existing_opt
-        .as_ref()
-        .map(|i| i.discrepancy.matched_benchmark_id.clone());
-
-    // 3. Update status in SQLite incidents table
+    // 5. Update status in SQLite incidents table
     let _ = storage.update_incident_status(
-        &incident_id,
+        clean_incident_id,
         status.clone(),
         resolution_notes.as_deref(),
         Some(&op),
@@ -196,7 +221,8 @@ pub fn resolve_incident(
     // 4. Phase 16.3: Allow Known Alt [W]: Whitelist account and append to benchmark tags to prevent future alerts
     if status == IncidentStatus::Whitelisted {
         let bm_target = target_benchmark_id.or(matched_bm_id.clone());
-        if let (Some(bm_id), Some(ref uid)) = (bm_target, &target_user_id) {
+        if let Some(bm_id) = bm_target {
+            let uid = &target_user_id;
             let conn_guard = storage.get_connection();
             let conn = conn_guard.lock().unwrap();
 
@@ -260,8 +286,8 @@ pub fn resolve_incident(
         action: action_type,
         guild_id,
         operator_id: op,
-        target_user_id,
-        incident_id: Some(incident_id),
+        target_user_id: Some(target_user_id),
+        incident_id: Some(clean_incident_id.to_string()),
         reason: reason_str,
         metadata: Some(serde_json::json!({
             "action_status": format!("{:?}", status).to_lowercase(),
@@ -930,6 +956,111 @@ mod tests {
     }
 
     #[test]
+    fn test_resolve_incident_anti_replay_and_operator_guard() {
+        let storage = crate::storage::StorageManager::default_instance().unwrap();
+        let bm_id = format!(
+            "bm_guard_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            conn.execute(
+                "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at, tags)
+                 VALUES (?1, 'guild_guard', '111222333', 'OriginalUser', 'Staff', 1000, 1000, '[]');",
+                [&bm_id],
+            ).unwrap();
+        }
+
+        let inc_id = format!(
+            "inc_guard_test_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let inc = TriageIncident {
+            id: inc_id.clone(),
+            guild_id: "guild_guard".into(),
+            timestamp: 2000,
+            discrepancy: crate::models::incident::IdentityDiscrepancy {
+                suspect_user_id: "suspect_guard_123".into(),
+                suspect_username: "ImposterUser".into(),
+                suspect_nickname: None,
+                suspect_avatar_url: None,
+                suspect_account_age_hours: 1,
+                matched_benchmark_id: bm_id.clone(),
+                matched_benchmark_name: "OriginalUser".into(),
+                string_similarity_score: 0.99,
+                homoglyph_detected: true,
+                normalized_diff: "Homoglyph".into(),
+                avatar_hamming_distance: None,
+                risk_tier: crate::models::incident::RiskTier::Critical,
+            },
+            status: IncidentStatus::Pending,
+            resolution_notes: None,
+            operator_id: None,
+            resolved_at: None,
+        };
+        storage.record_incident(&inc).unwrap();
+
+        // 1. Consequential action (Ban) without operator ID must be rejected
+        let res_no_op = resolve_incident(
+            inc_id.clone(),
+            IncidentStatus::Banned,
+            Some("Ban attempt without operator".into()),
+            None,
+            None,
+        );
+        assert!(res_no_op.is_err());
+        match res_no_op.err().unwrap() {
+            CommandError::ValidationFailed(msg) => {
+                assert!(msg.contains("require an explicit, identified operator"));
+            }
+            _ => panic!("Expected ValidationFailed for unauthenticated operator"),
+        }
+
+        // 2. Resolve successfully with identified operator
+        let res_ok = resolve_incident(
+            inc_id.clone(),
+            IncidentStatus::Banned,
+            Some("Authoritative ban executed".into()),
+            Some("SeniorMod".into()),
+            None,
+        );
+        assert!(res_ok.is_ok());
+
+        // 3. Anti-Replay Guard: Replaying or resolving again must be rejected
+        let res_replay = resolve_incident(
+            inc_id.clone(),
+            IncidentStatus::Dismissed,
+            Some("Attempting to re-resolve".into()),
+            Some("SeniorMod".into()),
+            None,
+        );
+        assert!(res_replay.is_err());
+        match res_replay.err().unwrap() {
+            CommandError::ValidationFailed(msg) => {
+                assert!(msg.contains("already been resolved"));
+            }
+            _ => panic!("Expected ValidationFailed for replayed command"),
+        }
+
+        // 4. Nonexistent incident ID must return IncidentNotFound
+        let res_missing = resolve_incident(
+            "inc_completely_nonexistent".into(),
+            IncidentStatus::Dismissed,
+            None,
+            Some("SeniorMod".into()),
+            None,
+        );
+        assert!(res_missing.is_err());
+        match res_missing.err().unwrap() {
+            CommandError::IncidentNotFound(id) => {
+                assert_eq!(id, "inc_completely_nonexistent");
+            }
+            _ => panic!("Expected IncidentNotFound"),
+        }
+    }
+
+    #[test]
     fn test_phase_16_administrative_mitigation_actions_and_audit_logging() {
         let storage = crate::storage::StorageManager::default_instance().unwrap();
 
@@ -1127,7 +1258,8 @@ mod tests {
         .await;
         assert!(
             update_res.is_ok(),
-            "Updating with masked token must succeed by reusing stored token"
+            "Updating with masked token must succeed by reusing stored token: {:?}",
+            update_res.as_ref().err()
         );
 
         // 4. Verify updating with empty token preserves stored credentials
@@ -1149,6 +1281,84 @@ mod tests {
         assert!(
             !cfg_after.connected,
             "Config after disconnect must show connected = false"
+        );
+    }
+
+    #[test]
+    fn test_capabilities_and_ipc_security_audit() {
+        let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+        // 1. Audit capabilities/default.json
+        let cap_path = manifest_dir.join("capabilities").join("default.json");
+        assert!(cap_path.exists(), "capabilities/default.json must exist");
+        let cap_raw = std::fs::read_to_string(&cap_path).expect("Must read default.json");
+        let cap_json: serde_json::Value =
+            serde_json::from_str(&cap_raw).expect("default.json must be valid JSON");
+
+        // Windows and webviews must be strictly scoped to 'main'
+        let windows = cap_json["windows"]
+            .as_array()
+            .expect("windows must be an array");
+        assert_eq!(windows, &vec![serde_json::json!("main")]);
+
+        let webviews = cap_json["webviews"]
+            .as_array()
+            .expect("webviews must be an array");
+        assert_eq!(webviews, &vec![serde_json::json!("main")]);
+
+        // Remote URLs must be empty, disabling IPC access for external WebViews/iframes
+        let remote_urls = cap_json["remote"]["urls"]
+            .as_array()
+            .expect("remote.urls must be array");
+        assert!(
+            remote_urls.is_empty(),
+            "remote.urls must be empty to disable IPC access for any external WebViews/iframes"
+        );
+
+        // Ensure no un-scoped arbitrary fs or http permissions exist in capabilities
+        let perms = cap_json["permissions"]
+            .as_array()
+            .expect("permissions must be array");
+        for perm in perms {
+            if let Some(perm_str) = perm.as_str() {
+                assert!(
+                    !perm_str.starts_with("fs:default") && !perm_str.starts_with("http:default"),
+                    "Generic arbitrary fs or http permissions must not be enabled"
+                );
+            }
+        }
+
+        // 2. Audit tauri.conf.json security CSP and freezePrototype
+        let conf_path = manifest_dir.join("tauri.conf.json");
+        assert!(conf_path.exists(), "tauri.conf.json must exist");
+        let conf_raw = std::fs::read_to_string(&conf_path).expect("Must read tauri.conf.json");
+        let conf_json: serde_json::Value =
+            serde_json::from_str(&conf_raw).expect("tauri.conf.json must be valid JSON");
+
+        let csp = conf_json["app"]["security"]["csp"]
+            .as_str()
+            .expect("CSP must be configured");
+        assert!(
+            csp.contains("frame-src 'none'"),
+            "CSP must forbid iframes with frame-src 'none'"
+        );
+        assert!(
+            csp.contains("object-src 'none'"),
+            "CSP must forbid object plugins with object-src 'none'"
+        );
+
+        let freeze = conf_json["app"]["security"]["freezePrototype"]
+            .as_bool()
+            .unwrap_or(false);
+        assert!(freeze, "freezePrototype must be enabled for IPC protection");
+
+        // 3. Audit backend data directories are strictly scoped to the app config directory (~/.truthbeacon)
+        let db_path = crate::storage::StorageManager::default_db_path();
+        let db_str = db_path.to_string_lossy();
+        assert!(
+            db_str.contains(".truthbeacon"),
+            "Database path must be scoped inside app config directory: {}",
+            db_str
         );
     }
 }

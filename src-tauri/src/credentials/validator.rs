@@ -250,7 +250,8 @@ impl DiscordHandshakeValidator {
         } else if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             let retry_after = res
                 .headers()
-                .get("Retry-After")
+                .get("x-ratelimit-reset-after")
+                .or_else(|| res.headers().get("Retry-After"))
                 .and_then(|h| h.to_str().ok())
                 .and_then(|s| s.parse::<f64>().ok())
                 .unwrap_or(5.0);
