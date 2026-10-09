@@ -209,9 +209,11 @@ const ARGON2_M_COST: u32 = 19456; // 19 MiB (RFC 9106 / OWASP recommended memory
 const ARGON2_T_COST: u32 = 2;
 const ARGON2_P_COST: u32 = 1;
 
+type CachedVaultKey = ([u8; SALT_LEN], Zeroizing<[u8; 32]>);
+
 static HARDWARE_SECRET_CACHE: LazyLock<RwLock<Option<Zeroizing<String>>>> =
     LazyLock::new(|| RwLock::new(None));
-static VAULT_KEY_CACHE: LazyLock<RwLock<Option<([u8; SALT_LEN], Zeroizing<[u8; 32]>)>>> =
+static VAULT_KEY_CACHE: LazyLock<RwLock<Option<CachedVaultKey>>> =
     LazyLock::new(|| RwLock::new(None));
 
 fn get_or_create_hardware_secret() -> Option<Zeroizing<String>> {
