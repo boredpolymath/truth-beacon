@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/boredpolymath/truth-beacon"><img src="https://img.shields.io/badge/GitHub-boredpolymath%2Ftruth--beacon-181717?style=flat-square&logo=github" alt="GitHub Repo"></a>
   <a href="https://boredpolymath.github.io/truth-beacon/"><img src="https://img.shields.io/badge/Web-truth--beacon-5865F2?style=flat-square" alt="Website"></a>
-  <img src="https://img.shields.io/badge/Version-v0.1.5-green?style=flat-square" alt="Version 0.1.5">
+  <img src="https://img.shields.io/badge/Version-v0.2.0-green?style=flat-square" alt="Version 0.2.0">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/Framework-Tauri%20v2-orange?style=flat-square" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Language-Rust%202021-red?style=flat-square" alt="Rust 2021">
@@ -35,7 +35,18 @@ Most moderation tools today either:
 
 **TruthBeacon is different.** It is a friendly, quiet desktop app that acts like a trusted watchman at your community's door. It monitors member joins and profile changes locally on your computer, spots sneaky lookalikes in under 50 milliseconds, and presents clean side-by-side comparison cards so you can take action in seconds.
 
-Best of all? **It respects your privacy completely.** TruthBeacon has zero tracking, zero cloud telemetry, and keeps all sensitive tokens securely in an authenticated local AES-256-GCM vault with machine-unique key derivation and strict permissions.
+Best of all? **It respects your privacy completely.** TruthBeacon has zero tracking, zero cloud telemetry, and keeps all sensitive tokens securely in an authenticated local AES-256-GCM vault with domain-separated AAD binding (`TruthBeacon:EncryptedVault:v1`), Argon2id key derivation, and strict POSIX permissions.
+
+### Security, Reliability & Production Hardening (v0.2.0)
+- 🛡️ **Forensic Database Quarantine**: Pre-flight SQLite integrity gates preserve corrupt databases and WAL frames into timestamped forensic archives without silent deletion.
+- 🔐 **Domain-Bound Cryptographic Vault**: AES-256-GCM authenticated encryption bound to application domain AAD (`TruthBeacon:EncryptedVault:v1`) with Argon2id derivation, Zeroize-on-drop hygiene, tamper detection, and token redaction.
+- ⚡ **Authoritative Backend Moderation**: Replay-immune incident resolution validated against local SQLite records; operator identity strictly required for consequential actions.
+- 🔄 **Persistent Circuit Breakers**: Rate limit trips, moderation bursts, and cooldown timers persist across UI restarts to prevent evasion.
+- 🌐 **Multi-Guild Gateway Registry**: Dynamic connection lifecycle manager restores all registered guild connections while deduplicating shared bot tokens and dropping duplicate events via LRU ring buffers.
+- 🧵 **Dedicated Rayon Worker Pool & Multi-Keyframe Inspection**: Image resizing and DCT calculations run on a dedicated worker pool (`spawn_blocking`) to avoid stalling the Tokio event loop. Animated avatars sample 2–3 keyframes, combining perceptual hashing (pHash) with color histogram and average hash (aHash) checks against contrast/brightness evasion.
+- 🔤 **Unicode Technical Report #39 (UTR #39) Skeletons**: Employs standard tr39 confusable character tables to produce canonical skeletons before fuzzy-string comparisons, unmasking mixed-script homoglyph attacks.
+- ⏱️ **Jittered Rate-Limit Backoff & Opcode 6 Session Resumption**: HTTP requests implement jittered exponential backoff honoring `X-RateLimit-Reset-After`. Gateway event streams maintain a ring buffer of recent event IDs for fast Opcode 6 RESUME without expensive `GUILD_MEMBERS_CHUNK` re-syncs.
+- 📦 **Sandboxed IPC Capabilities & Supply Chain**: Tauri v2 capability files strictly scoped to the app's config directory with remote WebViews/iframes IPC access disabled, 8 MB / 4096px image safety bounds, and formal RUSTSEC supply-chain auditing.
 
 ---
 
@@ -243,7 +254,7 @@ You can adjust sensitivity thresholds, rate limits, and safety settings directly
 {
   "application": {
     "name": "TruthBeacon",
-    "version": "0.1.5",
+    "version": "0.2.0",
     "vendor": "Orange Heart Industries",
     "description": "Community Impersonation Defense & Identity Protection Console"
   },
@@ -324,7 +335,7 @@ TruthBeacon delivers first-class, native desktop installers across all major ope
 ```
 truth-beacon/
 ├── README.md                      # Project overview and getting started guide
-├── RELEASE_NOTES.md               # Version 0.1.5 release notes & distribution summary
+├── RELEASE_NOTES.md               # Version 0.2.0 release notes & distribution summary
 ├── truthbeacon.config.json        # Custom detection thresholds and safety limits
 ├── .github/                       # GitHub Actions CI/CD workflows
 │   └── workflows/
@@ -342,8 +353,8 @@ truth-beacon/
 │   ├── 08-local-storage-architecture-and-migration-strategy.md # SQLite schema & migrations
 │   └── 09-cross-platform-packaging-and-release-staging.md # Build bundling & packaging specification
 ├── release/                       # Staged production release binaries & verification artifacts
-│   ├── TruthBeacon_0.1.5_universal.dmg     # Universal 2 drag-and-drop installer
-│   ├── TruthBeacon_0.1.5_macos_universal.zip # Standalone universal application bundle
+│   ├── TruthBeacon_0.2.0_universal.dmg     # Universal 2 drag-and-drop installer
+│   ├── TruthBeacon_0.2.0_macos_universal.zip # Standalone universal application bundle
 │   ├── truth-beacon-universal              # Standalone fat binary (x86_64 + arm64)
 │   ├── RELEASE_MANIFEST.md                 # Production build metadata & dependency audit
 │   ├── RELEASE_NOTES.md                    # Platform release documentation

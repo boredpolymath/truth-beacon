@@ -22,7 +22,7 @@ KEY_PATH = os.path.join(KEYS_DIR, "truthbeacon_updater.key")
 
 with open(os.path.join(SRC_TAURI_DIR, "tauri.conf.json"), "r") as f:
     conf = json.load(f)
-VERSION = conf.get("version", "0.1.5")
+VERSION = conf.get("version", "0.2.0")
 BASE_URL = f"https://github.com/boredpolymath/truth-beacon/releases/download/v{VERSION}"
 
 def get_signature(file_path):
