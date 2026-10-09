@@ -891,7 +891,7 @@ pub async fn install_update(app: tauri::AppHandle) -> Result<bool, CommandError>
             .download_and_install(|_chunk, _total| {}, || {})
             .await
             .map_err(|e| CommandError::InternalError(format!("Failed to install update: {}", e)))?;
-        Ok(true)
+        app.restart();
     } else {
         Ok(false)
     }
