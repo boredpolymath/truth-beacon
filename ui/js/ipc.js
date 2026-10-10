@@ -47,7 +47,8 @@ export const isTauriEnvironment = () => {
 };
 
 export async function invokeCommand(cmd, args = {}) {
-  if (isTauriEnvironment() && window.__TAURI__?.core?.invoke) {
+  const invoker = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
+  if (isTauriEnvironment() && invoker) {
     try {
       // Normalize args: Tauri commands expect camelCase by default (e.g. guild_id -> guildId).
       // Supply both camelCase and snake_case keys in payload so Rust handlers receive either seamlessly.
@@ -57,7 +58,7 @@ export async function invokeCommand(cmd, args = {}) {
         const camelKey = k.replace(/_([a-z0-9])/g, (_, letter) => letter.toUpperCase());
         tauriArgs[camelKey] = v;
       }
-      return await window.__TAURI__.core.invoke(cmd, tauriArgs);
+      return await invoker(cmd, tauriArgs);
     } catch (err) {
       console.warn(`[TruthBeacon IPC] Failed invoking ${cmd}:`, err);
       throw err;

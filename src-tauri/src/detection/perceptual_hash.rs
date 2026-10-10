@@ -267,6 +267,9 @@ fn sample_keyframes(frames: Vec<image::DynamicImage>) -> Vec<image::DynamicImage
     }
 }
 
+/// Maximum animation frames to inspect for keyframe extraction (prevents decompression bombs).
+pub const MAX_KEYFRAME_CANDIDATE_FRAMES: usize = 30;
+
 /// Safely extracts sampled keyframes from image bytes without writing to disk.
 /// Inspects animated GIF, animated WebP, APNG, or falls back to static decoding.
 fn extract_sampled_keyframes(image_bytes: &[u8]) -> Result<Vec<image::DynamicImage>, HashError> {
@@ -277,52 +280,62 @@ fn extract_sampled_keyframes(image_bytes: &[u8]) -> Result<Vec<image::DynamicIma
         });
     }
 
-    // 1. Animated GIF decoder
+    // 1. Animated GIF decoder (bounded frame iteration)
     if let Ok(decoder) = GifDecoder::new(Cursor::new(image_bytes)) {
-        if let Ok(frames) = decoder.into_frames().collect_frames() {
-            if !frames.is_empty() {
-                return Ok(sample_keyframes(
-                    frames
-                        .into_iter()
-                        .map(|f| image::DynamicImage::ImageRgba8(f.into_buffer()))
-                        .collect(),
-                ));
-            }
+        let mut sample_list = Vec::new();
+        for frame in decoder
+            .into_frames()
+            .take(MAX_KEYFRAME_CANDIDATE_FRAMES)
+            .flatten()
+        {
+            let img = image::DynamicImage::ImageRgba8(frame.into_buffer());
+            validate_frame_dimensions(&img)?;
+            sample_list.push(img);
+        }
+        if !sample_list.is_empty() {
+            return Ok(sample_keyframes(sample_list));
         }
     }
 
-    // 2. Animated WebP decoder
+    // 2. Animated WebP decoder (bounded frame iteration)
     if let Ok(decoder) = WebPDecoder::new(Cursor::new(image_bytes)) {
-        if let Ok(frames) = decoder.into_frames().collect_frames() {
-            if !frames.is_empty() {
-                return Ok(sample_keyframes(
-                    frames
-                        .into_iter()
-                        .map(|f| image::DynamicImage::ImageRgba8(f.into_buffer()))
-                        .collect(),
-                ));
-            }
+        let mut sample_list = Vec::new();
+        for frame in decoder
+            .into_frames()
+            .take(MAX_KEYFRAME_CANDIDATE_FRAMES)
+            .flatten()
+        {
+            let img = image::DynamicImage::ImageRgba8(frame.into_buffer());
+            validate_frame_dimensions(&img)?;
+            sample_list.push(img);
+        }
+        if !sample_list.is_empty() {
+            return Ok(sample_keyframes(sample_list));
         }
     }
 
-    // 3. APNG (Animated PNG) decoder
+    // 3. APNG (Animated PNG) decoder (bounded frame iteration)
     if let Ok(decoder) = PngDecoder::new(Cursor::new(image_bytes)) {
         if let Ok(apng) = decoder.apng() {
-            if let Ok(frames) = apng.into_frames().collect_frames() {
-                if !frames.is_empty() {
-                    return Ok(sample_keyframes(
-                        frames
-                            .into_iter()
-                            .map(|f| image::DynamicImage::ImageRgba8(f.into_buffer()))
-                            .collect(),
-                    ));
-                }
+            let mut sample_list = Vec::new();
+            for frame in apng
+                .into_frames()
+                .take(MAX_KEYFRAME_CANDIDATE_FRAMES)
+                .flatten()
+            {
+                let img = image::DynamicImage::ImageRgba8(frame.into_buffer());
+                validate_frame_dimensions(&img)?;
+                sample_list.push(img);
+            }
+            if !sample_list.is_empty() {
+                return Ok(sample_keyframes(sample_list));
             }
         }
     }
 
     // 4. Standard static image decoding (PNG, JPEG, WebP, etc.)
     if let Ok(dyn_img) = image::load_from_memory(image_bytes) {
+        validate_frame_dimensions(&dyn_img)?;
         return Ok(vec![dyn_img]);
     }
 
@@ -332,7 +345,9 @@ fn extract_sampled_keyframes(image_bytes: &[u8]) -> Result<Vec<image::DynamicIma
         let (w, h) = rgba.dimensions();
         let raw = rgba.into_raw();
         if let Some(buf) = image::RgbaImage::from_raw(w, h, raw) {
-            return Ok(vec![image::DynamicImage::ImageRgba8(buf)]);
+            let dyn_img = image::DynamicImage::ImageRgba8(buf);
+            validate_frame_dimensions(&dyn_img)?;
+            return Ok(vec![dyn_img]);
         }
     }
 
@@ -886,5 +901,12 @@ mod tests {
             }
             _ => panic!("Expected DimensionsExceeded error, got {:?}", err),
         }
+    }
+
+    #[test]
+    fn test_malformed_image_buffer_safely_rejected() {
+        let malformed = vec![0x89, 0x50, 0x4E, 0x47, 0x00, 0xDE, 0xAD, 0xBE, 0xEF]; // Corrupt PNG header
+        let err = compute_perceptual_hash(&malformed).unwrap_err();
+        assert_eq!(err, HashError::DecodeFailed);
     }
 }

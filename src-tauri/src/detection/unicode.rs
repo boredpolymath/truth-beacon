@@ -37,6 +37,12 @@ pub struct UnicodeAnomalyReport {
     pub has_invisible_whitespace: bool,
     /// Exact count of invisible whitespace characters mapped.
     pub invisible_whitespace_count: usize,
+    /// Whether combining diacritical marks or Zalgo characters were detected.
+    #[serde(default)]
+    pub has_combining_marks: bool,
+    /// Exact count of combining marks stripped.
+    #[serde(default)]
+    pub combining_mark_count: usize,
     /// Whether NFKD decomposition altered the input character sequence.
     pub has_nfkd_decomposition: bool,
     /// The fully deobfuscated and normalized string result.
@@ -91,13 +97,30 @@ pub fn is_invisible_whitespace(ch: char) -> bool {
     )
 }
 
+/// Returns `true` if the character is a combining diacritical mark or symbol mark (Zalgo vectors).
+#[inline]
+pub fn is_combining_mark(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{0300}'..='\u{036F}' // Combining Diacritical Marks
+        | '\u{1AB0}'..='\u{1AFF}' // Combining Diacritical Marks Extended
+        | '\u{1DC0}'..='\u{1DFF}' // Combining Diacritical Marks Supplement
+        | '\u{20D0}'..='\u{20FF}' // Combining Diacritical Marks for Symbols
+        | '\u{FE20}'..='\u{FE2F}' // Combining Half Marks
+    )
+}
+
 /// Sanitizes a single Unicode character:
-/// - Returns `None` if the character should be stripped (zero-width, bidi, control).
+/// - Returns `None` if the character should be stripped (zero-width, bidi, control, combining marks).
 /// - Returns `Some(' ')` if the character is an invisible whitespace character.
 /// - Returns `Some(ch)` if the character is a legitimate character.
 #[inline]
 pub fn sanitize_char(ch: char) -> Option<char> {
-    if is_zero_width(ch) || is_bidi_override(ch) || is_control_character(ch) {
+    if is_zero_width(ch)
+        || is_bidi_override(ch)
+        || is_control_character(ch)
+        || is_combining_mark(ch)
+    {
         None
     } else if is_invisible_whitespace(ch) {
         Some(' ')
@@ -113,6 +136,7 @@ pub fn inspect_unicode_anomalies(input: &str) -> UnicodeAnomalyReport {
     let mut bidi_override_count = 0;
     let mut control_char_count = 0;
     let mut invisible_whitespace_count = 0;
+    let mut combining_mark_count = 0;
 
     for ch in input.chars() {
         if is_zero_width(ch) {
@@ -123,6 +147,8 @@ pub fn inspect_unicode_anomalies(input: &str) -> UnicodeAnomalyReport {
             control_char_count += 1;
         } else if is_invisible_whitespace(ch) {
             invisible_whitespace_count += 1;
+        } else if is_combining_mark(ch) {
+            combining_mark_count += 1;
         }
     }
 
@@ -139,6 +165,8 @@ pub fn inspect_unicode_anomalies(input: &str) -> UnicodeAnomalyReport {
         control_char_count,
         has_invisible_whitespace: invisible_whitespace_count > 0,
         invisible_whitespace_count,
+        has_combining_marks: combining_mark_count > 0,
+        combining_mark_count,
         has_nfkd_decomposition,
         cleaned: final_cleaned,
     }
@@ -372,5 +400,19 @@ mod tests {
             tr39_canonical_skeleton("TruthBeacon"),
             tr39_canonical_skeleton("truthbeacon")
         );
+    }
+
+    #[test]
+    fn test_strip_combining_marks_and_zalgo_text() {
+        // Zalgo text injection with stacked combining marks
+        let zalgo = "P\u{0336}\u{0353}\u{0357}astor J\u{0300}\u{0301}ohn";
+        let cleaned = strip_deobfuscate_unicode(zalgo);
+        assert_eq!(cleaned, "Pastor John");
+        assert_eq!(normalize_and_deobfuscate(zalgo), "pastor john");
+
+        let report = inspect_unicode_anomalies(zalgo);
+        assert!(report.has_combining_marks);
+        assert_eq!(report.combining_mark_count, 5);
+        assert_eq!(report.cleaned, "Pastor John");
     }
 }

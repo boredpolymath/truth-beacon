@@ -419,12 +419,15 @@ pub fn resolve_incident(
         ));
     }
 
-    // 4. Consequential Moderation Action Guard (Phase 16.3: Ban / Restrict):
+    // 4. Consequential Moderation Action Guard:
     // Requires verified operator identity and acquires circuit-breaker quota.
+    let is_destructive = matches!(status, IncidentStatus::Banned | IncidentStatus::Excluded);
+    let is_automated_toast = operator_id.as_deref().map(|s| s.trim()) == Some("NotificationToast");
+
     let op = match operator_id {
         Some(ref id) if !id.trim().is_empty() => id.trim().to_string(),
         _ => {
-            if matches!(status, IncidentStatus::Banned | IncidentStatus::Excluded) {
+            if is_destructive {
                 return Err(CommandError::ValidationFailed(
                     "Consequential moderation actions (Ban/Exclude) require an explicit, identified operator"
                         .into(),
@@ -434,13 +437,41 @@ pub fn resolve_incident(
         }
     };
 
-    if matches!(status, IncidentStatus::Banned | IncidentStatus::Excluded) {
+    if is_destructive {
+        // Safeguard 1: Uncertain impersonation detections cannot automatically trigger destructive actions
+        let is_uncertain = matches!(
+            existing.discrepancy.risk_tier,
+            crate::models::incident::RiskTier::Standard
+                | crate::models::incident::RiskTier::Notable
+        );
+        if is_uncertain {
+            if is_automated_toast {
+                return Err(CommandError::ValidationFailed(
+                    "Uncertain impersonation detections (Standard or Notable risk tier) cannot automatically trigger destructive moderation actions (Ban/Exclude). Detailed review in console is required."
+                        .into(),
+                ));
+            }
+            let notes_len = resolution_notes.as_deref().unwrap_or("").trim().len();
+            if notes_len < 10 {
+                return Err(CommandError::ValidationFailed(
+                    "Executing destructive moderation actions against an uncertain detection requires an explicit manual justification note of at least 10 characters."
+                        .into(),
+                ));
+            }
+        }
+
+        // Safeguard 2: Circuit Breaker rate limits and trip protection
         let breaker = crate::circuit_breaker::get_global_circuit_breaker();
-        let acquired =
-            breaker.try_acquire_mitigation(crate::circuit_breaker::MitigationOrigin::Manual {
+        let origin = if is_automated_toast {
+            crate::circuit_breaker::MitigationOrigin::Automated
+        } else {
+            crate::circuit_breaker::MitigationOrigin::Manual {
                 operator_confirmed: true,
-            });
-        if acquired.is_err() {
+            }
+        };
+
+        if let Err(e) = breaker.try_acquire_mitigation(origin) {
+            log::warn!("Moderation action blocked by circuit breaker: {}", e);
             return Err(CommandError::CircuitBreakerTripped);
         }
     }
@@ -588,6 +619,19 @@ pub fn run_sandbox_simulation(
     candidate_username: String,
     target_benchmark_name: String,
 ) -> Result<serde_json::Value, CommandError> {
+    let cand_trim = candidate_username.trim();
+    let tgt_trim = target_benchmark_name.trim();
+    if cand_trim.is_empty() || tgt_trim.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Candidate username and target benchmark name cannot be empty".into(),
+        ));
+    }
+    if cand_trim.len() > 100 || tgt_trim.len() > 100 {
+        return Err(CommandError::ValidationFailed(
+            "Candidate username and target benchmark name must be 100 characters or fewer".into(),
+        ));
+    }
+
     use crate::detection::homoglyph::evaluate_homoglyph_spoof;
     use crate::detection::metrics::evaluate_string_metrics;
     use crate::detection::unicode::normalize_and_deobfuscate;
@@ -1045,11 +1089,33 @@ pub async fn synchronize_benchmark_avatars(
         .await
         .map_err(|e| CommandError::InternalError(e.to_string()))
 }
+pub fn validate_notification_payload(
+    payload: &crate::notification::NotificationPayload,
+) -> Result<(), CommandError> {
+    if payload.incident_id.trim().is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Notification incident ID cannot be empty".into(),
+        ));
+    }
+    if payload.suspect_username.len() > 100 || payload.matched_benchmark_name.len() > 100 {
+        return Err(CommandError::ValidationFailed(
+            "Notification username fields must be 100 characters or fewer".into(),
+        ));
+    }
+    if payload.reason.len() > 500 {
+        return Err(CommandError::ValidationFailed(
+            "Notification reason must be 500 characters or fewer".into(),
+        ));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn dispatch_desktop_notification(
     app: tauri::AppHandle,
     payload: crate::notification::NotificationPayload,
 ) -> Result<bool, CommandError> {
+    validate_notification_payload(&payload)?;
     crate::notification::dispatch_native_notification(Some(&app), &payload)
         .map_err(|e| CommandError::InternalError(e.to_string()))
 }
@@ -1141,6 +1207,8 @@ pub async fn install_update(app: tauri::AppHandle) -> Result<bool, CommandError>
 mod tests {
     use super::*;
 
+    static COMMAND_TEST_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn test_command_error_structured_json_serialization() {
         let err = CommandError::ValidationFailed("Invalid snowflake".into());
@@ -1197,6 +1265,8 @@ mod tests {
 
     #[test]
     fn test_resolve_incident_anti_replay_and_operator_guard() {
+        let _lock = COMMAND_TEST_MUTEX.lock().unwrap();
+        crate::circuit_breaker::get_global_circuit_breaker().reset();
         let storage = crate::storage::StorageManager::default_instance().unwrap();
         let bm_id = format!(
             "bm_guard_{}",
@@ -1302,6 +1372,8 @@ mod tests {
 
     #[test]
     fn test_phase_16_administrative_mitigation_actions_and_audit_logging() {
+        let _lock = COMMAND_TEST_MUTEX.lock().unwrap();
+        crate::circuit_breaker::get_global_circuit_breaker().reset();
         let storage = crate::storage::StorageManager::default_instance().unwrap();
 
         // 1. Seed canonical benchmark
@@ -1604,6 +1676,7 @@ mod tests {
 
     #[test]
     fn test_persistent_benchmark_crud_and_cross_guild_authorization() {
+        let _lock = COMMAND_TEST_MUTEX.lock().unwrap();
         let gid_a = format!(
             "guild_crud_a_{}",
             chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
@@ -1712,6 +1785,7 @@ mod tests {
 
     #[test]
     fn test_duplicate_benchmark_and_missing_record_handling() {
+        let _lock = COMMAND_TEST_MUTEX.lock().unwrap();
         let gid = format!(
             "guild_dup_{}",
             chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
@@ -1761,6 +1835,8 @@ mod tests {
 
     #[test]
     fn test_system_status_reflects_actual_backend_state() {
+        let _lock = COMMAND_TEST_MUTEX.lock().unwrap();
+        crate::circuit_breaker::get_global_circuit_breaker().reset();
         let storage = crate::storage::StorageManager::default_instance().unwrap();
         let gid = format!(
             "guild_sys_{}",
@@ -1786,7 +1862,7 @@ mod tests {
         // Verify counts are derived from SQLite and account for the created benchmark
         let db_benchmarks = storage.count_benchmarks().unwrap();
         assert!(status.benchmark_count >= 1);
-        assert!(status.benchmark_count <= db_benchmarks);
+        assert_eq!(status.benchmark_count, db_benchmarks);
 
         // In test environment without active gateway connections, verify daemon_status
         assert!(
@@ -1796,5 +1872,269 @@ mod tests {
 
         // Cleanup test benchmark
         let _ = delete_benchmark(gid, bm.id);
+    }
+
+    #[test]
+    fn test_uncertain_impersonation_detection_safeguards_against_automated_destructive_action() {
+        let _lock = COMMAND_TEST_MUTEX.lock().unwrap();
+        crate::circuit_breaker::get_global_circuit_breaker().reset();
+        let storage = crate::storage::StorageManager::default_instance().unwrap();
+        let bm_id = format!(
+            "bm_safe_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            conn.execute(
+                "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at, tags)
+                 VALUES (?1, 'guild_safeguard', '999888111', 'BenchmarkUser', 'Staff', 1000, 1000, '[]');",
+                [&bm_id],
+            ).unwrap();
+        }
+
+        let inc_id = format!(
+            "inc_uncert_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let inc = TriageIncident {
+            id: inc_id.clone(),
+            guild_id: "guild_safeguard".into(),
+            timestamp: chrono::Utc::now().timestamp(),
+            discrepancy: crate::models::incident::IdentityDiscrepancy {
+                suspect_user_id: "888111222".into(),
+                suspect_username: "UncertainUser".into(),
+                suspect_nickname: None,
+                suspect_avatar_url: None,
+                suspect_account_age_hours: 500, // Established account
+                matched_benchmark_id: bm_id,
+                matched_benchmark_name: "BenchmarkUser".into(),
+                string_similarity_score: 0.83, // Standard tier threshold
+                homoglyph_detected: false,
+                normalized_diff: "Minor overlap".into(),
+                avatar_hamming_distance: None,
+                risk_tier: crate::models::incident::RiskTier::Standard,
+            },
+            status: IncidentStatus::Pending,
+            resolution_notes: None,
+            operator_id: None,
+            resolved_at: None,
+        };
+        storage.record_incident(&inc).unwrap();
+
+        // 1. Automated trigger ("NotificationToast") on uncertain detection must be rejected
+        let auto_toast_res = resolve_incident(
+            inc_id.clone(),
+            IncidentStatus::Banned,
+            Some("Toast Ban Click".into()),
+            Some("NotificationToast".into()),
+            None,
+        );
+        assert!(
+            matches!(auto_toast_res, Err(CommandError::ValidationFailed(ref msg)) if msg.contains("Uncertain impersonation detections")),
+            "Automated toast must be blocked from banning uncertain incidents: {:?}",
+            auto_toast_res
+        );
+
+        // 2. Manual destructive action without substantive justification (< 10 chars) must be rejected
+        let brief_notes_res = resolve_incident(
+            inc_id.clone(),
+            IncidentStatus::Banned,
+            Some("bad".into()),
+            Some("OperatorAlice".into()),
+            None,
+        );
+        assert!(
+            matches!(brief_notes_res, Err(CommandError::ValidationFailed(ref msg)) if msg.contains("at least 10 characters")),
+            "Manual destructive action on uncertain detection without detailed justification must fail: {:?}",
+            brief_notes_res
+        );
+
+        // 3. Manual destructive action with substantive justification (>= 10 chars) and identified operator succeeds
+        let valid_manual_res = resolve_incident(
+            inc_id.clone(),
+            IncidentStatus::Banned,
+            Some("Manual operator investigation verified phishing attack in DM logs".into()),
+            Some("OperatorAlice".into()),
+            None,
+        );
+        assert!(
+            valid_manual_res.is_ok(),
+            "Manual destructive action with proper justification must succeed"
+        );
+    }
+
+    #[test]
+    fn test_circuit_breaker_blocks_automated_toast_mitigation_when_tripped() {
+        let _lock = COMMAND_TEST_MUTEX.lock().unwrap();
+        let storage = crate::storage::StorageManager::default_instance().unwrap();
+        let breaker = crate::circuit_breaker::get_global_circuit_breaker();
+        breaker.reset();
+
+        let bm_target_id = format!(
+            "bm_cb_tgt_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            conn.execute(
+                "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at, tags)
+                 VALUES (?1, 'guild_cb', '999888222', 'StaffLeader', 'Staff', 1000, 1000, '[]');",
+                [&bm_target_id],
+            ).unwrap();
+        }
+
+        // Seed and execute 5 critical incidents to trip the circuit breaker (capacity = 5)
+        for i in 0..5 {
+            let id = format!(
+                "inc_cb_trip_{}_{}",
+                i,
+                chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+            );
+            let inc = TriageIncident {
+                id: id.clone(),
+                guild_id: "guild_cb".into(),
+                timestamp: chrono::Utc::now().timestamp(),
+                discrepancy: crate::models::incident::IdentityDiscrepancy {
+                    suspect_user_id: format!("999000{}", i),
+                    suspect_username: format!("CriticalAttacker{}", i),
+                    suspect_nickname: None,
+                    suspect_avatar_url: None,
+                    suspect_account_age_hours: 1,
+                    matched_benchmark_id: bm_target_id.clone(),
+                    matched_benchmark_name: "StaffLeader".into(),
+                    string_similarity_score: 0.99,
+                    homoglyph_detected: true,
+                    normalized_diff: "Homoglyph".into(),
+                    avatar_hamming_distance: None,
+                    risk_tier: crate::models::incident::RiskTier::Critical,
+                },
+                status: IncidentStatus::Pending,
+                resolution_notes: None,
+                operator_id: None,
+                resolved_at: None,
+            };
+            storage.record_incident(&inc).unwrap();
+
+            let _ = resolve_incident(
+                id,
+                IncidentStatus::Banned,
+                Some("Automated Toast Mitigation".into()),
+                Some("NotificationToast".into()),
+                None,
+            );
+        }
+
+        // The 6th automated toast attempt must trip the circuit breaker and be rejected
+        let id_6 = format!(
+            "inc_cb_trip_6_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let inc_6 = TriageIncident {
+            id: id_6.clone(),
+            guild_id: "guild_cb".into(),
+            timestamp: chrono::Utc::now().timestamp(),
+            discrepancy: crate::models::incident::IdentityDiscrepancy {
+                suspect_user_id: "9990006".into(),
+                suspect_username: "CriticalAttacker6".into(),
+                suspect_nickname: None,
+                suspect_avatar_url: None,
+                suspect_account_age_hours: 1,
+                matched_benchmark_id: bm_target_id,
+                matched_benchmark_name: "StaffLeader".into(),
+                string_similarity_score: 0.99,
+                homoglyph_detected: true,
+                normalized_diff: "Homoglyph".into(),
+                avatar_hamming_distance: None,
+                risk_tier: crate::models::incident::RiskTier::Critical,
+            },
+            status: IncidentStatus::Pending,
+            resolution_notes: None,
+            operator_id: None,
+            resolved_at: None,
+        };
+        storage.record_incident(&inc_6).unwrap();
+
+        let trip_res = resolve_incident(
+            id_6,
+            IncidentStatus::Banned,
+            Some("Automated Toast Mitigation 6".into()),
+            Some("NotificationToast".into()),
+            None,
+        );
+        assert!(
+            matches!(trip_res, Err(CommandError::CircuitBreakerTripped)),
+            "6th action must trip circuit breaker: {:?}",
+            trip_res
+        );
+
+        // Reset the breaker to avoid contaminating subsequent tests
+        breaker.reset();
+    }
+
+    #[test]
+    fn test_run_sandbox_simulation_input_bounds_and_isolation() {
+        // 1. Empty strings rejected
+        let empty_res = run_sandbox_simulation("".into(), "target".into());
+        assert!(matches!(empty_res, Err(CommandError::ValidationFailed(_))));
+
+        // 2. Oversized input (> 100 characters) rejected
+        let oversized_cand = "a".repeat(101);
+        let oversized_res = run_sandbox_simulation(oversized_cand, "target".into());
+        assert!(matches!(
+            oversized_res,
+            Err(CommandError::ValidationFailed(_))
+        ));
+
+        // 3. Valid input simulation executes safely with homoglyph detection (Cyrillic 'о' in place of 'o')
+        let sim_res = run_sandbox_simulation("Past\u{043E}r".into(), "Pastor".into()).unwrap();
+        assert_eq!(sim_res["homoglyph_detected"], true);
+        assert_eq!(sim_res["recommended_tier"], "critical");
+    }
+
+    #[test]
+    fn test_desktop_notification_input_bounds_validation() {
+        use crate::models::incident::RiskTier;
+        use crate::notification::NotificationPayload;
+
+        let base_payload = NotificationPayload {
+            incident_id: "inc_notif_test".into(),
+            risk_tier: RiskTier::Critical,
+            suspect_username: "Suspect".into(),
+            suspect_user_id: "123".into(),
+            matched_benchmark_name: "Benchmark".into(),
+            similarity_score: 0.95,
+            reason: "Impersonation alert".into(),
+            actions: vec![],
+        };
+
+        // Empty incident_id rejected
+        let empty_id = NotificationPayload {
+            incident_id: "".into(),
+            ..base_payload.clone()
+        };
+        let res1 = validate_notification_payload(&empty_id);
+        assert!(matches!(res1, Err(CommandError::ValidationFailed(_))));
+
+        // Oversized suspect username rejected
+        let long_user = NotificationPayload {
+            suspect_username: "u".repeat(101),
+            ..base_payload.clone()
+        };
+        let res2 = validate_notification_payload(&long_user);
+        assert!(matches!(res2, Err(CommandError::ValidationFailed(_))));
+
+        // Oversized reason rejected
+        let long_reason = NotificationPayload {
+            reason: "r".repeat(501),
+            ..base_payload.clone()
+        };
+        let res3 = validate_notification_payload(&long_reason);
+        assert!(matches!(res3, Err(CommandError::ValidationFailed(_))));
+
+        // Valid payload passes validation
+        let res4 = validate_notification_payload(&base_payload);
+        assert!(res4.is_ok());
     }
 }

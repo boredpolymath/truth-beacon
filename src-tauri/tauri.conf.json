@@ -7,7 +7,7 @@
     "frontendDist": "../ui"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
         "title": "TruthBeacon — Community Impersonation Protection",
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' wss://gateway.discord.gg https://discord.com; frame-src 'none'; object-src 'none'; base-uri 'self';",
+      "csp": "default-src 'self'; script-src 'self'; img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self';",
       "capabilities": ["default"],
       "freezePrototype": true
     }

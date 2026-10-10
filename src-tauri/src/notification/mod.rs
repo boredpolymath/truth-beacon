@@ -129,23 +129,25 @@ fn dispatch_macos_notification(payload: &NotificationPayload) -> Result<(), Noti
         payload.matched_benchmark_name
     );
 
-    let clean_suspect = payload.suspect_username.replace('"', "\\\"");
-    let clean_reason = payload.reason.replace('"', "\\\"");
+    let clean_suspect = payload.suspect_username.replace('\0', "");
+    let clean_reason = payload.reason.replace('\0', "");
     let body = format!("@{} - {}", clean_suspect, clean_reason);
 
-    // Escape backslashes and double quotes for AppleScript string literals
-    let safe_title = title.replace('\\', "\\\\").replace('"', "\\\"");
-    let safe_subtitle = subtitle.replace('\\', "\\\\").replace('"', "\\\"");
-    let safe_body = body.replace('\\', "\\\\").replace('"', "\\\"");
-
-    let script = format!(
-        "display notification \"{}\" with title \"{}\" subtitle \"{}\" sound name \"default\"",
-        safe_body, safe_title, safe_subtitle
-    );
+    // Pass parameters via argv rather than script interpolation to eliminate script injection vectors
+    let script = r#"on run argv
+        set notifBody to item 1 of argv
+        set notifTitle to item 2 of argv
+        set notifSubtitle to item 3 of argv
+        display notification notifBody with title notifTitle subtitle notifSubtitle sound name "default"
+    end run"#;
 
     let output = Command::new("osascript")
         .arg("-e")
-        .arg(&script)
+        .arg(script)
+        .arg("--")
+        .arg(&body)
+        .arg(title)
+        .arg(&subtitle)
         .output()
         .map_err(|e| NotificationError::OsError(e.to_string()))?;
 
@@ -168,29 +170,34 @@ fn dispatch_windows_notification(payload: &NotificationPayload) -> Result<(), No
         _ => "TruthBeacon Alert",
     };
 
-    let clean_title = payload.suspect_username.replace('"', "`\"");
+    let clean_suspect = payload
+        .suspect_username
+        .replace(['"', '\'', '`', '$', '\0'], "");
+    let clean_reason = payload.reason.replace(['"', '\'', '`', '$', '\0'], "");
     let clean_body = format!(
         "Suspect @{} matches @{} ({:.0}%). {}",
-        clean_title,
-        payload.matched_benchmark_name,
+        clean_suspect,
+        payload
+            .matched_benchmark_name
+            .replace(['"', '\'', '`', '$', '\0'], ""),
         payload.similarity_score * 100.0,
-        payload.reason
+        clean_reason
     );
 
-    let ps_script = format!(
-        "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; \
+    let ps_script = r#"$title = $args[0]; $body = $args[1]; \
+         [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; \
          $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); \
          $textNodes = $template.GetElementsByTagName('text'); \
-         $textNodes.Item(0).AppendChild($template.CreateTextNode('{}')) > $null; \
-         $textNodes.Item(1).AppendChild($template.CreateTextNode('{}')) > $null; \
+         $textNodes.Item(0).AppendChild($template.CreateTextNode($title)) > $null; \
+         $textNodes.Item(1).AppendChild($template.CreateTextNode($body)) > $null; \
          $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('TruthBeacon'); \
-         $notifier.Show([Windows.UI.Notifications.ToastNotification]::new($template));",
-        title, clean_body
-    );
+         $notifier.Show([Windows.UI.Notifications.ToastNotification]::new($template));"#;
 
     let _ = Command::new("powershell")
         .arg("-Command")
-        .arg(&ps_script)
+        .arg(ps_script)
+        .arg(title)
+        .arg(&clean_body)
         .spawn();
 
     Ok(())

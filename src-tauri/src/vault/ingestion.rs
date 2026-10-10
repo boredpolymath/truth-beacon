@@ -317,7 +317,20 @@ impl IngestionClient {
         if !res.status().is_success() {
             return None;
         }
+        if let Some(cl) = res.content_length() {
+            if cl as usize > crate::detection::perceptual_hash::MAX_AVATAR_BYTE_SIZE {
+                log::warn!("Rejected avatar exceeding byte limit: {} bytes", cl);
+                return None;
+            }
+        }
         let bytes = res.bytes().await.ok()?;
+        if bytes.len() > crate::detection::perceptual_hash::MAX_AVATAR_BYTE_SIZE {
+            log::warn!(
+                "Downloaded avatar exceeds byte limit: {} bytes",
+                bytes.len()
+            );
+            return None;
+        }
         compute_perceptual_hash_async(bytes.to_vec()).await.ok()
     }
 }
