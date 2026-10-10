@@ -1,5 +1,5 @@
 # TruthBeacon v0.3.0 — Universal Community Moderation Architecture, Manifest Cryptographic Sync & Production Release
-**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+**Bored Polymath Studios — Identity Ground-Truth & Community Stewardship**
 
 ---
 
@@ -30,7 +30,7 @@ TruthBeacon v0.3.0 delivers a fully generalized community moderation architectur
 ---
 
 # TruthBeacon v0.2.2 — Hermetic Test Storage Isolation, Professional UI Guidance & Pristine Clean-Slate Architecture
-**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+**Bored Polymath Studios — Identity Ground-Truth & Community Stewardship**
 
 ---
 
@@ -61,7 +61,7 @@ TruthBeacon v0.2.2 introduces hermetic database storage isolation for developmen
 ---
 
 # TruthBeacon v0.2.1 — Multi-Guild Benchmark Persistence, Native IPC Hardening, Dynamic System Tray & Live Diagnostics Polling
-**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+**Bored Polymath Studios — Identity Ground-Truth & Community Stewardship**
 
 ---
 
@@ -101,7 +101,7 @@ TruthBeacon v0.2.1 delivers critical multi-guild community administration, nativ
 ---
 
 # TruthBeacon v0.2.0 — Major Security, Resilience & Release Hardening
-**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+**Bored Polymath Studios — Identity Ground-Truth & Community Stewardship**
 
 ---
 
@@ -142,7 +142,7 @@ TruthBeacon v0.2.0 is a major security, resilience, testability, and release-har
 ---
 
 # TruthBeacon v0.1.5 — Official Release Notes
-**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+**Bored Polymath Studios — Identity Ground-Truth & Community Stewardship**
 
 ---
 
