@@ -96,7 +96,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_system_status,
             list_benchmarks,
+            get_benchmark,
             create_benchmark,
+            update_benchmark,
+            delete_benchmark,
             list_incidents,
             resolve_incident,
             reset_circuit_breaker,

@@ -6,8 +6,11 @@ use crate::vault::{
     RoleImportOptions, RoleImportReport, VaultManager,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
+
+static AUDIT_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Debug, Error)]
 pub enum CommandError {
@@ -25,6 +28,8 @@ pub enum CommandError {
     ValidationFailed(String),
     #[error("Authentication failed: {0}")]
     AuthenticationFailed(String),
+    #[error("Unauthorized cross-guild access: benchmark '{0}' does not belong to guild '{1}'")]
+    UnauthorizedCrossGuildAccess(String, String),
     #[error("Internal error: {0}")]
     InternalError(String),
 }
@@ -44,6 +49,7 @@ impl Serialize for CommandError {
             Self::CircuitBreakerTripped => "CIRCUIT_BREAKER_TRIPPED",
             Self::ValidationFailed(_) => "VALIDATION_FAILED",
             Self::AuthenticationFailed(_) => "AUTH_FAILED",
+            Self::UnauthorizedCrossGuildAccess(_, _) => "UNAUTHORIZED_CROSS_GUILD_ACCESS",
             Self::InternalError(_) => "INTERNAL_ERROR",
         };
         state.serialize_field("code", code)?;
@@ -51,6 +57,16 @@ impl Serialize for CommandError {
         state.serialize_field("details", &None::<String>)?;
         state.end()
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ComponentHealth {
+    Healthy,
+    Disconnected,
+    Unavailable,
+    PartiallyFunctioning,
+    Unknown,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +77,8 @@ pub struct SystemStatus {
     pub db_path: String,
     pub pending_incidents_count: usize,
     pub benchmark_count: usize,
+    pub daemon_status: ComponentHealth,
+    pub storage_status: ComponentHealth,
 }
 
 #[tauri::command]
@@ -68,30 +86,112 @@ pub fn get_system_status() -> Result<SystemStatus, CommandError> {
     let breaker = crate::circuit_breaker::get_global_circuit_breaker();
     let db_path = crate::storage::StorageManager::default_db_path();
     let is_connected = crate::gateway::daemon::is_global_daemon_running_sync();
+
+    let storage_res = crate::storage::StorageManager::default_instance();
+    let (storage_status, pending_count, bm_count) = match storage_res {
+        Ok(storage) => {
+            let pending = storage.count_pending_incidents().unwrap_or(0);
+            let bm = storage.count_benchmarks().unwrap_or(0);
+            (ComponentHealth::Healthy, pending, bm)
+        }
+        Err(e) => {
+            log::error!("Storage failure during system status check: {}", e);
+            (ComponentHealth::Unavailable, 0, 0)
+        }
+    };
+
+    let circuit_breaker_tripped = breaker.is_tripped();
+    let has_registered_guilds = crate::credentials::CredentialManager::list_registered_guilds()
+        .map(|g| !g.is_empty())
+        .unwrap_or(false);
+
+    let (daemon_status, daemon_healthy) = if storage_status != ComponentHealth::Healthy {
+        (ComponentHealth::Unavailable, false)
+    } else if circuit_breaker_tripped {
+        (ComponentHealth::PartiallyFunctioning, false)
+    } else if has_registered_guilds {
+        if is_connected {
+            (ComponentHealth::Healthy, true)
+        } else {
+            (ComponentHealth::Disconnected, false)
+        }
+    } else {
+        // Standby mode: database is operational, breaker clear, no guilds registered yet
+        (ComponentHealth::Healthy, true)
+    };
+
     Ok(SystemStatus {
-        daemon_healthy: true,
+        daemon_healthy,
         gateway_connected: is_connected,
-        circuit_breaker_tripped: breaker.is_tripped(),
+        circuit_breaker_tripped,
         db_path: db_path.to_string_lossy().to_string(),
-        // TODO: Wire to StorageManager query when VaultManager state is injected via Tauri managed state
-        pending_incidents_count: 0,
-        benchmark_count: 0,
+        pending_incidents_count: pending_count,
+        benchmark_count: bm_count,
+        daemon_status,
+        storage_status,
     })
 }
 
 #[tauri::command]
 pub fn list_benchmarks(guild_id: String) -> Result<Vec<CanonicalBenchmark>, CommandError> {
-    // TODO: Wire to VaultManager::list_benchmarks(&guild_id, true) when VaultManager
-    // is injected via Tauri managed state (tauri::State<Arc<VaultManager>>)
-    let _ = guild_id;
-    Ok(vec![])
+    let clean_guild_id = guild_id.trim();
+    if clean_guild_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Guild ID cannot be empty".into(),
+        ));
+    }
+    let vault_mgr =
+        VaultManager::default_instance().map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+    let list = vault_mgr
+        .list_benchmarks(clean_guild_id, false)
+        .map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn get_benchmark(guild_id: String, id: String) -> Result<CanonicalBenchmark, CommandError> {
+    let clean_guild_id = guild_id.trim();
+    let clean_id = id.trim();
+    if clean_guild_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Guild ID cannot be empty".into(),
+        ));
+    }
+    if clean_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Benchmark ID cannot be empty".into(),
+        ));
+    }
+
+    let vault_mgr =
+        VaultManager::default_instance().map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+
+    vault_mgr
+        .get_benchmark_in_guild(clean_guild_id, clean_id)
+        .map_err(|e| match e {
+            crate::vault::VaultError::NotFound(id) => CommandError::BenchmarkNotFound(id),
+            crate::vault::VaultError::CrossGuildAccess(id, gid) => {
+                CommandError::UnauthorizedCrossGuildAccess(id, gid)
+            }
+            other => CommandError::DatabaseError(other.to_string()),
+        })
 }
 
 #[tauri::command]
 pub fn create_benchmark(input: CreateBenchmarkInput) -> Result<CanonicalBenchmark, CommandError> {
+    if input.guild_id.trim().is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Discord Guild ID cannot be empty".into(),
+        ));
+    }
     if input.user_id.trim().is_empty() {
         return Err(CommandError::ValidationFailed(
             "Snowflake user ID cannot be empty".into(),
+        ));
+    }
+    if !input.user_id.trim().chars().all(|c| c.is_ascii_digit()) {
+        return Err(CommandError::ValidationFailed(
+            "Snowflake user ID must consist only of numeric digits".into(),
         ));
     }
     if input.canonical_username.trim().is_empty() {
@@ -100,22 +200,162 @@ pub fn create_benchmark(input: CreateBenchmarkInput) -> Result<CanonicalBenchmar
         ));
     }
 
-    let now = chrono::Utc::now().timestamp();
-    Ok(CanonicalBenchmark {
-        id: format!("bm_{}", now),
-        guild_id: input.guild_id,
-        user_id: input.user_id,
-        canonical_username: input.canonical_username,
-        server_nickname: input.server_nickname,
-        community_role: input.community_role,
-        avatar_url: input.avatar_url,
-        avatar_perceptual_hash: None,
-        is_active: true,
-        tags: input.tags,
-        created_at: now,
-        updated_at: now,
-        sensitivity_override: input.sensitivity_override,
-    })
+    let vault_mgr =
+        VaultManager::default_instance().map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+
+    let benchmark = vault_mgr
+        .create_benchmark(input, None)
+        .map_err(|e| match e {
+            crate::vault::VaultError::Validation(msg) => CommandError::ValidationFailed(msg),
+            crate::vault::VaultError::Duplicate(user, guild) => {
+                CommandError::ValidationFailed(format!(
+                    "Benchmark for user '{}' already exists in guild '{}'",
+                    user, guild
+                ))
+            }
+            other => CommandError::DatabaseError(other.to_string()),
+        })?;
+
+    // Record immutable audit log entry
+    let audit_counter = AUDIT_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let audit_entry = crate::models::AuditLogEntry {
+        id: format!(
+            "aud_{}_{}_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0),
+            audit_counter,
+            benchmark.id
+        ),
+        timestamp: chrono::Utc::now().timestamp(),
+        action: crate::models::ActionType::CreateBenchmark,
+        guild_id: benchmark.guild_id.clone(),
+        operator_id: "LOCAL_OPERATOR".to_string(),
+        target_user_id: Some(benchmark.user_id.clone()),
+        incident_id: None,
+        reason: format!(
+            "Enrolled canonical ground-truth benchmark for @{} ({})",
+            benchmark.canonical_username, benchmark.community_role
+        ),
+        metadata: Some(serde_json::json!({
+            "benchmark_id": benchmark.id,
+            "role": benchmark.community_role,
+        })),
+    };
+    let _ = vault_mgr.storage().record_audit_log(&audit_entry);
+
+    Ok(benchmark)
+}
+
+#[tauri::command]
+pub fn update_benchmark(
+    guild_id: String,
+    id: String,
+    input: crate::models::UpdateBenchmarkInput,
+) -> Result<CanonicalBenchmark, CommandError> {
+    let clean_guild_id = guild_id.trim();
+    let clean_id = id.trim();
+    if clean_guild_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Guild ID cannot be empty".into(),
+        ));
+    }
+    if clean_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Benchmark ID cannot be empty".into(),
+        ));
+    }
+
+    let vault_mgr =
+        VaultManager::default_instance().map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+
+    let updated = vault_mgr
+        .update_benchmark_in_guild(clean_guild_id, clean_id, input)
+        .map_err(|e| match e {
+            crate::vault::VaultError::NotFound(id) => CommandError::BenchmarkNotFound(id),
+            crate::vault::VaultError::CrossGuildAccess(id, gid) => {
+                CommandError::UnauthorizedCrossGuildAccess(id, gid)
+            }
+            other => CommandError::DatabaseError(other.to_string()),
+        })?;
+
+    let audit_counter = AUDIT_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let audit_entry = crate::models::AuditLogEntry {
+        id: format!(
+            "aud_{}_{}_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0),
+            audit_counter,
+            updated.id
+        ),
+        timestamp: chrono::Utc::now().timestamp(),
+        action: crate::models::ActionType::UpdateBenchmark,
+        guild_id: updated.guild_id.clone(),
+        operator_id: "LOCAL_OPERATOR".to_string(),
+        target_user_id: Some(updated.user_id.clone()),
+        incident_id: None,
+        reason: format!(
+            "Updated canonical benchmark @{}",
+            updated.canonical_username
+        ),
+        metadata: Some(serde_json::json!({
+            "benchmark_id": updated.id,
+        })),
+    };
+    let _ = vault_mgr.storage().record_audit_log(&audit_entry);
+
+    Ok(updated)
+}
+
+#[tauri::command]
+pub fn delete_benchmark(guild_id: String, id: String) -> Result<bool, CommandError> {
+    let clean_guild_id = guild_id.trim();
+    let clean_id = id.trim();
+    if clean_guild_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Guild ID cannot be empty".into(),
+        ));
+    }
+    if clean_id.is_empty() {
+        return Err(CommandError::ValidationFailed(
+            "Benchmark ID cannot be empty".into(),
+        ));
+    }
+
+    let vault_mgr =
+        VaultManager::default_instance().map_err(|e| CommandError::DatabaseError(e.to_string()))?;
+
+    let deleted = vault_mgr
+        .delete_benchmark_in_guild(clean_guild_id, clean_id)
+        .map_err(|e| match e {
+            crate::vault::VaultError::NotFound(id) => CommandError::BenchmarkNotFound(id),
+            crate::vault::VaultError::CrossGuildAccess(id, gid) => {
+                CommandError::UnauthorizedCrossGuildAccess(id, gid)
+            }
+            other => CommandError::DatabaseError(other.to_string()),
+        })?;
+
+    if deleted {
+        let audit_counter = AUDIT_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let audit_entry = crate::models::AuditLogEntry {
+            id: format!(
+                "aud_{}_{}_{}",
+                chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0),
+                audit_counter,
+                clean_id
+            ),
+            timestamp: chrono::Utc::now().timestamp(),
+            action: crate::models::ActionType::DeleteBenchmark,
+            guild_id: clean_guild_id.to_string(),
+            operator_id: "LOCAL_OPERATOR".to_string(),
+            target_user_id: None,
+            incident_id: None,
+            reason: format!("Deleted canonical benchmark {}", clean_id),
+            metadata: Some(serde_json::json!({
+                "benchmark_id": clean_id,
+            })),
+        };
+        let _ = vault_mgr.storage().record_audit_log(&audit_entry);
+    }
+
+    Ok(deleted)
 }
 
 #[tauri::command]
@@ -1360,5 +1600,201 @@ mod tests {
             "Database path must be scoped inside app config directory: {}",
             db_str
         );
+    }
+
+    #[test]
+    fn test_persistent_benchmark_crud_and_cross_guild_authorization() {
+        let gid_a = format!(
+            "guild_crud_a_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let gid_b = format!(
+            "guild_crud_b_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let user_id = "888111222";
+
+        // 1. Create benchmark for Guild A
+        let input = CreateBenchmarkInput {
+            guild_id: gid_a.clone(),
+            user_id: user_id.into(),
+            canonical_username: "TestModA".into(),
+            server_nickname: Some("NickA".into()),
+            community_role: "Moderator".into(),
+            avatar_url: None,
+            tags: vec!["CoreStaff".into()],
+            sensitivity_override: Some(0.9),
+        };
+        let created = create_benchmark(input).expect("create_benchmark must succeed");
+        assert_eq!(created.guild_id, gid_a);
+        assert_eq!(created.user_id, user_id);
+
+        // 2. Listing for Guild A must contain it; Listing for Guild B must NOT contain it
+        let list_a = list_benchmarks(gid_a.clone()).expect("list_benchmarks A must succeed");
+        assert!(list_a.iter().any(|b| b.id == created.id));
+
+        let list_b = list_benchmarks(gid_b.clone()).expect("list_benchmarks B must succeed");
+        assert!(!list_b.iter().any(|b| b.id == created.id));
+
+        // 3. Retrieval with correct guild succeeds
+        let retrieved =
+            get_benchmark(gid_a.clone(), created.id.clone()).expect("get_benchmark A must succeed");
+        assert_eq!(retrieved.id, created.id);
+        assert_eq!(retrieved.canonical_username, "TestModA");
+
+        // 4. Cross-guild retrieval attempt must fail with UnauthorizedCrossGuildAccess
+        let cross_get = get_benchmark(gid_b.clone(), created.id.clone());
+        assert!(matches!(
+            cross_get,
+            Err(CommandError::UnauthorizedCrossGuildAccess(id, gid)) if id == created.id && gid == gid_b
+        ));
+
+        // 5. Cross-guild update attempt must fail with UnauthorizedCrossGuildAccess
+        let cross_up = update_benchmark(
+            gid_b.clone(),
+            created.id.clone(),
+            crate::models::UpdateBenchmarkInput {
+                server_nickname: Some("HackedNick".into()),
+                ..Default::default()
+            },
+        );
+        assert!(matches!(
+            cross_up,
+            Err(CommandError::UnauthorizedCrossGuildAccess(..))
+        ));
+
+        // 6. Authorized update succeeds
+        let updated = update_benchmark(
+            gid_a.clone(),
+            created.id.clone(),
+            crate::models::UpdateBenchmarkInput {
+                server_nickname: Some("PromotedNickA".into()),
+                community_role: Some("HeadMod".into()),
+                ..Default::default()
+            },
+        )
+        .expect("Authorized update must succeed");
+        assert_eq!(updated.server_nickname.as_deref(), Some("PromotedNickA"));
+        assert_eq!(updated.community_role, "HeadMod");
+
+        // 7. Cross-guild delete attempt must fail with UnauthorizedCrossGuildAccess
+        let cross_del = delete_benchmark(gid_b.clone(), created.id.clone());
+        assert!(matches!(
+            cross_del,
+            Err(CommandError::UnauthorizedCrossGuildAccess(..))
+        ));
+
+        // 8. Authorized delete succeeds
+        let deleted = delete_benchmark(gid_a.clone(), created.id.clone())
+            .expect("Authorized delete must succeed");
+        assert!(deleted);
+
+        // Verification: record is gone
+        let get_after_del = get_benchmark(gid_a.clone(), created.id.clone());
+        assert!(matches!(
+            get_after_del,
+            Err(CommandError::BenchmarkNotFound(..))
+        ));
+
+        // 9. Audit log trail verification
+        let logs =
+            list_audit_logs(Some(gid_a.clone()), Some(10)).expect("list_audit_logs must succeed");
+        assert!(logs
+            .iter()
+            .any(|l| l.action == crate::models::ActionType::CreateBenchmark));
+        assert!(logs
+            .iter()
+            .any(|l| l.action == crate::models::ActionType::UpdateBenchmark));
+        assert!(logs
+            .iter()
+            .any(|l| l.action == crate::models::ActionType::DeleteBenchmark));
+    }
+
+    #[test]
+    fn test_duplicate_benchmark_and_missing_record_handling() {
+        let gid = format!(
+            "guild_dup_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let user_id = "999333444";
+
+        let input = CreateBenchmarkInput {
+            guild_id: gid.clone(),
+            user_id: user_id.into(),
+            canonical_username: "OriginalSteward".into(),
+            server_nickname: None,
+            community_role: "Steward".into(),
+            avatar_url: None,
+            tags: vec![],
+            sensitivity_override: None,
+        };
+
+        // 1. Initial creation succeeds
+        let res1 = create_benchmark(input.clone());
+        assert!(res1.is_ok());
+
+        // 2. Duplicate creation for same (guild_id, user_id) must fail with ValidationFailed
+        let res2 = create_benchmark(input);
+        assert!(matches!(
+            res2,
+            Err(CommandError::ValidationFailed(msg)) if msg.contains("already exists")
+        ));
+
+        // 3. Requesting non-existent benchmark ID returns BenchmarkNotFound
+        let non_existent = get_benchmark(gid.clone(), "bm_missing_999999".into());
+        assert!(matches!(
+            non_existent,
+            Err(CommandError::BenchmarkNotFound(id)) if id == "bm_missing_999999"
+        ));
+
+        // 4. Updating non-existent benchmark ID returns BenchmarkNotFound
+        let update_missing = update_benchmark(
+            gid.clone(),
+            "bm_missing_999999".into(),
+            crate::models::UpdateBenchmarkInput::default(),
+        );
+        assert!(matches!(
+            update_missing,
+            Err(CommandError::BenchmarkNotFound(id)) if id == "bm_missing_999999"
+        ));
+    }
+
+    #[test]
+    fn test_system_status_reflects_actual_backend_state() {
+        let storage = crate::storage::StorageManager::default_instance().unwrap();
+        let gid = format!(
+            "guild_sys_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+        let bm = create_benchmark(CreateBenchmarkInput {
+            guild_id: gid.clone(),
+            user_id: "777666555".into(),
+            canonical_username: "StatusUser".into(),
+            server_nickname: None,
+            community_role: "Role".into(),
+            avatar_url: None,
+            tags: vec![],
+            sensitivity_override: None,
+        })
+        .expect("Benchmark creation for system status test must succeed");
+
+        let status = get_system_status().expect("get_system_status must succeed");
+        assert_eq!(status.storage_status, ComponentHealth::Healthy);
+        assert!(!status.db_path.is_empty());
+        assert!(status.db_path.contains(".truthbeacon"));
+
+        // Verify counts are derived from SQLite and account for the created benchmark
+        let db_benchmarks = storage.count_benchmarks().unwrap();
+        assert!(status.benchmark_count >= 1);
+        assert!(status.benchmark_count <= db_benchmarks);
+
+        // In test environment without active gateway connections, verify daemon_status
+        assert!(
+            status.daemon_status == ComponentHealth::Healthy
+                || status.daemon_status == ComponentHealth::Disconnected
+        );
+
+        // Cleanup test benchmark
+        let _ = delete_benchmark(gid, bm.id);
     }
 }

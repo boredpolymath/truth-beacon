@@ -308,6 +308,12 @@ impl StorageManager {
 
     /// Resolves the default local storage path in the user's home directory (`~/.truthbeacon/truthbeacon.local.db`).
     pub fn default_db_path() -> PathBuf {
+        if let Ok(override_path) = std::env::var("TRUTHBEACON_DB_PATH") {
+            if !override_path.trim().is_empty() {
+                return PathBuf::from(override_path);
+            }
+        }
+
         let base_dir = std::env::var("HOME")
             .or_else(|_| std::env::var("USERPROFILE"))
             .map(PathBuf::from)
@@ -882,6 +888,24 @@ impl StorageManager {
             operator_id: row.get(17)?,
             resolved_at: row.get(18)?,
         })
+    }
+
+    /// Returns the total count of benchmarks stored in the database.
+    pub fn count_benchmarks(&self) -> Result<usize> {
+        let conn = self.conn.lock().unwrap();
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM benchmarks;", [], |r| r.get(0))?;
+        Ok(count.max(0) as usize)
+    }
+
+    /// Returns the count of pending incidents stored in the database.
+    pub fn count_pending_incidents(&self) -> Result<usize> {
+        let conn = self.conn.lock().unwrap();
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM incidents WHERE status = 'pending';",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(count.max(0) as usize)
     }
 }
 

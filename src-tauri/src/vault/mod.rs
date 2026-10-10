@@ -38,6 +38,12 @@ pub enum VaultError {
     #[error("Benchmark '{0}' not found")]
     NotFound(String),
 
+    #[error("Duplicate benchmark: user '{0}' is already enrolled in guild '{1}'")]
+    Duplicate(String, String),
+
+    #[error("Unauthorized cross-guild access: benchmark '{0}' does not belong to guild '{1}'")]
+    CrossGuildAccess(String, String),
+
     #[error("Lock contention or synchronization error: {0}")]
     Lock(String),
 }
@@ -125,6 +131,12 @@ impl VaultManager {
         Self::new(storage)
     }
 
+    /// Resolves and initializes default local VaultManager using the primary local SQLite database.
+    pub fn default_instance() -> Result<Self, VaultError> {
+        let storage = Arc::new(StorageManager::default_instance()?);
+        Self::new(storage)
+    }
+
     /// Access the shared thread-safe in-memory cache (`Arc<RwLock<HashMap<String, BenchmarkVault>>>`).
     pub fn cache(&self) -> Arc<RwLock<HashMap<String, BenchmarkVault>>> {
         Arc::clone(&self.cache)
@@ -194,6 +206,14 @@ impl VaultManager {
         if canonical_username.is_empty() {
             return Err(VaultError::Validation(
                 "Canonical username cannot be empty".into(),
+            ));
+        }
+
+        // Prevent duplicate benchmark profile for the same user within the same guild
+        if self.get_benchmark_by_user(guild_id, user_id)?.is_some() {
+            return Err(VaultError::Duplicate(
+                user_id.to_string(),
+                guild_id.to_string(),
             ));
         }
 
@@ -500,6 +520,64 @@ impl VaultManager {
         }
 
         Ok(true)
+    }
+
+    /// Retrieve a benchmark by ID strictly scoped to a specific guild, preventing unauthorized cross-guild access.
+    pub fn get_benchmark_in_guild(
+        &self,
+        guild_id: &str,
+        id: &str,
+    ) -> Result<CanonicalBenchmark, VaultError> {
+        let benchmark = self
+            .get_benchmark(id)?
+            .ok_or_else(|| VaultError::NotFound(id.to_string()))?;
+
+        if benchmark.guild_id != guild_id {
+            return Err(VaultError::CrossGuildAccess(
+                id.to_string(),
+                guild_id.to_string(),
+            ));
+        }
+
+        Ok(benchmark)
+    }
+
+    /// Update a benchmark by ID strictly scoped to a specific guild, preventing unauthorized cross-guild access.
+    pub fn update_benchmark_in_guild(
+        &self,
+        guild_id: &str,
+        id: &str,
+        input: UpdateBenchmarkInput,
+    ) -> Result<CanonicalBenchmark, VaultError> {
+        let existing = self
+            .get_benchmark(id)?
+            .ok_or_else(|| VaultError::NotFound(id.to_string()))?;
+
+        if existing.guild_id != guild_id {
+            return Err(VaultError::CrossGuildAccess(
+                id.to_string(),
+                guild_id.to_string(),
+            ));
+        }
+
+        self.update_benchmark(id, input)
+    }
+
+    /// Delete a benchmark by ID strictly scoped to a specific guild, preventing unauthorized cross-guild access.
+    pub fn delete_benchmark_in_guild(&self, guild_id: &str, id: &str) -> Result<bool, VaultError> {
+        let existing = match self.get_benchmark(id)? {
+            Some(b) => b,
+            None => return Ok(false),
+        };
+
+        if existing.guild_id != guild_id {
+            return Err(VaultError::CrossGuildAccess(
+                id.to_string(),
+                guild_id.to_string(),
+            ));
+        }
+
+        self.delete_benchmark(id)
     }
 
     /// Count benchmarks in a guild matching the active filter.
@@ -1014,5 +1092,89 @@ mod tests {
         let exempt_list = vault_mgr.list_exempt_benchmarks(guild_id).unwrap();
         assert_eq!(exempt_list.len(), 1);
         assert_eq!(exempt_list[0].id, alt_bm.id);
+    }
+
+    #[test]
+    fn test_cross_guild_access_prevention() {
+        let vault_mgr = VaultManager::in_memory().unwrap();
+        let guild_a = "guild_security_a";
+        let guild_b = "guild_security_b";
+
+        let created_a = vault_mgr
+            .create_benchmark(
+                CreateBenchmarkInput {
+                    guild_id: guild_a.into(),
+                    user_id: "555111".into(),
+                    canonical_username: "GuildA_Admin".into(),
+                    server_nickname: None,
+                    community_role: "Admin".into(),
+                    avatar_url: None,
+                    tags: vec![],
+                    sensitivity_override: None,
+                },
+                None,
+            )
+            .unwrap();
+
+        // 1. Guild A can retrieve its own benchmark
+        let retrieved = vault_mgr
+            .get_benchmark_in_guild(guild_a, &created_a.id)
+            .unwrap();
+        assert_eq!(retrieved.id, created_a.id);
+
+        // 2. Guild B cannot retrieve Guild A's benchmark
+        let err_get = vault_mgr.get_benchmark_in_guild(guild_b, &created_a.id);
+        assert!(matches!(
+            err_get,
+            Err(VaultError::CrossGuildAccess(id, gid)) if id == created_a.id && gid == guild_b
+        ));
+
+        // 3. Guild B cannot update Guild A's benchmark
+        let err_up = vault_mgr.update_benchmark_in_guild(
+            guild_b,
+            &created_a.id,
+            UpdateBenchmarkInput::default(),
+        );
+        assert!(matches!(err_up, Err(VaultError::CrossGuildAccess(..))));
+
+        // 4. Guild B cannot delete Guild A's benchmark
+        let err_del = vault_mgr.delete_benchmark_in_guild(guild_b, &created_a.id);
+        assert!(matches!(err_del, Err(VaultError::CrossGuildAccess(..))));
+
+        // Benchmark must still exist and be intact
+        assert!(vault_mgr.get_benchmark(&created_a.id).unwrap().is_some());
+
+        // 5. Deletion in authorized Guild A succeeds
+        assert!(vault_mgr
+            .delete_benchmark_in_guild(guild_a, &created_a.id)
+            .unwrap());
+        assert!(vault_mgr.get_benchmark(&created_a.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_duplicate_benchmark_rejection() {
+        let vault_mgr = VaultManager::in_memory().unwrap();
+        let guild_id = "guild_dup_test";
+
+        let input = CreateBenchmarkInput {
+            guild_id: guild_id.into(),
+            user_id: "999888".into(),
+            canonical_username: "Original".into(),
+            server_nickname: None,
+            community_role: "Staff".into(),
+            avatar_url: None,
+            tags: vec![],
+            sensitivity_override: None,
+        };
+
+        // First creation succeeds
+        assert!(vault_mgr.create_benchmark(input.clone(), None).is_ok());
+
+        // Second creation for same user in same guild must fail with Duplicate error
+        let err = vault_mgr.create_benchmark(input, None);
+        assert!(matches!(
+            err,
+            Err(VaultError::Duplicate(u, g)) if u == "999888" && g == guild_id
+        ));
     }
 }
