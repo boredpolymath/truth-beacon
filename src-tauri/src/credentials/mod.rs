@@ -41,6 +41,8 @@ pub const SALT_LEN: usize = 32;
 pub enum CredentialError {
     #[error("Encrypted vault storage error: {0}")]
     VaultError(String),
+    #[error("Platform keychain unavailable or access denied: {0}")]
+    KeychainUnavailable(String),
     #[error("Missing token for guild {0}")]
     TokenNotFound(String),
     #[error("Invalid bot token format. Only official Discord Bot tokens are permitted; user tokens and self-bots are strictly prohibited.")]
@@ -143,7 +145,19 @@ impl NonceSequence for OneNonce {
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    static TEST_OVERRIDE_VAULT_DIR: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
+    static TEST_OVERRIDE_KEYCHAIN_DENIED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 fn vault_dir() -> PathBuf {
+    #[cfg(test)]
+    {
+        if let Ok(Some(dir)) = TEST_OVERRIDE_VAULT_DIR.try_with(|d| d.borrow().clone()) {
+            return dir;
+        }
+    }
     if let Ok(custom) = std::env::var("TRUTHBEACON_VAULT_DIR") {
         PathBuf::from(custom)
     } else {
@@ -163,7 +177,83 @@ fn vault_salt_path() -> PathBuf {
     vault_dir().join("vault.salt")
 }
 
+fn ensure_secure_dir(dir: &std::path::Path) -> Result<(), CredentialError> {
+    if !dir.exists() {
+        std::fs::create_dir_all(dir).map_err(|e| {
+            CredentialError::VaultError(format!("Failed to create vault directory: {}", e))
+        })?;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o700);
+        std::fs::set_permissions(dir, perms).map_err(|e| {
+            CredentialError::VaultError(format!(
+                "Failed to set restrictive 0700 permissions on vault directory: {}",
+                e
+            ))
+        })?;
+    }
+    Ok(())
+}
+
+fn atomic_write_secure_file(path: &std::path::Path, data: &[u8]) -> Result<(), CredentialError> {
+    if let Some(parent) = path.parent() {
+        ensure_secure_dir(parent)?;
+    }
+
+    let tmp_path = path.with_extension(format!("tmp.{}", std::process::id()));
+
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&tmp_path)
+            .map_err(|e| {
+                CredentialError::VaultError(format!("Failed to create secure temp file: {}", e))
+            })?;
+        file.write_all(data).map_err(|e| {
+            CredentialError::VaultError(format!("Failed to write secure data: {}", e))
+        })?;
+        file.sync_all().map_err(|e| {
+            CredentialError::VaultError(format!("Failed to sync secure data to disk: {}", e))
+        })?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&tmp_path)
+            .map_err(|e| {
+                CredentialError::VaultError(format!("Failed to create secure temp file: {}", e))
+            })?;
+        file.write_all(data).map_err(|e| {
+            CredentialError::VaultError(format!("Failed to write secure data: {}", e))
+        })?;
+        file.sync_all().map_err(|e| {
+            CredentialError::VaultError(format!("Failed to sync secure data to disk: {}", e))
+        })?;
+    }
+
+    std::fs::rename(&tmp_path, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp_path);
+        CredentialError::VaultError(format!("Failed to atomically replace vault file: {}", e))
+    })?;
+
+    Ok(())
+}
+
 fn get_or_create_vault_salt_in(dir: &std::path::Path) -> Result<[u8; SALT_LEN], CredentialError> {
+    ensure_secure_dir(dir)?;
     let salt_path = dir.join("vault.salt");
     if salt_path.exists() {
         if let Ok(bytes) = std::fs::read(&salt_path) {
@@ -181,19 +271,7 @@ fn get_or_create_vault_salt_in(dir: &std::path::Path) -> Result<[u8; SALT_LEN], 
         ))
     })?;
 
-    if let Some(parent) = salt_path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    std::fs::write(&salt_path, salt)
-        .map_err(|e| CredentialError::VaultError(format!("Failed to write vault salt: {}", e)))?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perms = std::fs::Permissions::from_mode(0o600);
-        let _ = std::fs::set_permissions(&salt_path, perms);
-    }
-
+    atomic_write_secure_file(&salt_path, &salt)?;
     Ok(salt)
 }
 
@@ -216,15 +294,22 @@ static HARDWARE_SECRET_CACHE: LazyLock<RwLock<Option<Zeroizing<String>>>> =
 static VAULT_KEY_CACHE: LazyLock<RwLock<Option<CachedVaultKey>>> =
     LazyLock::new(|| RwLock::new(None));
 
-fn get_or_create_hardware_secret() -> Option<Zeroizing<String>> {
+fn get_or_create_hardware_secret() -> Result<Zeroizing<String>, CredentialError> {
     #[cfg(test)]
     {
-        // In unit test runner, avoid triggering blocking macOS Keychain GUI modal security dialogs
-        // unless explicitly requested by the test harness via TRUTHBEACON_LIVE_KEYRING_TEST.
+        if TEST_OVERRIDE_KEYCHAIN_DENIED
+            .try_with(|c| c.get())
+            .unwrap_or(false)
+            || std::env::var("TRUTHBEACON_MOCK_KEYCHAIN_DENIED").is_ok()
+        {
+            return Err(CredentialError::KeychainUnavailable(
+                "Access denied to operating system secure keychain (simulated test fault)".into(),
+            ));
+        }
         if std::env::var("TRUTHBEACON_LIVE_KEYRING_TEST").is_err() {
             if let Ok(cache) = HARDWARE_SECRET_CACHE.read() {
                 if let Some(sec) = &*cache {
-                    return Some(sec.clone());
+                    return Ok(sec.clone());
                 }
             }
             let mock_secret =
@@ -232,40 +317,44 @@ fn get_or_create_hardware_secret() -> Option<Zeroizing<String>> {
             if let Ok(mut cache) = HARDWARE_SECRET_CACHE.write() {
                 *cache = Some(mock_secret.clone());
             }
-            return Some(mock_secret);
+            return Ok(mock_secret);
         }
     }
 
     if let Ok(cache) = HARDWARE_SECRET_CACHE.read() {
         if let Some(sec) = &*cache {
-            return Some(sec.clone());
+            return Ok(sec.clone());
         }
     }
 
-    let entry = keyring::Entry::new(SERVICE_NAME, HARDWARE_KEY_ACCOUNT).ok()?;
+    let entry = keyring::Entry::new(SERVICE_NAME, HARDWARE_KEY_ACCOUNT).map_err(|e| {
+        CredentialError::KeychainUnavailable(format!("Keyring initialization error: {}", e))
+    })?;
     let secret = match entry.get_password() {
-        Ok(secret) if !secret.is_empty() => Some(Zeroizing::new(secret)),
+        Ok(secret) if !secret.is_empty() => Zeroizing::new(secret),
         _ => {
             let mut secret_bytes = [0u8; 32];
             if getrandom::getrandom(&mut secret_bytes).is_err() {
-                return None;
+                return Err(CredentialError::VaultError(
+                    "Cryptographic RNG entropy generation failure".into(),
+                ));
             }
             let secret_str = BASE64_STANDARD.encode(secret_bytes);
-            if entry.set_password(&secret_str).is_ok() {
-                Some(Zeroizing::new(secret_str))
-            } else {
-                None
-            }
+            entry.set_password(&secret_str).map_err(|e| {
+                CredentialError::KeychainUnavailable(format!(
+                    "Failed to store hardware secret in secure OS keychain: {}",
+                    e
+                ))
+            })?;
+            Zeroizing::new(secret_str)
         }
     };
 
-    if let Some(sec) = &secret {
-        if let Ok(mut cache) = HARDWARE_SECRET_CACHE.write() {
-            *cache = Some(sec.clone());
-        }
+    if let Ok(mut cache) = HARDWARE_SECRET_CACHE.write() {
+        *cache = Some(secret.clone());
     }
 
-    secret
+    Ok(secret)
 }
 
 fn purge_hardware_secret() {
@@ -315,17 +404,12 @@ pub fn derive_argon2id_key_with_binding(
     vault_salt: &[u8; SALT_LEN],
     hw_binding: &str,
 ) -> Result<Zeroizing<[u8; 32]>, CredentialError> {
-    let user = std::env::var("USER")
-        .or_else(|_| std::env::var("USERNAME"))
-        .unwrap_or_else(|_| "truthbeacon_operator".to_string());
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .unwrap_or_default();
-
-    let secret_material = Zeroizing::new(format!(
-        "TruthBeacon:Argon2id:VaultKey:{}:{}:{}",
-        user, home, hw_binding
-    ));
+    if hw_binding.trim().is_empty() {
+        return Err(CredentialError::VaultError(
+            "Hardware secret binding cannot be empty".into(),
+        ));
+    }
+    let secret_material = Zeroizing::new(format!("TruthBeacon:Argon2id:VaultKey:{}", hw_binding));
 
     derive_key_from_passphrase(secret_material.as_str(), vault_salt)
 }
@@ -371,13 +455,9 @@ pub fn get_or_create_vault_encryption_key(
         }
     }
 
-    // 2. Derive 256-bit key via Argon2id with high memory/iteration costs
-    let hw_secret = get_or_create_hardware_secret();
-    let hw_binding = match &hw_secret {
-        Some(sec) => sec.as_str(),
-        None => "hardware_keyring_fallback_unbound",
-    };
-    let derived_key = derive_argon2id_key_with_binding(vault_salt, hw_binding)?;
+    // 2. Derive 256-bit key via Argon2id with high memory/iteration costs using protected hardware secret
+    let hw_secret = get_or_create_hardware_secret()?;
+    let derived_key = derive_argon2id_key_with_binding(vault_salt, hw_secret.as_str())?;
 
     // 3. Store ONLY the 256-bit key in the platform keychain
     if !skip_live_keyring {
@@ -510,15 +590,8 @@ pub(crate) fn load_vault_payload_checked() -> Result<EncryptedVaultPayload, Cred
     Ok(payload)
 }
 
-fn load_vault_payload() -> EncryptedVaultPayload {
-    load_vault_payload_checked().unwrap_or_default()
-}
-
 fn save_vault_payload(payload: &EncryptedVaultPayload) -> Result<(), CredentialError> {
     let path = vault_file_path();
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
     let serialized = serde_json::to_vec(payload)
         .map_err(|e| CredentialError::RegistryCorruption(e.to_string()))?;
 
@@ -544,15 +617,8 @@ fn save_vault_payload(payload: &EncryptedVaultPayload) -> Result<(), CredentialE
     output.extend_from_slice(&nonce_bytes);
     output.extend_from_slice(&in_out);
 
-    std::fs::write(&path, &output)
-        .map_err(|e| CredentialError::RegistryCorruption(e.to_string()))?;
+    atomic_write_secure_file(&path, &output)?;
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perms = std::fs::Permissions::from_mode(0o600);
-        let _ = std::fs::set_permissions(&path, perms);
-    }
     Ok(())
 }
 
@@ -584,7 +650,7 @@ impl CredentialManager {
                 return Ok(mem.clone());
             }
         }
-        let payload = load_vault_payload();
+        let payload = load_vault_payload_checked()?;
         Ok(payload.registry)
     }
 
@@ -620,7 +686,7 @@ impl CredentialManager {
             }
         }
 
-        let payload = load_vault_payload();
+        let payload = load_vault_payload_checked()?;
         if let Some(token) = payload.tokens.get(guild_id) {
             return Ok(token.clone());
         }
@@ -640,7 +706,7 @@ impl CredentialManager {
             cache.remove(guild_id);
         }
 
-        let mut payload = load_vault_payload();
+        let mut payload = load_vault_payload_checked()?;
         payload.tokens.remove(guild_id);
         payload.registry.retain(|g| g != guild_id);
 
@@ -661,25 +727,41 @@ impl CredentialManager {
             mem.clear();
         }
 
+        let mut errors = Vec::new();
         let path = vault_file_path();
         if path.exists() {
             if let Ok(len) = std::fs::metadata(&path).map(|m| m.len() as usize) {
                 let zeros = vec![0u8; len];
-                let _ = std::fs::write(&path, &zeros);
+                if let Err(e) = std::fs::write(&path, &zeros) {
+                    errors.push(format!("Failed to zero vault file: {}", e));
+                }
             }
-            let _ = std::fs::remove_file(&path);
+            if let Err(e) = std::fs::remove_file(&path) {
+                errors.push(format!("Failed to remove vault file: {}", e));
+            }
         }
 
         let salt_path = vault_salt_path();
         if salt_path.exists() {
             if let Ok(len) = std::fs::metadata(&salt_path).map(|m| m.len() as usize) {
                 let zeros = vec![0u8; len];
-                let _ = std::fs::write(&salt_path, &zeros);
+                if let Err(e) = std::fs::write(&salt_path, &zeros) {
+                    errors.push(format!("Failed to zero vault salt file: {}", e));
+                }
             }
-            let _ = std::fs::remove_file(&salt_path);
+            if let Err(e) = std::fs::remove_file(&salt_path) {
+                errors.push(format!("Failed to remove vault salt file: {}", e));
+            }
         }
 
         purge_hardware_secret();
+
+        if !errors.is_empty() {
+            return Err(CredentialError::VaultError(format!(
+                "Failed to fully purge credentials: {}",
+                errors.join("; ")
+            )));
+        }
 
         Ok(())
     }
@@ -968,13 +1050,12 @@ mod tests {
 
     #[test]
     fn test_hardware_secret_binding_resilience() {
-        let sec = get_or_create_hardware_secret();
-        if let Some(s) = sec {
-            assert!(
-                !s.is_empty(),
-                "Hardware secret if present must be non-empty"
-            );
-        }
+        let sec = get_or_create_hardware_secret()
+            .expect("Hardware secret creation should succeed in test mock");
+        assert!(
+            !sec.is_empty(),
+            "Hardware secret if present must be non-empty"
+        );
         purge_hardware_secret();
     }
 
@@ -1161,5 +1242,177 @@ mod tests {
         );
         assert!(debug_str.contains("[REDACTED]"));
         assert_eq!(display_str, "[REDACTED]");
+    }
+
+    struct TestKeychainDeniedGuard;
+
+    impl TestKeychainDeniedGuard {
+        fn enable() -> Self {
+            TEST_OVERRIDE_KEYCHAIN_DENIED.with(|c| c.set(true));
+            Self
+        }
+    }
+
+    impl Drop for TestKeychainDeniedGuard {
+        fn drop(&mut self) {
+            TEST_OVERRIDE_KEYCHAIN_DENIED.with(|c| c.set(false));
+        }
+    }
+
+    struct TestVaultDirGuard {
+        prev: Option<PathBuf>,
+    }
+
+    impl TestVaultDirGuard {
+        fn set(dir: PathBuf) -> Self {
+            let prev = TEST_OVERRIDE_VAULT_DIR.with(|d| d.borrow_mut().replace(dir));
+            Self { prev }
+        }
+    }
+
+    impl Drop for TestVaultDirGuard {
+        fn drop(&mut self) {
+            TEST_OVERRIDE_VAULT_DIR.with(|d| {
+                *d.borrow_mut() = self.prev.take();
+            });
+        }
+    }
+
+    #[test]
+    fn test_keychain_access_denial_fails_safely() {
+        let _guard = TestKeychainDeniedGuard::enable();
+
+        let hw_res = get_or_create_hardware_secret();
+        assert!(
+            matches!(hw_res, Err(CredentialError::KeychainUnavailable(_))),
+            "Expected KeychainUnavailable when keychain is denied, got {:?}",
+            hw_res
+        );
+
+        let test_salt = generate_test_salt(88);
+        let vault_key_res = get_or_create_vault_encryption_key(&test_salt);
+        assert!(
+            matches!(vault_key_res, Err(CredentialError::KeychainUnavailable(_))),
+            "Vault key derivation must fail safely without insecure fallbacks when hardware secret is unavailable"
+        );
+
+        let empty_bind_res = derive_argon2id_key_with_binding(&test_salt, "   ");
+        assert!(
+            matches!(empty_bind_res, Err(CredentialError::VaultError(_))),
+            "Empty hardware binding must be rejected"
+        );
+    }
+
+    #[test]
+    fn test_vault_atomic_write_and_restrictive_permissions() {
+        let temp_dir = std::env::temp_dir().join(format!("tb_test_perm_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let test_file = temp_dir.join("vault.enc");
+        let sample_data = b"confidential_vault_encrypted_bytes";
+        atomic_write_secure_file(&test_file, sample_data)
+            .expect("Atomic secure write should succeed");
+
+        assert!(
+            test_file.exists(),
+            "Target file must exist after atomic write"
+        );
+        let read_back = std::fs::read(&test_file).expect("File must be readable");
+        assert_eq!(read_back, sample_data);
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let dir_meta = std::fs::metadata(&temp_dir).unwrap();
+            let dir_mode = dir_meta.permissions().mode() & 0o777;
+            assert_eq!(dir_mode, 0o700, "Directory must have 0700 permissions");
+
+            let file_meta = std::fs::metadata(&test_file).unwrap();
+            let file_mode = file_meta.permissions().mode() & 0o777;
+            assert_eq!(file_mode, 0o600, "Vault file must have 0600 permissions");
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_corrupted_vault_file_is_not_silently_overwritten() {
+        let temp_dir = std::env::temp_dir().join(format!("tb_test_corrupt_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let _ = std::fs::create_dir_all(&temp_dir);
+
+        let _guard = TestVaultDirGuard::set(temp_dir.clone());
+
+        let vault_file = temp_dir.join("vault.enc");
+        std::fs::write(&vault_file, b"corrupted_short_payload").unwrap();
+
+        let load_res = load_vault_payload_checked();
+        assert!(
+            matches!(load_res, Err(CredentialError::VaultCorruptedOrTampered(_))),
+            "Corrupted truncated vault must return VaultCorruptedOrTampered"
+        );
+
+        let get_res = CredentialManager::get_token("guild_unregistered_1");
+        assert!(
+            matches!(get_res, Err(CredentialError::VaultCorruptedOrTampered(_))),
+            "get_token must propagate corruption error instead of reporting token not found"
+        );
+
+        let dummy_tok = "Bot 123456789012345678.ABCDEF.1234567890123456789012345";
+        let store_res = CredentialManager::store_token("guild_1", dummy_tok);
+        assert!(
+            matches!(store_res, Err(CredentialError::VaultCorruptedOrTampered(_))),
+            "store_token must not overwrite a corrupted vault"
+        );
+
+        let del_res = CredentialManager::delete_token("guild_1");
+        assert!(
+            matches!(del_res, Err(CredentialError::VaultCorruptedOrTampered(_))),
+            "delete_token must not overwrite a corrupted vault"
+        );
+
+        drop(_guard);
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_purge_credentials_propagates_removal_errors() {
+        let temp_dir = std::env::temp_dir().join(format!("tb_test_purge_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let _ = std::fs::create_dir_all(&temp_dir);
+
+        let _guard = TestVaultDirGuard::set(temp_dir.clone());
+
+        let dummy_tok = "Bot 123456789012345678.ABCDEF.1234567890123456789012345";
+        CredentialManager::store_token("guild_purge_clean", dummy_tok).unwrap();
+        assert!(temp_dir.join("vault.enc").exists());
+        assert!(temp_dir.join("vault.salt").exists());
+
+        let purge_res = CredentialManager::purge_all_credentials();
+        assert!(
+            purge_res.is_ok(),
+            "Purge should succeed when files can be deleted"
+        );
+        assert!(!temp_dir.join("vault.enc").exists());
+        assert!(!temp_dir.join("vault.salt").exists());
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::write(temp_dir.join("vault.enc"), b"cannot_remove").unwrap();
+            std::fs::write(temp_dir.join("vault.salt"), b"cannot_remove").unwrap();
+            let _ = std::fs::set_permissions(&temp_dir, std::fs::Permissions::from_mode(0o500));
+
+            let purge_fail_res = CredentialManager::purge_all_credentials();
+            assert!(
+                matches!(purge_fail_res, Err(CredentialError::VaultError(_))),
+                "Purge must propagate removal errors instead of falsely reporting success"
+            );
+
+            let _ = std::fs::set_permissions(&temp_dir, std::fs::Permissions::from_mode(0o700));
+        }
+
+        drop(_guard);
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }
