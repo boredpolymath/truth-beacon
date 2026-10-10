@@ -1298,8 +1298,7 @@ mod tests {
         let hw_res = get_or_create_hardware_secret();
         assert!(
             matches!(hw_res, Err(CredentialError::KeychainUnavailable(_))),
-            "Expected KeychainUnavailable when keychain is denied, got {:?}",
-            hw_res
+            "Expected KeychainUnavailable when keychain is denied"
         );
 
         let test_salt = generate_test_salt(88);
