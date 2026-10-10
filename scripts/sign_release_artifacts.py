@@ -21,11 +21,18 @@ import re
 import base64
 import shutil
 
+import json
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 RELEASE_DIR = os.path.join(ROOT_DIR, "release")
+SRC_TAURI_DIR = os.path.join(ROOT_DIR, "src-tauri")
 CHECKSUMS_FILE = os.path.join(RELEASE_DIR, "SHA256SUMS.txt")
 MANIFEST_FILE = os.path.join(RELEASE_DIR, "RELEASE_MANIFEST.md")
 KEYS_DIR = os.path.join(ROOT_DIR, "scripts", ".keys")
+
+with open(os.path.join(SRC_TAURI_DIR, "tauri.conf.json"), "r") as f:
+    conf = json.load(f)
+VERSION = conf.get("version", "0.2.1")
 
 SIGNABLE_EXTENSIONS = {".dmg", ".zip", ".exe", ".msi", ".deb", ".AppImage", ".gz"}
 SIGNABLE_NAMES = {"truth-beacon-universal", "TruthBeacon-Portable.exe"}
@@ -61,6 +68,8 @@ def update_checksums():
             continue
         ext = os.path.splitext(fname)[1]
         if ext in SIGNABLE_EXTENSIONS or fname in SIGNABLE_NAMES:
+            if fname.startswith("TruthBeacon_") and not fname.startswith(f"TruthBeacon_{VERSION}_"):
+                continue
             csum = compute_sha256(fpath)
             size_mb = os.path.getsize(fpath) / (1024 * 1024)
             artifacts.append((fname, csum, size_mb))

@@ -1,7 +1,7 @@
 {
   "version": "v0.2.1",
   "notes": "TruthBeacon v0.2.1: Major security, resilience & release hardening including forensic SQLite quarantine, domain-bound AES-256-GCM vault, multi-keyframe pHash inspection, UTR #39 homoglyph detection, multi-guild gateway resumption, and sandboxed IPC.",
-  "pub_date": "2026-10-10T03:57:08Z",
+  "pub_date": "2026-10-10T04:30:14Z",
   "platforms": {
     "darwin-aarch64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTV2ZFdVBrR2JieXpCVDd5a2x2dUt0cFhmakQxbG05eThiQTNjcnlpMEovb1p5c1BnZ3FUR2JWL0ZwYXE0OGs3enVuWnBmMHZ6SEtQZXpCVGpHRm04QmJvaVVmVTZGN1FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxNjA0NTk4CWZpbGU6VHJ1dGhCZWFjb25fMC4yLjFfdW5pdmVyc2FsLmFwcC50YXIuZ3oJdmVyc2lvbjowLjIuMQoyRlFIcjJuUGJNcjNwaDFHQUpvOUhTSk15OEl0QlhES2puMHBaT1cydEVnTTA1SzRXeVpnbis1T29oVGY4WVAvY0VvRHR6UjIzbUFjcURaSXlneElDQT09Cg==",
