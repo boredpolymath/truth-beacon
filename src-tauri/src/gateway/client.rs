@@ -367,11 +367,7 @@ impl GatewayProtocolHandler {
                 // Extract event identifier and store in internal ring buffer
                 let event_id = extract_event_id(&event_name, seq, &event_data);
                 if self.session.has_seen_event(&event_id).await {
-                    log::debug!(
-                        "Skipping duplicate gateway event: {} ({})",
-                        event_name,
-                        event_id
-                    );
+                    log::debug!("Skipping duplicate gateway event: {}", event_name);
                     return Ok(OpcodeAction::None);
                 }
                 self.session

@@ -167,18 +167,18 @@ fn get_or_create_vault_salt_in(dir: &std::path::Path) -> Result<[u8; SALT_LEN], 
     let salt_path = dir.join("vault.salt");
     if salt_path.exists() {
         if let Ok(bytes) = std::fs::read(&salt_path) {
-            if bytes.len() == SALT_LEN {
-                let mut salt = [0u8; SALT_LEN];
-                salt.copy_from_slice(&bytes);
+            if let Ok(salt) = <[u8; SALT_LEN]>::try_from(bytes) {
                 return Ok(salt);
             }
         }
     }
 
-    let rand = SystemRandom::new();
     let mut salt = [0u8; SALT_LEN];
-    rand.fill(&mut salt).map_err(|_| {
-        CredentialError::VaultError("Cryptographic RNG failure generating vault salt".into())
+    getrandom::getrandom(&mut salt).map_err(|e| {
+        CredentialError::VaultError(format!(
+            "Cryptographic RNG failure generating vault salt: {}",
+            e
+        ))
     })?;
 
     if let Some(parent) = salt_path.parent() {
@@ -246,9 +246,8 @@ fn get_or_create_hardware_secret() -> Option<Zeroizing<String>> {
     let secret = match entry.get_password() {
         Ok(secret) if !secret.is_empty() => Some(Zeroizing::new(secret)),
         _ => {
-            let rand = SystemRandom::new();
             let mut secret_bytes = [0u8; 32];
-            if rand.fill(&mut secret_bytes).is_err() {
+            if getrandom::getrandom(&mut secret_bytes).is_err() {
                 return None;
             }
             let secret_str = BASE64_STANDARD.encode(secret_bytes);
@@ -296,7 +295,7 @@ fn purge_hardware_secret() {
 /// Fast hashes (e.g. raw SHA-256) are strictly avoided to prevent brute-force attacks on the local vault payload.
 pub fn derive_key_from_passphrase(
     passphrase: &str,
-    salt: &[u8; SALT_LEN],
+    vault_salt: &[u8; SALT_LEN],
 ) -> Result<Zeroizing<[u8; 32]>, CredentialError> {
     let params = argon2::Params::new(ARGON2_M_COST, ARGON2_T_COST, ARGON2_P_COST, Some(32))
         .map_err(|e| CredentialError::VaultError(format!("Argon2id parameter error: {}", e)))?;
@@ -304,7 +303,7 @@ pub fn derive_key_from_passphrase(
 
     let mut key = Zeroizing::new([0u8; 32]);
     argon2
-        .hash_password_into(passphrase.as_bytes(), salt, key.as_mut())
+        .hash_password_into(passphrase.as_bytes(), vault_salt, key.as_mut())
         .map_err(|e| {
             CredentialError::VaultError(format!("Argon2id key derivation failed: {}", e))
         })?;
@@ -313,7 +312,7 @@ pub fn derive_key_from_passphrase(
 }
 
 pub fn derive_argon2id_key_with_binding(
-    salt: &[u8; SALT_LEN],
+    vault_salt: &[u8; SALT_LEN],
     hw_binding: &str,
 ) -> Result<Zeroizing<[u8; 32]>, CredentialError> {
     let user = std::env::var("USER")
@@ -328,7 +327,7 @@ pub fn derive_argon2id_key_with_binding(
         user, home, hw_binding
     ));
 
-    derive_key_from_passphrase(secret_material.as_str(), salt)
+    derive_key_from_passphrase(secret_material.as_str(), vault_salt)
 }
 
 /// Retrieves or creates the 256-bit vault encryption key.
@@ -338,11 +337,11 @@ pub fn derive_argon2id_key_with_binding(
 /// The vault data payload itself remains in the local file `vault.enc`, avoiding repeated permission prompts
 /// while keeping key derivation hardware-isolated.
 pub fn get_or_create_vault_encryption_key(
-    salt: &[u8; SALT_LEN],
+    vault_salt: &[u8; SALT_LEN],
 ) -> Result<Zeroizing<[u8; 32]>, CredentialError> {
     if let Ok(cache) = VAULT_KEY_CACHE.read() {
         if let Some((cached_salt, key)) = &*cache {
-            if cached_salt == salt {
+            if cached_salt == vault_salt {
                 return Ok(key.clone());
             }
         }
@@ -363,7 +362,7 @@ pub fn get_or_create_vault_encryption_key(
                         key_arr.copy_from_slice(&decoded);
                         let zero_key = Zeroizing::new(key_arr);
                         if let Ok(mut cache) = VAULT_KEY_CACHE.write() {
-                            *cache = Some((*salt, zero_key.clone()));
+                            *cache = Some((*vault_salt, zero_key.clone()));
                         }
                         return Ok(zero_key);
                     }
@@ -378,7 +377,7 @@ pub fn get_or_create_vault_encryption_key(
         Some(sec) => sec.as_str(),
         None => "hardware_keyring_fallback_unbound",
     };
-    let derived_key = derive_argon2id_key_with_binding(salt, hw_binding)?;
+    let derived_key = derive_argon2id_key_with_binding(vault_salt, hw_binding)?;
 
     // 3. Store ONLY the 256-bit key in the platform keychain
     if !skip_live_keyring {
@@ -389,16 +388,16 @@ pub fn get_or_create_vault_encryption_key(
     }
 
     if let Ok(mut cache) = VAULT_KEY_CACHE.write() {
-        *cache = Some((*salt, derived_key.clone()));
+        *cache = Some((*vault_salt, derived_key.clone()));
     }
 
     Ok(derived_key)
 }
 
 fn derive_argon2id_vault_key(
-    salt: &[u8; SALT_LEN],
+    vault_salt: &[u8; SALT_LEN],
 ) -> Result<Zeroizing<[u8; 32]>, CredentialError> {
-    get_or_create_vault_encryption_key(salt)
+    get_or_create_vault_encryption_key(vault_salt)
 }
 
 fn derive_legacy_vault_key() -> [u8; 32] {
@@ -602,7 +601,7 @@ impl CredentialManager {
         let mut payload = load_vault_payload_checked()?;
         payload.tokens.insert(guild_id.to_string(), clean_token);
         if !payload.registry.contains(&guild_id.to_string()) {
-            payload.registry.insert(0, guild_id.to_string());
+            payload.registry.push(guild_id.to_string());
         }
 
         if let Ok(mut mem) = MEMORY_GUILD_REGISTRY.write() {
@@ -712,6 +711,13 @@ impl CredentialManager {
 mod tests {
     use super::*;
     use rusqlite::Connection;
+
+    fn generate_test_salt(modifier: u8) -> [u8; SALT_LEN] {
+        let mut salt = [0u8; SALT_LEN];
+        let _ = getrandom::getrandom(&mut salt);
+        salt[0] ^= modifier;
+        salt
+    }
 
     #[test]
     fn test_valid_bot_token_format() {
@@ -863,8 +869,8 @@ mod tests {
 
     #[test]
     fn test_argon2id_derivation_binding_and_uniqueness() {
-        let salt_a = [1u8; SALT_LEN];
-        let salt_b = [2u8; SALT_LEN];
+        let salt_a = generate_test_salt(1);
+        let salt_b = generate_test_salt(2);
         let binding_1 = "test_hardware_binding_1";
         let binding_2 = "test_hardware_binding_2";
 
@@ -894,7 +900,7 @@ mod tests {
 
     #[test]
     fn test_vault_encryption_and_legacy_migration() {
-        let salt = [42u8; SALT_LEN];
+        let salt = generate_test_salt(42);
         let key = derive_argon2id_key_with_binding(&salt, "test_hardware_binding").unwrap();
 
         // 1. Verify encryption and decryption with Argon2id derived key
@@ -974,7 +980,7 @@ mod tests {
 
     #[test]
     fn test_keychain_stores_only_256bit_vault_encryption_key() {
-        let salt = [77u8; SALT_LEN];
+        let salt = generate_test_salt(77);
         let key = get_or_create_vault_encryption_key(&salt).expect("Key creation should succeed");
         assert_eq!(
             key.len(),
@@ -1028,7 +1034,7 @@ mod tests {
 
     #[test]
     fn test_passphrase_derivation_uses_argon2id_high_cost() {
-        let salt = [99u8; SALT_LEN];
+        let salt = generate_test_salt(99);
         let passphrase = "OperatorSecurePassphrase2026!";
 
         let key = derive_key_from_passphrase(passphrase, &salt)
@@ -1036,7 +1042,7 @@ mod tests {
         assert_eq!(key.len(), 32);
 
         // Different salt produces completely different key
-        let salt_diff = [100u8; SALT_LEN];
+        let salt_diff = generate_test_salt(100);
         let key_diff_salt = derive_key_from_passphrase(passphrase, &salt_diff).unwrap();
         assert_ne!(*key, *key_diff_salt);
 
@@ -1055,7 +1061,7 @@ mod tests {
 
     #[test]
     fn test_vault_tampered_ciphertext_rejection() {
-        let salt = [55u8; SALT_LEN];
+        let salt = generate_test_salt(55);
         let key = derive_argon2id_key_with_binding(&salt, "test_binding").unwrap();
 
         let payload = EncryptedVaultPayload {
@@ -1094,7 +1100,7 @@ mod tests {
 
     #[test]
     fn test_vault_tampered_aad_rejection() {
-        let salt = [56u8; SALT_LEN];
+        let salt = generate_test_salt(56);
         let key = derive_argon2id_key_with_binding(&salt, "test_binding").unwrap();
 
         let payload = EncryptedVaultPayload {
