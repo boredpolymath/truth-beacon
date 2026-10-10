@@ -879,9 +879,9 @@ btnTestToast?.addEventListener('click', () => {
     || {
       id: `test_crit_${Date.now()}`,
       discrepancy: {
-        suspect_username: "Pastor_Dan",
+        suspect_username: "CommunityLeader_Alt",
         suspect_user_id: "987654321012345678",
-        matched_benchmark_name: "PastorDan",
+        matched_benchmark_name: "CommunityLeader",
         string_similarity_score: 0.98,
         normalized_diff: "Lookalike homoglyph substitution detected",
         risk_tier: "critical"

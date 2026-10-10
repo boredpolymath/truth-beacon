@@ -19,7 +19,7 @@ const ASSETS = {
     arch: 'Universal 2 (Apple Silicon & Intel)',
     label: 'Download for macOS',
     sub: 'Universal DMG (macOS 10.15+)',
-    hash: '1b1f8973ee231688e906cbce8f4b438e63e2f47899e8a45cac1869ebe44ad02c'
+    hash: '7e44fdc87f153c54c48fae00cab3a412b77fc9813daded7ac7d85de95e301df9'
   },
   mac_zip: {
     filename: 'TruthBeacon_0.2.1_macos_universal.zip',

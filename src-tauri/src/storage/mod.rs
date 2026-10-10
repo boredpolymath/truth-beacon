@@ -307,6 +307,7 @@ impl StorageManager {
     }
 
     /// Resolves the default local storage path in the user's home directory (`~/.truthbeacon/truthbeacon.local.db`).
+    /// In test builds, isolates to a temporary directory to prevent polluting developer environments.
     pub fn default_db_path() -> PathBuf {
         if let Ok(override_path) = std::env::var("TRUTHBEACON_DB_PATH") {
             if !override_path.trim().is_empty() {
@@ -314,6 +315,10 @@ impl StorageManager {
             }
         }
 
+        #[cfg(test)]
+        let base_dir = std::env::temp_dir().join("truthbeacon_test_env");
+
+        #[cfg(not(test))]
         let base_dir = std::env::var("HOME")
             .or_else(|_| std::env::var("USERPROFILE"))
             .map(PathBuf::from)

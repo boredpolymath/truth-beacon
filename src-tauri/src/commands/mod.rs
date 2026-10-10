@@ -1242,7 +1242,7 @@ mod tests {
         let invalid_input = CreateBenchmarkInput {
             guild_id: "guild_1".into(),
             user_id: "".into(),
-            canonical_username: "Pastor Dan".into(),
+            canonical_username: "StaffLeader".into(),
             server_nickname: None,
             community_role: "Staff".into(),
             avatar_url: None,
@@ -1374,6 +1374,15 @@ mod tests {
             }
             _ => panic!("Expected IncidentNotFound"),
         }
+
+        // Cleanup test data
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            let _ = conn.execute("DELETE FROM benchmarks WHERE id = ?1;", [&bm_id]);
+            let _ = conn.execute("DELETE FROM incidents WHERE guild_id = 'guild_guard';", []);
+            let _ = conn.execute("DELETE FROM audit_logs WHERE guild_id = 'guild_guard';", []);
+        }
     }
 
     #[test]
@@ -1393,7 +1402,7 @@ mod tests {
             let conn = conn_guard.lock().unwrap();
             conn.execute(
                 "INSERT INTO benchmarks (id, guild_id, user_id, canonical_username, community_role, created_at, updated_at, tags)
-                 VALUES (?1, 'guild_test', '111222333', 'LeaderDan', 'Pastor', 1000, 1000, '[\"Core Staff\"]');",
+                 VALUES (?1, 'guild_test', '111222333', 'BenchmarkStaff', 'Staff Lead', 1000, 1000, '[\"Core Staff\"]');",
                 [&bm_id],
             ).unwrap();
         }
@@ -1409,12 +1418,12 @@ mod tests {
             timestamp: 1000,
             discrepancy: crate::models::incident::IdentityDiscrepancy {
                 suspect_user_id: suspect_id.into(),
-                suspect_username: "LeaderDan_Alt".into(),
-                suspect_nickname: Some("Leader Dan".into()),
+                suspect_username: "SuspectLookalike".into(),
+                suspect_nickname: Some("Benchmark Staff".into()),
                 suspect_avatar_url: None,
                 suspect_account_age_hours: 3,
                 matched_benchmark_id: bm_id.clone(),
-                matched_benchmark_name: "LeaderDan".into(),
+                matched_benchmark_name: "BenchmarkStaff".into(),
                 string_similarity_score: 0.95,
                 homoglyph_detected: false,
                 normalized_diff: "Trailing suffix".into(),
@@ -1537,6 +1546,15 @@ mod tests {
         assert!(dismiss_res.is_ok(), "Ignore Alert (Safe) must succeed");
         let dismiss_inc = storage.get_incident(&inc_dismiss_id).unwrap().unwrap();
         assert_eq!(dismiss_inc.status, IncidentStatus::Dismissed);
+
+        // Cleanup test data
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            let _ = conn.execute("DELETE FROM benchmarks WHERE id = ?1;", [&bm_id]);
+            let _ = conn.execute("DELETE FROM incidents WHERE guild_id = 'guild_test';", []);
+            let _ = conn.execute("DELETE FROM audit_logs WHERE guild_id = 'guild_test';", []);
+        }
     }
 
     #[tokio::test]
@@ -1917,7 +1935,7 @@ mod tests {
                 suspect_nickname: None,
                 suspect_avatar_url: None,
                 suspect_account_age_hours: 500, // Established account
-                matched_benchmark_id: bm_id,
+                matched_benchmark_id: bm_id.clone(),
                 matched_benchmark_name: "BenchmarkUser".into(),
                 string_similarity_score: 0.83, // Standard tier threshold
                 homoglyph_detected: false,
@@ -1972,6 +1990,21 @@ mod tests {
             valid_manual_res.is_ok(),
             "Manual destructive action with proper justification must succeed"
         );
+
+        // Cleanup test data
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            let _ = conn.execute("DELETE FROM benchmarks WHERE id = ?1;", [&bm_id]);
+            let _ = conn.execute(
+                "DELETE FROM incidents WHERE guild_id = 'guild_safeguard';",
+                [],
+            );
+            let _ = conn.execute(
+                "DELETE FROM audit_logs WHERE guild_id = 'guild_safeguard';",
+                [],
+            );
+        }
     }
 
     #[test]
@@ -2051,7 +2084,7 @@ mod tests {
                 suspect_nickname: None,
                 suspect_avatar_url: None,
                 suspect_account_age_hours: 1,
-                matched_benchmark_id: bm_target_id,
+                matched_benchmark_id: bm_target_id.clone(),
                 matched_benchmark_name: "StaffLeader".into(),
                 string_similarity_score: 0.99,
                 homoglyph_detected: true,
@@ -2081,6 +2114,15 @@ mod tests {
 
         // Reset the breaker to avoid contaminating subsequent tests
         breaker.reset();
+
+        // Cleanup test data
+        {
+            let conn_guard = storage.get_connection();
+            let conn = conn_guard.lock().unwrap();
+            let _ = conn.execute("DELETE FROM benchmarks WHERE id = ?1;", [&bm_target_id]);
+            let _ = conn.execute("DELETE FROM incidents WHERE guild_id = 'guild_cb';", []);
+            let _ = conn.execute("DELETE FROM audit_logs WHERE guild_id = 'guild_cb';", []);
+        }
     }
 
     #[test]

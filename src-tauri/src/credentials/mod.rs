@@ -161,10 +161,15 @@ fn vault_dir() -> PathBuf {
     if let Ok(custom) = std::env::var("TRUTHBEACON_VAULT_DIR") {
         PathBuf::from(custom)
     } else {
+        #[cfg(test)]
+        let base_dir = std::env::temp_dir().join("truthbeacon_test_env");
+
+        #[cfg(not(test))]
         let base_dir = std::env::var("HOME")
             .or_else(|_| std::env::var("USERPROFILE"))
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("."));
+
         base_dir.join(".truthbeacon")
     }
 }
