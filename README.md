@@ -12,7 +12,8 @@
 <p align="center">
   <a href="https://github.com/boredpolymath/truth-beacon"><img src="https://img.shields.io/badge/GitHub-boredpolymath%2Ftruth--beacon-181717?style=flat-square&logo=github" alt="GitHub Repo"></a>
   <a href="https://boredpolymath.github.io/truth-beacon/"><img src="https://img.shields.io/badge/Web-truth--beacon-5865F2?style=flat-square" alt="Website"></a>
-  <img src="https://img.shields.io/badge/Version-v0.2.2-green?style=flat-square" alt="Version 0.2.2">
+  <a href="https://vibedoctor.io"><img src="https://vibedoctor.io/api/badges/128b9586-dd4d-4db2-bf53-5a1f576507db" alt="Monitored by VibeDoctor"></a>
+  <img src="https://img.shields.io/badge/Version-v0.3.1-green?style=flat-square" alt="Version 0.3.1">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/Framework-Tauri%20v2-orange?style=flat-square" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Language-Rust%202021-red?style=flat-square" alt="Rust 2021">

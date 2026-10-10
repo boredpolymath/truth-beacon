@@ -348,6 +348,37 @@ body {
   color: var(--brand-blurple-light);
 }
 
+/* VibeDoctor Monitoring Badge */
+.hero-vibedoctor-wrap {
+  margin-top: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.vibedoctor-badge-link {
+  display: inline-flex;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: transform var(--transition-bounce), filter var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.vibedoctor-badge-link:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.08);
+  box-shadow: 0 8px 24px rgba(248, 114, 104, 0.25);
+}
+
+.vibedoctor-badge-img {
+  display: block;
+  width: 310px;
+  height: 56px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
 /* Feature Badges Grid */
 .hero-highlights {
   display: grid;
