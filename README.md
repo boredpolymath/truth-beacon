@@ -12,7 +12,6 @@
 <p align="center">
   <a href="https://github.com/boredpolymath/truth-beacon"><img src="https://img.shields.io/badge/GitHub-boredpolymath%2Ftruth--beacon-181717?style=flat-square&logo=github" alt="GitHub Repo"></a>
   <a href="https://boredpolymath.github.io/truth-beacon/"><img src="https://img.shields.io/badge/Web-truth--beacon-5865F2?style=flat-square" alt="Website"></a>
-  <a href="https://vibedoctor.io"><img src="https://vibedoctor.io/api/badges/128b9586-dd4d-4db2-bf53-5a1f576507db" alt="Monitored by VibeDoctor"></a>
   <img src="https://img.shields.io/badge/Version-v0.3.1-green?style=flat-square" alt="Version 0.3.1">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/Framework-Tauri%20v2-orange?style=flat-square" alt="Tauri v2">
@@ -21,6 +20,12 @@
   <img src="https://img.shields.io/badge/Telemetry-Zero%20(100%25%20Local)-brightgreen?style=flat-square" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-success?style=flat-square" alt="WCAG AA">
   <img src="https://img.shields.io/badge/Automated%20Tests-208%20Passing-brightgreen?style=flat-square" alt="Tests">
+</p>
+
+<p align="center">
+  <a href="https://vibedoctor.io" target="_blank" rel="noopener noreferrer">
+    <img src="https://vibedoctor.io/api/badges/128b9586-dd4d-4db2-bf53-5a1f576507db" alt="Monitored by VibeDoctor" width="310" height="56">
+  </a>
 </p>
 
 ---
