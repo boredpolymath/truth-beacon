@@ -497,6 +497,8 @@ impl DiscordGatewayClient {
         let hb_handler = protocol_handler.clone();
         let hb_running = self.is_running.clone();
         let hb_interval = self.session.heartbeat_interval_ms.clone();
+        let is_zombied = Arc::new(AtomicBool::new(false));
+        let hb_is_zombied = is_zombied.clone();
 
         let hb_handle = tokio::spawn(async move {
             // Wait until Opcode 10 Hello defines the server heartbeat interval
@@ -508,17 +510,54 @@ impl DiscordGatewayClient {
                 tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
             }
 
+            // Apply initial jitter for first heartbeat per Discord Gateway specification
+            let mut is_first = true;
+
             while hb_running.load(Ordering::SeqCst) {
                 let interval = hb_interval.load(Ordering::SeqCst);
-                let delay = if interval > 0 { interval } else { 41250 };
+                let base_delay = if interval > 0 { interval } else { 41250 };
+                let delay = if is_first {
+                    is_first = false;
+                    let mut rand_buf = [0u8; 1];
+                    let _ = getrandom::getrandom(&mut rand_buf);
+                    let jitter_factor = (rand_buf[0] as f64) / 255.0;
+                    ((base_delay as f64) * jitter_factor) as u64
+                } else {
+                    base_delay
+                };
+
                 tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
                 if !hb_running.load(Ordering::SeqCst) {
                     break;
                 }
-                if let Ok(hb) = hb_handler.create_periodic_heartbeat() {
-                    if let Ok(json_str) = hb.to_json_str() {
+                match hb_handler.create_periodic_heartbeat() {
+                    Ok(hb) => {
+                        if let Ok(json_str) = hb.to_json_str() {
+                            let mut writer = hb_writer.lock().await;
+                            if let Err(e) = writer.send(Message::Text(json_str.into())).await {
+                                log::warn!("Failed to send heartbeat frame: {}", e);
+                                break;
+                            }
+                        }
+                    }
+                    Err(GatewayError::ZombiedConnection) => {
+                        log::warn!(
+                            "Zombied gateway connection detected: Heartbeat ACK was not received before next heartbeat. Terminating socket to trigger reconnect and resume."
+                        );
+                        hb_is_zombied.store(true, Ordering::SeqCst);
                         let mut writer = hb_writer.lock().await;
-                        let _ = writer.send(Message::Text(json_str.into())).await;
+                        let _ = writer
+                            .send(Message::Close(Some(CloseFrame {
+                                code: 4000.into(),
+                                reason: "Zombied connection: heartbeat ACK missed".into(),
+                            })))
+                            .await;
+                        let _ = writer.close().await;
+                        break;
+                    }
+                    Err(e) => {
+                        log::warn!("Heartbeat creation error: {}", e);
+                        break;
                     }
                 }
             }
@@ -572,6 +611,14 @@ impl DiscordGatewayClient {
                                 .await;
                         }
                         OpcodeAction::Reconnect { resume } => {
+                            let mut writer = write_mutex.lock().await;
+                            let _ = writer
+                                .send(Message::Close(Some(CloseFrame {
+                                    code: 4000.into(),
+                                    reason: "Reconnecting per Discord gateway request".into(),
+                                })))
+                                .await;
+                            let _ = writer.close().await;
                             loop_res = Err(GatewayError::InvalidSession { resumable: resume });
                             break;
                         }
@@ -611,6 +658,12 @@ impl DiscordGatewayClient {
         }
 
         hb_handle.abort();
+        self.is_running.store(false, Ordering::SeqCst);
+
+        if is_zombied.load(Ordering::SeqCst) {
+            return Err(GatewayError::ZombiedConnection);
+        }
+
         loop_res
     }
 
@@ -915,5 +968,136 @@ mod tests {
         );
         assert!(!session.is_session_resumed());
         assert!(!session.can_resume().await);
+    }
+
+    #[tokio::test]
+    async fn test_heartbeat_ack_timeout_triggers_zombied_connection_error() {
+        let config = GatewayConfig::default();
+        let session = GatewaySessionState::new();
+        let handler = GatewayProtocolHandler::new(config, session.clone());
+
+        // First heartbeat passes and clears heartbeat_acked
+        let hb1 = handler.create_periodic_heartbeat();
+        assert!(hb1.is_ok());
+        assert!(!session.heartbeat_acked.load(Ordering::SeqCst));
+
+        // When heartbeat interval elapses and heartbeat_acked is still false,
+        // create_periodic_heartbeat MUST return ZombiedConnection
+        let hb2 = handler.create_periodic_heartbeat();
+        assert!(matches!(hb2, Err(GatewayError::ZombiedConnection)));
+
+        // Simulating Heartbeat ACK receipt (Opcode 11) restores health
+        let ack_payload = GatewayPayload {
+            op: GatewayOpcode::HeartbeatAck,
+            d: None,
+            s: None,
+            t: None,
+        };
+        let action = handler.handle_incoming(ack_payload).await.unwrap();
+        assert_eq!(action, OpcodeAction::None);
+        assert!(session.heartbeat_acked.load(Ordering::SeqCst));
+
+        // Heartbeat creation now succeeds again
+        let hb3 = handler.create_periodic_heartbeat();
+        assert!(hb3.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_reconnect_opcode_7_and_resumable_opcode_9_preserve_sequence() {
+        let config = GatewayConfig::default();
+        let session = GatewaySessionState::new();
+        {
+            let mut s = session.session_id.write().await;
+            *s = Some("active_sess_777".into());
+        }
+        session.last_sequence.store(777, Ordering::SeqCst);
+        let handler = GatewayProtocolHandler::new(config, session.clone());
+
+        // Opcode 7 Reconnect: must request resume and keep sequence unchanged
+        let reconnect_payload = GatewayPayload {
+            op: GatewayOpcode::Reconnect,
+            d: None,
+            s: None,
+            t: None,
+        };
+        let action = handler.handle_incoming(reconnect_payload).await.unwrap();
+        assert_eq!(action, OpcodeAction::Reconnect { resume: true });
+        assert_eq!(session.last_sequence.load(Ordering::SeqCst), 777);
+
+        // Opcode 9 Invalid Session (resumable = true): must keep sequence and session
+        let invalid_resumable = GatewayPayload {
+            op: GatewayOpcode::InvalidSession,
+            d: Some(serde_json::Value::Bool(true)),
+            s: None,
+            t: None,
+        };
+        let action = handler.handle_incoming(invalid_resumable).await.unwrap();
+        assert_eq!(action, OpcodeAction::Reconnect { resume: true });
+        assert_eq!(session.last_sequence.load(Ordering::SeqCst), 777);
+        assert_eq!(
+            session.session_id.read().await.as_deref(),
+            Some("active_sess_777")
+        );
+
+        // Opcode 9 Invalid Session (resumable = false): must clear sequence and session
+        let invalid_unresumable = GatewayPayload {
+            op: GatewayOpcode::InvalidSession,
+            d: Some(serde_json::Value::Bool(false)),
+            s: None,
+            t: None,
+        };
+        let action = handler.handle_incoming(invalid_unresumable).await.unwrap();
+        assert_eq!(action, OpcodeAction::Reconnect { resume: false });
+        assert_eq!(session.last_sequence.load(Ordering::SeqCst), 0);
+        assert!(session.session_id.read().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_sequence_updated_only_on_dispatch_and_preserved_across_heartbeats() {
+        let config = GatewayConfig::default();
+        let session = GatewaySessionState::new();
+        session.last_sequence.store(0, Ordering::SeqCst);
+        let handler = GatewayProtocolHandler::new(config, session.clone());
+
+        // Non-dispatch frames (e.g. HeartbeatAck) do not update sequence
+        let ack = GatewayPayload {
+            op: GatewayOpcode::HeartbeatAck,
+            d: None,
+            s: Some(999),
+            t: None,
+        };
+        let _ = handler.handle_incoming(ack).await.unwrap();
+        assert_eq!(session.last_sequence.load(Ordering::SeqCst), 0);
+
+        // Opcode 0 Dispatch with s = 50 updates sequence
+        let dispatch = GatewayPayload {
+            op: GatewayOpcode::Dispatch,
+            d: Some(serde_json::json!({ "id": "1" })),
+            s: Some(50),
+            t: Some("MESSAGE_CREATE".into()),
+        };
+        let _ = handler.handle_incoming(dispatch).await.unwrap();
+        assert_eq!(session.last_sequence.load(Ordering::SeqCst), 50);
+
+        // Heartbeat periodic includes sequence 50 and preserves it
+        let hb = handler.create_periodic_heartbeat().unwrap();
+        assert_eq!(hb.d, Some(serde_json::json!(50)));
+        assert_eq!(session.last_sequence.load(Ordering::SeqCst), 50);
+
+        // Server requested Heartbeat (Opcode 1) returns sequence 50 and preserves it
+        let server_hb_req = GatewayPayload {
+            op: GatewayOpcode::Heartbeat,
+            d: None,
+            s: None,
+            t: None,
+        };
+        let action = handler.handle_incoming(server_hb_req).await.unwrap();
+        match action {
+            OpcodeAction::Send(hb_resp) => {
+                assert_eq!(hb_resp.d, Some(serde_json::json!(50)));
+            }
+            other => panic!("Expected Send(Heartbeat), got {:?}", other),
+        }
+        assert_eq!(session.last_sequence.load(Ordering::SeqCst), 50);
     }
 }

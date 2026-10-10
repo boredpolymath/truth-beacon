@@ -59,6 +59,18 @@ impl ReconnectionBackoff {
         delay
     }
 
+    /// Advances to the next backoff stage and returns the duration with randomized jitter (0-1000ms)
+    pub fn next_delay_with_jitter(&mut self) -> Duration {
+        let base = self.next_delay();
+        if base.as_millis() == 0 {
+            return base;
+        }
+        let mut rand_buf = [0u8; 2];
+        let _ = getrandom::getrandom(&mut rand_buf);
+        let jitter_ms = (u16::from_ne_bytes(rand_buf) % 1000) as u64;
+        base + Duration::from_millis(jitter_ms)
+    }
+
     /// Resets the backoff stage to 0 upon successful handshake (READY / RESUMED)
     pub fn reset(&mut self) {
         self.current_attempt = 0;
@@ -257,5 +269,36 @@ mod tests {
         let mb = MemoryMonitor::get_resident_memory_mb().unwrap();
         log::info!("Current process RSS: {:.2} MB ({} bytes)", mb, bytes);
         // Note: unit tests load many compilation artifacts, but the idle memory check is available
+    }
+
+    #[test]
+    fn test_backoff_jitter_variance() {
+        let mut backoff = ReconnectionBackoff::new();
+        // 1st attempt is immediate (0s) without jitter
+        assert_eq!(backoff.next_delay_with_jitter(), Duration::from_secs(0));
+
+        // 2nd attempt: base 2s + [0, 1000ms) jitter
+        let d1 = backoff.next_delay_with_jitter();
+        assert!(d1 >= Duration::from_secs(2) && d1 < Duration::from_millis(3000));
+
+        // 3rd attempt: base 5s + [0, 1000ms) jitter
+        let d2 = backoff.next_delay_with_jitter();
+        assert!(d2 >= Duration::from_secs(5) && d2 < Duration::from_millis(6000));
+
+        // Over 10 iterations at attempt 1 (2s), verify bounded jitter and random variance
+        let mut samples = Vec::new();
+        for _ in 0..10 {
+            let mut b = ReconnectionBackoff::new();
+            b.next_delay(); // skip attempt 0
+            let d = b.next_delay_with_jitter();
+            assert!(d >= Duration::from_secs(2) && d < Duration::from_millis(3000));
+            samples.push(d.as_millis());
+        }
+        let first = samples[0];
+        let all_same = samples.iter().all(|&x| x == first);
+        assert!(
+            !all_same,
+            "Jitter should produce randomized delays across iterations"
+        );
     }
 }

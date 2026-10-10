@@ -145,6 +145,12 @@ impl DiscordGatewayDaemon {
                     }
                     self.perform_backoff().await;
                 }
+                Err(GatewayError::ZombiedConnection) => {
+                    log::warn!(
+                        "Zombied gateway connection closed; backing off and attempting session resumption"
+                    );
+                    self.perform_backoff().await;
+                }
                 Err(err) => {
                     log::error!("Gateway connection dropped with error: {}", err);
                     self.perform_backoff().await;
@@ -162,7 +168,7 @@ impl DiscordGatewayDaemon {
         self.reconnect_attempts.fetch_add(1, Ordering::SeqCst);
         let delay = {
             let mut b = self.backoff.lock().await;
-            b.next_delay()
+            b.next_delay_with_jitter()
         };
 
         log::info!(
