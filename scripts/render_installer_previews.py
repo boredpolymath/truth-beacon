@@ -8,6 +8,7 @@ Render pixel-accurate screenshots of TruthBeacon's Installer Windows:
 """
 
 import os
+import tempfile
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 ARTIFACTS_DIR = "/Users/wardagentic/.gemini/antigravity-ide/brain/f7c1a54b-6d96-4928-9d6c-7a561a70cdf8"
@@ -27,7 +28,7 @@ def get_font(size, bold=False):
         if os.path.exists(p):
             try:
                 return ImageFont.truetype(p, int(size))
-            except Exception:
+            except (OSError, ValueError):
                 continue
     return ImageFont.load_default()
 
@@ -107,7 +108,7 @@ def render_macos_dmg_window():
         win.paste(app_icon, (app_center[0] - 46, app_center[1] - 46), app_icon)
 
     # 2. Applications Folder Icon (92x92)
-    folder_path = "/tmp/apps_folder.png"
+    folder_path = os.path.join(tempfile.gettempdir(), "apps_folder.png")
     if os.path.exists(folder_path):
         folder_icon = Image.open(folder_path).convert("RGBA").resize((92, 92), Image.Resampling.LANCZOS)
         fshadow = Image.new("RGBA", (104, 104), (0, 0, 0, 0))

@@ -774,12 +774,8 @@ mod tests {
             "Must sample 3 keyframes (first, middle, last)"
         );
 
-        // Print hashes
-        println!("kf0: {}", keyframe_segments[0]);
-        println!("bm: {}", benchmark_hash);
         let frame0_dist =
             calculate_hamming_distance(keyframe_segments[0], &benchmark_hash).unwrap();
-        println!("frame0_dist: {}", frame0_dist);
         assert!(
             frame0_dist > 10,
             "Frame 0 alone has high distance {} (innocuous decoy)",

@@ -30,7 +30,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 RELEASE_DIR = os.path.join(ROOT_DIR, "release")
 dmg_candidates = [f for f in os.listdir(RELEASE_DIR) if f.startswith("TruthBeacon_") and f.endswith(".dmg")] if os.path.exists(RELEASE_DIR) else []
 dmg_candidates.sort()
-DMG_PATH = os.path.join(RELEASE_DIR, dmg_candidates[-1]) if dmg_candidates else os.path.join(RELEASE_DIR, "TruthBeacon_0.3.0_universal.dmg")
+DMG_PATH = os.path.join(RELEASE_DIR, dmg_candidates[-1]) if dmg_candidates else os.path.join(RELEASE_DIR, "TruthBeacon_0.3.1_universal.dmg")
 APP_DEST = "/Applications/TruthBeacon.app"
 USER_HOME = os.path.expanduser("~")
 TB_DATA_DIR = os.path.join(USER_HOME, ".truthbeacon")
@@ -42,11 +42,8 @@ def log(step, msg):
     print(f"==> [{step}] {msg}")
 
 def check(ok, msg):
-    if ok:
-        print(f"  ✓ {msg}")
-    else:
-        print(f"  ❌ FAILED: {msg}", file=sys.stderr)
-        sys.exit(1)
+    assert ok, f"FAILED: {msg}"
+    print(f"  ✓ {msg}")
 
 def test_dmg_mount_and_install():
     log("1/5", "Mounting Staged DMG & Verifying Drag-and-Drop Installation...")
@@ -68,6 +65,7 @@ def test_dmg_mount_and_install():
                 break
         
         check(mount_point is not None and os.path.exists(mount_point), f"DMG mounted at {mount_point}")
+        assert mount_point is not None, "mount_point must be resolved"
 
         # Check volume contents
         app_in_dmg = os.path.join(mount_point, "TruthBeacon.app")
@@ -170,11 +168,13 @@ def test_presentation_state():
         '<span class="diag-text">Token Format: <strong>Awaiting verification</strong></span>' in html,
         'Diagnostics checklist shows "Awaiting verification"'
     )
+    assert len(html) > 0 and len(app_js) > 0, "Presentation templates verified"
 
 def test_cold_launch_and_shutdown():
     log("4/5", "Executing Binary Cold Launch & Process Supervision...")
     binary_path = os.path.join(APP_DEST, "Contents", "MacOS", "truth-beacon")
     check(os.path.exists(binary_path), f"Binary found at {binary_path}")
+    assert os.path.exists(binary_path), "Installed binary bundle must exist"
 
     # Launch binary as subprocess
     print("  Launching /Applications/TruthBeacon.app in background...")

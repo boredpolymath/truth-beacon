@@ -226,10 +226,8 @@ mod tests {
 
     #[test]
     fn test_extract_known_real_world_discord_snowflake() {
-        // Known Discord Snowflake: 175928847299117063
-        // 175928847299117063 >> 22 = 41944705796
-        // 41944705796 + 1420070400000 = 1462015105796 ms
-        let snowflake = 175928847299117063u64;
+        // Test snowflake: epoch offset (41_944_705_796 ms << 22) + sequence bits
+        let snowflake = (41_944_705_796u64 << 22) | 187_911u64;
         let ts_ms = extract_snowflake_timestamp_ms(snowflake);
         assert_eq!(ts_ms, 1_462_015_105_796);
 

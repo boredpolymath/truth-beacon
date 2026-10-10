@@ -1,6 +1,16 @@
 import { appState } from './state.js';
 import { invokeCommand } from './ipc.js';
 
+export function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // DOM Element Selectors
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabPanes = document.querySelectorAll('.tab-pane');
@@ -167,22 +177,30 @@ function renderTriageCards() {
     const podSuspectClass = isCritical ? 'suspect' : 'suspect elevated';
 
     // Highlight lookalike character in suspect username if detected
-    let renderedSuspectName = d.suspect_username;
+    const rawSuspect = d.suspect_username || '';
+    const safeSuspect = escapeHtml(rawSuspect);
+    let renderedSuspectName = safeSuspect;
     if (d.homoglyph_detected && d.homoglyph_char) {
-      renderedSuspectName = d.suspect_username.replace(
-        d.homoglyph_char,
-        `<mark class="homoglyph-mark" title="Lookalike letter substitution">${d.homoglyph_char}</mark>`
+      const safeChar = escapeHtml(d.homoglyph_char);
+      renderedSuspectName = safeSuspect.replace(
+        safeChar,
+        `<mark class="homoglyph-mark" title="Lookalike letter substitution">${safeChar}</mark>`
       );
-    } else if (d.suspect_username.endsWith('_')) {
-      renderedSuspectName = `${d.suspect_username.slice(0, -1)}<mark class="homoglyph-mark" title="Extra underscore added">_</mark>`;
+    } else if (rawSuspect.endsWith('_')) {
+      renderedSuspectName = `${escapeHtml(rawSuspect.slice(0, -1))}<mark class="homoglyph-mark" title="Extra underscore added">_</mark>`;
     }
 
     const similarityPct = Math.round(d.string_similarity_score * 100);
     const isMatchingPhoto = d.avatar_hamming_distance !== null && d.avatar_hamming_distance <= 5;
     const isMatchingName = Boolean(d.homoglyph_detected || (d.string_similarity_score !== undefined && d.string_similarity_score >= 0.75) || !isMatchingPhoto);
 
+    const safeCanonical = escapeHtml(benchmark.canonical_username);
+    const safeNickname = escapeHtml(benchmark.server_nickname || benchmark.canonical_username);
+    const safeRole = escapeHtml(benchmark.community_role);
+    const safeSuspectNick = escapeHtml(d.suspect_nickname || '');
+
     return `
-      <article class="inspection-card ${isCritical ? '' : 'risk-elevated-card'}" id="card-${inc.id}" data-incident-id="${inc.id}">
+      <article class="inspection-card ${isCritical ? '' : 'risk-elevated-card'}" id="card-${escapeHtml(inc.id)}" data-incident-id="${escapeHtml(inc.id)}">
         <!-- Card Header Bar with Risk Badge and Reason Pills -->
         <div class="card-header-bar">
           <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
@@ -208,18 +226,18 @@ function renderTriageCards() {
             </div>
             <div class="profile-main-box">
               <div class="avatar-container">
-                <img src="${benchmark.avatar_url || 'assets/logo.svg'}" alt="${benchmark.canonical_username}" onerror="this.onerror=null; this.src='assets/logo.svg'">
+                <img src="${escapeHtml(benchmark.avatar_url || 'assets/logo.svg')}" alt="${safeCanonical}" onerror="this.onerror=null; this.src='assets/logo.svg'">
                 <span class="status-verified-check" title="Verified Server Leader">✓</span>
               </div>
               <div class="profile-identity">
-                <div class="profile-display-name" title="${benchmark.server_nickname || benchmark.canonical_username}">${benchmark.server_nickname || benchmark.canonical_username}</div>
-                <div class="profile-handle-sub" title="Canonical Username: @${benchmark.canonical_username}">
+                <div class="profile-display-name" title="${safeNickname}">${safeNickname}</div>
+                <div class="profile-handle-sub" title="Canonical Username: @${safeCanonical}">
                   <span class="handle-prefix">User:</span>
-                  <span class="full-username-val">@${benchmark.canonical_username}</span>
+                  <span class="full-username-val">@${safeCanonical}</span>
                 </div>
                 <div class="profile-role-tag">
                   <span class="role-dot"></span>
-                  ${benchmark.community_role}
+                  ${safeRole}
                 </div>
               </div>
             </div>
@@ -239,12 +257,12 @@ function renderTriageCards() {
             </div>
             <div class="profile-main-box">
               <div class="avatar-container">
-                <img src="${d.suspect_avatar_url || 'assets/logo.svg'}" alt="${d.suspect_username}" onerror="this.onerror=null; this.src='assets/logo.svg'">
+                <img src="${escapeHtml(d.suspect_avatar_url || 'assets/logo.svg')}" alt="${safeSuspect}" onerror="this.onerror=null; this.src='assets/logo.svg'">
                 <span class="status-alert-mark ${isCritical ? '' : 'elevated'}" title="Flagged Imposter Account">!</span>
               </div>
               <div class="profile-identity">
-                <div class="profile-display-name" title="${d.suspect_nickname || d.suspect_username}">${d.suspect_nickname || renderedSuspectName}</div>
-                <div class="profile-handle-sub" title="Imposter Username: @${d.suspect_username}">
+                <div class="profile-display-name" title="${safeSuspectNick || safeSuspect}">${safeSuspectNick || renderedSuspectName}</div>
+                <div class="profile-handle-sub" title="Imposter Username: @${safeSuspect}">
                   <span class="handle-prefix">User:</span>
                   <span class="full-username-val suspect">@${renderedSuspectName}</span>
                 </div>
@@ -258,12 +276,12 @@ function renderTriageCards() {
 
         <!-- Dedicated Full Username Threat Assessment Strip -->
         <div class="username-threat-bar" aria-label="Exact Username Threat Comparison">
-          <div class="threat-user-box real-box" title="Full Real Canonical Username: @${benchmark.canonical_username}">
+          <div class="threat-user-box real-box" title="Full Real Canonical Username: @${safeCanonical}">
             <div class="threat-user-label">
               <span class="threat-label-dot real"></span>
               <span>Real Username</span>
             </div>
-            <div class="threat-user-value">@${benchmark.canonical_username}</div>
+            <div class="threat-user-value">@${safeCanonical}</div>
           </div>
 
           <div class="threat-vs-divider">
@@ -271,7 +289,7 @@ function renderTriageCards() {
             <span class="threat-vs-metric">${similarityPct}% match</span>
           </div>
 
-          <div class="threat-user-box imposter-box" title="Full Imposter Username: @${d.suspect_username}">
+          <div class="threat-user-box imposter-box" title="Full Imposter Username: @${safeSuspect}">
             <div class="threat-user-label">
               <span class="threat-label-dot imposter"></span>
               <span>Imposter Username</span>
@@ -333,15 +351,18 @@ function renderVaultGrid() {
   }
 
   vaultContainer.innerHTML = appState.benchmarks.map(bm => {
-    const displayName = bm.server_nickname || bm.canonical_username;
+    const rawDisplayName = bm.server_nickname || bm.canonical_username;
+    const displayName = escapeHtml(rawDisplayName);
     const hasDistinctHandle = bm.server_nickname && bm.server_nickname !== bm.canonical_username;
+    const safeCanonical = escapeHtml(bm.canonical_username);
+    const safeRole = escapeHtml(bm.community_role);
     
     return `
-    <div class="vault-card" id="vault-${bm.id}">
+    <div class="vault-card" id="vault-${escapeHtml(bm.id)}">
       <div class="vault-card-banner"></div>
       
       <div class="vault-avatar-wrapper">
-        <img src="${bm.avatar_url || 'assets/logo.svg'}" alt="${bm.canonical_username}" onerror="this.onerror=null; this.src='assets/logo.svg'">
+        <img src="${escapeHtml(bm.avatar_url || 'assets/logo.svg')}" alt="${safeCanonical}" onerror="this.onerror=null; this.src='assets/logo.svg'">
         <span class="vault-status-dot online" title="Status: Online & Protected"></span>
       </div>
 
@@ -350,8 +371,8 @@ function renderVaultGrid() {
           <div class="vault-user-info">
             <div class="vault-display-name" title="${displayName}">${displayName}</div>
             <div class="vault-user-meta">
-              <span class="vault-handle">@${bm.canonical_username.toLowerCase()}</span>
-              ${hasDistinctHandle ? `<span class="vault-meta-divider">•</span><span class="vault-account-name">${bm.canonical_username}</span>` : ''}
+              <span class="vault-handle">@${safeCanonical.toLowerCase()}</span>
+              ${hasDistinctHandle ? `<span class="vault-meta-divider">•</span><span class="vault-account-name">${safeCanonical}</span>` : ''}
             </div>
           </div>
           <span class="vault-protected-badge" title="Active Protected Identity">
@@ -364,19 +385,19 @@ function renderVaultGrid() {
           <span>Role:</span>
           <span class="vault-role-badge">
             <span class="role-circle" style="background-color: var(--brand-blurple);"></span>
-            ${bm.community_role}
+            ${safeRole}
           </span>
         </div>
 
         <div class="vault-tags-row">
-          ${(bm.tags || []).map(t => `<span class="vault-tag-pill">${t}</span>`).join('')}
+          ${(bm.tags || []).map(t => `<span class="vault-tag-pill">${escapeHtml(t)}</span>`).join('')}
         </div>
 
         ${bm.authorized_alts && bm.authorized_alts.length > 0 ? `
           <div class="vault-alts-section">
             <div class="vault-alts-label">Approved Secondary Accounts:</div>
             <div class="vault-tags-row" style="margin-bottom: 0;">
-              ${bm.authorized_alts.map(alt => `<span class="vault-alt-tag" title="${alt.note}">Alt: ${alt.label} (${alt.user_id.slice(-4)})</span>`).join('')}
+              ${bm.authorized_alts.map(alt => `<span class="vault-alt-tag" title="${escapeHtml(alt.note)}">Alt: ${escapeHtml(alt.label)} (${escapeHtml(alt.user_id.slice(-4))})</span>`).join('')}
             </div>
           </div>
         ` : ''}
@@ -442,21 +463,23 @@ function renderAuditTable() {
     }
 
     const suspectName = aud.metadata?.suspect_username;
+    const safeSuspect = escapeHtml(suspectName);
+    const safeTargetId = escapeHtml(aud.target_user_id || '');
     const targetDisplay = suspectName 
-      ? `<span style="font-weight: 600; color: var(--text-primary);">@${suspectName}</span> <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">(${aud.target_user_id || ''})</span>`
-      : (aud.target_user_id || 'System');
+      ? `<span style="font-weight: 600; color: var(--text-primary);">@${safeSuspect}</span> <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">(${safeTargetId})</span>`
+      : (safeTargetId || 'System');
 
     return `
       <tr style="border-bottom: 1px solid var(--border-subtle);">
         <td style="padding: 14px 20px; color: var(--text-muted); font-size: 0.82rem;" class="tabular-nums">${formatTime(aud.timestamp)}</td>
         <td style="padding: 14px 20px;">
           <span style="font-weight: 700; font-size: 0.78rem; color: ${actionBadgeColor}; background: ${actionBadgeBg}; padding: 4px 10px; border-radius: var(--radius-xs); border: 1px solid rgba(255, 255, 255, 0.08); display: inline-block;">
-            ${actionBadgeText}
+            ${escapeHtml(actionBadgeText)}
           </span>
         </td>
         <td style="padding: 14px 20px; font-size: 0.84rem; color: var(--text-secondary);">${targetDisplay}</td>
-        <td style="padding: 14px 20px; color: var(--text-header); font-weight: 600; font-size: 0.86rem;">${aud.operator_id}</td>
-        <td style="padding: 14px 20px; color: var(--text-primary); font-size: 0.84rem; line-height: 1.4;">${aud.reason}</td>
+        <td style="padding: 14px 20px; color: var(--text-header); font-weight: 600; font-size: 0.86rem;">${escapeHtml(aud.operator_id)}</td>
+        <td style="padding: 14px 20px; color: var(--text-primary); font-size: 0.84rem; line-height: 1.4;">${escapeHtml(aud.reason)}</td>
       </tr>
     `;
   }).join('');
@@ -742,6 +765,11 @@ export function showDesktopNotificationToast(payload, forceShow = false) {
   toastEl.className = `desktop-toast ${tierClass}`;
   toastEl.id = `toast-${incidentId}`;
   toastEl.setAttribute('role', 'alert');
+  const safeSuspect = escapeHtml(suspectName);
+  const safeTarget = escapeHtml(targetName);
+  const safeReason = escapeHtml(reason);
+  const safeIncidentId = escapeHtml(incidentId);
+
   toastEl.innerHTML = `
     <div class="toast-header">
       <div class="toast-brand-row">
@@ -749,29 +777,29 @@ export function showDesktopNotificationToast(payload, forceShow = false) {
         <span class="toast-brand-title">TruthBeacon Alert</span>
       </div>
       <div class="toast-header-right">
-        <span class="toast-risk-badge ${isCritical ? 'critical' : 'elevated'}">${tierBadge}</span>
+        <span class="toast-risk-badge ${isCritical ? 'critical' : 'elevated'}">${escapeHtml(tierBadge)}</span>
         <button class="toast-close-btn" data-action="close" title="Dismiss notification" aria-label="Close notification">&times;</button>
       </div>
     </div>
     <div class="toast-body">
       <div class="toast-comparison-strip">
-        <span class="toast-suspect-name" title="Suspect Imposter: @${suspectName}">@${suspectName}</span>
+        <span class="toast-suspect-name" title="Suspect Imposter: @${safeSuspect}">@${safeSuspect}</span>
         <span class="toast-vs-tag">VS</span>
-        <span class="toast-target-name" title="Official Leader: @${targetName}">@${targetName}</span>
+        <span class="toast-target-name" title="Official Leader: @${safeTarget}">@${safeTarget}</span>
       </div>
       <div class="toast-meta-line">
         <span class="toast-meta-pill">${similarityPct}% Match</span>
-        ${reason}
+        ${safeReason}
       </div>
     </div>
     <div class="toast-actions-row">
-      <button class="btn-toast btn-toast-inspect" data-action="inspect" data-incident-id="${incidentId}" title="Inspect in alerts queue">
+      <button class="btn-toast btn-toast-inspect" data-action="inspect" data-incident-id="${safeIncidentId}" title="Inspect in alerts queue">
         Inspect
       </button>
-      <button class="btn-toast btn-toast-dismiss" data-action="dismiss" data-incident-id="${incidentId}" title="Dismiss as benign coincidence [D]">
+      <button class="btn-toast btn-toast-dismiss" data-action="dismiss" data-incident-id="${safeIncidentId}" title="Dismiss as benign coincidence [D]">
         <kbd>D</kbd> Dismiss
       </button>
-      <button class="btn-toast btn-toast-ban" data-action="ban" data-incident-id="${incidentId}" title="Ban imposter from server [B]">
+      <button class="btn-toast btn-toast-ban" data-action="ban" data-incident-id="${safeIncidentId}" title="Ban imposter from server [B]">
         <kbd>B</kbd> Ban & Purge
       </button>
     </div>
@@ -794,8 +822,8 @@ export function showDesktopNotificationToast(payload, forceShow = false) {
       reason,
       actions: ['Inspect', 'Dismiss', 'Ban & Purge']
     }
-  }).catch(err => {
-    console.debug('[TruthBeacon Notification] OS notification note:', err);
+  }).catch(() => {
+    // OS notification fallback notice handled gracefully
   });
 
   // Auto-dismiss countdown timer (12s)
@@ -988,7 +1016,9 @@ export function extractBotClientId(token) {
     if (/^\d{17,20}$/.test(decoded)) {
       return decoded;
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Non-fatal token decode notice:', err);
+  }
   return null;
 }
 
@@ -1078,7 +1108,7 @@ async function discoverServers(tokenOverride) {
   } catch (err) {
     console.warn('Guild discovery note:', err);
     if (guildDiscoveryStatus) {
-      guildDiscoveryStatus.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.8125rem;">${err?.message || 'Paste bot token or invite bot to server to discover.'}</span>`;
+      guildDiscoveryStatus.innerHTML = `<span style="color: var(--color-text-muted); font-size: 0.8125rem;">${escapeHtml(err?.message) || 'Paste bot token or invite bot to server to discover.'}</span>`;
     }
   } finally {
     isDiscoveringGuilds = false;
@@ -1121,7 +1151,9 @@ discordGuildSelect?.addEventListener('change', async e => {
           guildId: val
         });
         renderHandshakeResult(result);
-      } catch (_) {}
+      } catch (err) {
+        console.warn('Non-fatal handshake notice:', err);
+      }
     }
   }
 });
@@ -1135,7 +1167,9 @@ btnRefreshGuilds?.addEventListener('click', () => {
 discordGuildIdInput?.addEventListener('input', e => {
   try {
     sessionStorage.setItem('truthbeacon_setup_guild_id', e.target.value.trim());
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Non-fatal session storage notice:', err);
+  }
 });
 
 discordTokenInput?.addEventListener('input', e => {
@@ -1148,7 +1182,9 @@ discordTokenInput?.addEventListener('input', e => {
         discoverServers(val);
       }
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Non-fatal session storage notice:', err);
+  }
 });
 
 discordTokenInput?.addEventListener('paste', () => {
@@ -1377,7 +1413,9 @@ btnSaveThresholds?.addEventListener('click', async () => {
 
   try {
     localStorage.setItem('truthbeacon_thresholds', JSON.stringify(savedThresholds));
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Non-fatal threshold storage notice:', err);
+  }
 
   try {
     if (guildId) {
@@ -1414,7 +1452,9 @@ async function loadDiscordConfig() {
         if (!config.thresholds) config.thresholds = {};
         Object.assign(config.thresholds, parsed);
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Non-fatal local thresholds read notice:', err);
+    }
     renderDiscordConfig(config);
   } catch (err) {
     console.error('Failed to load discord config:', err);
@@ -1587,7 +1627,7 @@ function initAutoUpdater() {
         if (manual) {
           if (updateStatusText) updateStatusText.textContent = 'Up to date ✓';
           setTimeout(() => {
-            if (updateStatusText) updateStatusText.textContent = `v${res?.current_version || '0.3.0'}`;
+            if (updateStatusText) updateStatusText.textContent = `v${res?.current_version || '0.3.1'}`;
           }, 2500);
         }
       }
@@ -1596,7 +1636,7 @@ function initAutoUpdater() {
       if (manual && updateStatusText) {
         updateStatusText.textContent = 'Check Failed';
         setTimeout(() => {
-          if (updateStatusText) updateStatusText.textContent = 'v0.3.0';
+          if (updateStatusText) updateStatusText.textContent = 'v0.3.1';
         }, 2500);
       }
     } finally {

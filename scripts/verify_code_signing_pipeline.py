@@ -16,7 +16,6 @@ import sys
 import json
 import plistlib
 import subprocess
-import re
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SRC_TAURI = os.path.join(ROOT_DIR, "src-tauri")

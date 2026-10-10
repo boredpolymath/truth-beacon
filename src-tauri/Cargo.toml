@@ -1,8 +1,8 @@
 [package]
 name = "truth-beacon"
-version = "0.3.0"
+version = "0.3.1"
 description = "TruthBeacon: Desktop Identity Ground-Truth & Impersonation Prevention Console"
-authors = ["Orange Heart Industries"]
+authors = ["Bored Polymath Studios"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 default-run = "truth-beacon"

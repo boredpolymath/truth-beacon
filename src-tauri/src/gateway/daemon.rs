@@ -392,12 +392,6 @@ mod tests {
             .await;
 
         let mem_report = daemon.get_memory_report();
-        println!(
-            "[Standby Memory Test] Resident Memory: {:.2} MB ({} bytes) | Budget: {:.2} MB",
-            mem_report.resident_mb,
-            mem_report.resident_bytes,
-            mem_report.budget_bytes as f64 / (1024.0 * 1024.0)
-        );
 
         assert!(
             mem_report.budget_bytes == MAX_BACKGROUND_IDLE_RAM_BYTES,
@@ -466,11 +460,6 @@ mod tests {
 
         let elapsed = start.elapsed();
         let elapsed_millis = elapsed.as_millis();
-        println!(
-            "[Cold Launch Benchmark] Startup to listening state completed in {}ms ({:.4}s)",
-            elapsed_millis,
-            elapsed.as_secs_f64()
-        );
 
         daemon.release_power_assertion().await;
         let _ = std::fs::remove_file(&db_path);

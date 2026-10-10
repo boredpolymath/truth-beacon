@@ -1,8 +1,8 @@
 {
   "application": {
     "name": "TruthBeacon",
-    "version": "0.3.0",
-    "vendor": "Orange Heart Industries",
+    "version": "0.3.1",
+    "vendor": "Bored Polymath Studios",
     "description": "Desktop Identity Ground-Truth & Impersonation Prevention Console"
   },
   "detection": {

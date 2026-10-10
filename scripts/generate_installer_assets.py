@@ -46,7 +46,7 @@ def get_font(size, bold=False):
         if os.path.exists(path):
             try:
                 return ImageFont.truetype(path, size)
-            except Exception:
+            except (OSError, ValueError):
                 continue
     return ImageFont.load_default()
 
@@ -62,7 +62,7 @@ def get_brand_icon(size):
             try:
                 img = Image.open(c).convert("RGBA")
                 return img.resize((size, size), Image.Resampling.LANCZOS)
-            except Exception:
+            except (OSError, ValueError):
                 continue
     # Fallback circle if icon missing
     fb = Image.new("RGBA", (size, size), (0, 0, 0, 0))

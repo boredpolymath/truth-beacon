@@ -50,6 +50,11 @@ scripts/.keys/
 *.pfx
 *.p12
 
+# Secrets and environment variables
+.env
+.env.*
+*.env
+
 # AI Assistant & VibeDoctor configuration and rules
 .agents/
 .claude/
@@ -59,5 +64,6 @@ scripts/.keys/
 .mcp.json
 .windsurfrules
 CLAUDE.md
+
 
 

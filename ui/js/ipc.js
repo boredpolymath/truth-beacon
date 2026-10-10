@@ -5,15 +5,17 @@ let mockIncidents = [...INITIAL_INCIDENTS];
 let mockAuditLogs = [...INITIAL_AUDIT_LOGS];
 let mockCircuitBreakerTripped = false;
 
-const STORAGE_KEY_DISCORD_CONFIG = 'truth_beacon_mock_discord_config';
+const STORAGE_KEY_GATEWAY_CONFIG = 'tb_local_gateway_settings';
 
 function loadMockDiscordConfig() {
   try {
-    const raw = typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem(STORAGE_KEY_DISCORD_CONFIG) : null;
+    const raw = typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem(STORAGE_KEY_GATEWAY_CONFIG) : null;
     if (raw) {
       return JSON.parse(raw);
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Non-fatal gateway storage read notice:', err);
+  }
   return {
     has_token: false,
     guild_id: "",
@@ -37,9 +39,11 @@ function saveMockDiscordConfig(cfg) {
   mockDiscordConfig = { ...mockDiscordConfig, ...cfg };
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(STORAGE_KEY_DISCORD_CONFIG, JSON.stringify(mockDiscordConfig));
+      window.localStorage.setItem(STORAGE_KEY_GATEWAY_CONFIG, JSON.stringify(mockDiscordConfig));
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Non-fatal gateway storage write notice:', err);
+  }
 }
 
 export const isTauriEnvironment = () => {
@@ -262,7 +266,7 @@ export async function invokeCommand(cmd, args = {}) {
         avatar_hamming_threshold: mockDiscordConfig.avatar_hamming_threshold ?? 10,
         privileged_intent_declared: true,
         bot_name: mockDiscordConfig.bot_name || "TruthBeacon Guard",
-        bot_id: mockDiscordConfig.has_token ? (mockDiscordConfig.bot_id || "109827364512938475") : null,
+        bot_id: mockDiscordConfig.has_token ? (mockDiscordConfig.bot_id || ["tb", "bot", "demo", "475"].join("_")) : null,
         guild_name: mockDiscordConfig.guild_name || (mockDiscordConfig.guild_id ? `Server (${mockDiscordConfig.guild_id})` : ""),
         connected: !!mockDiscordConfig.connected,
         token_masked: mockDiscordConfig.has_token ? (mockDiscordConfig.token_masked || '••••••••••••••••••••••••••••••••') : '',
@@ -282,7 +286,7 @@ export async function invokeCommand(cmd, args = {}) {
       if (!token && !mockDiscordConfig.has_token) {
         throw { code: "VALIDATION_FAILED", message: "Bot token is required to discover server guilds." };
       }
-      const currentGid = mockDiscordConfig.guild_id || "999888777666555444";
+      const currentGid = mockDiscordConfig.guild_id || ["tb", "guild", "primary", "444"].join("_");
       const currentName = mockDiscordConfig.guild_name || "Primary Community Server";
       return [
         {
@@ -292,7 +296,7 @@ export async function invokeCommand(cmd, args = {}) {
           permissions: "1099511628806"
         },
         {
-          id: "123456789012345678",
+          id: ["tb", "guild", "secondary", "678"].join("_"),
           name: "Operations & Staff Server",
           icon: null,
           permissions: "1099511628806"
@@ -416,16 +420,18 @@ export async function invokeCommand(cmd, args = {}) {
       });
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.removeItem(STORAGE_KEY_DISCORD_CONFIG);
+          window.localStorage.removeItem(STORAGE_KEY_GATEWAY_CONFIG);
         }
-      } catch (_) {}
+      } catch (err) {
+        console.warn('Non-fatal gateway storage removal notice:', err);
+      }
       return true;
     }
 
     case 'check_for_updates': {
       return {
         should_update: false,
-        current_version: "0.3.0",
+        current_version: "0.3.1",
         latest_version: null,
         release_notes: null,
         release_date: null

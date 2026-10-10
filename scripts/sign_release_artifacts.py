@@ -137,8 +137,8 @@ def gpg_sign_files():
         check = subprocess.run(["which", "gpg"], capture_output=True, text=True)
         if check.returncode == 0 and check.stdout.strip():
             gpg_path = check.stdout.strip()
-    except Exception:
-        pass
+    except (subprocess.SubprocessError, OSError):
+        gpg_path = None
 
     if gpg_path:
         print(f"  Using system GPG binary: {gpg_path}")
