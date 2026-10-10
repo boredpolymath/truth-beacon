@@ -73,11 +73,29 @@ export async function invokeCommand(cmd, args = {}) {
     case 'get_system_status':
       return {
         daemon_healthy: true,
-        gateway_connected: false,
+        gateway_connected: !!mockDiscordConfig.connected,
         circuit_breaker_tripped: mockCircuitBreakerTripped,
         db_path: "/Users/local/.truthbeacon/truthbeacon.local.db",
         pending_incidents_count: mockIncidents.filter(i => i.status === 'pending').length,
         benchmark_count: mockBenchmarks.length
+      };
+
+    case 'get_health_diagnostics':
+      return {
+        resident_memory_bytes: 18450000,
+        resident_memory_mb: 17.6,
+        memory_budget_bytes: 31457280,
+        memory_budget_adhered: true,
+        database_path: "/Users/local/.truthbeacon/truthbeacon.local.db",
+        database_healthy: true,
+        pending_incidents_count: mockIncidents.filter(i => i.status === 'pending').length,
+        benchmark_count: mockBenchmarks.length,
+        active_gateway_connections: mockDiscordConfig.connected ? 1 : 0,
+        registered_guilds_count: mockDiscordConfig.guild_id ? 1 : 0,
+        gateway_connected: !!mockDiscordConfig.connected,
+        circuit_breaker_status: mockCircuitBreakerTripped ? "Open" : "Closed",
+        circuit_breaker_tripped: mockCircuitBreakerTripped,
+        os_name: "macos"
       };
 
     case 'list_benchmarks':

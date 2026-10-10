@@ -96,17 +96,28 @@ function formatTime(timestamp) {
   return `${diffHours}h ago`;
 }
 
-// Modal open/close helpers
+// Modal open/close helpers with accessible focus management
+let previousActiveElement = null;
+
 function openModal(modal) {
   if (!modal) return;
+  previousActiveElement = document.activeElement;
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
+  const firstInput = modal.querySelector('input:not([type="hidden"]), select, textarea, button');
+  if (firstInput) {
+    setTimeout(() => firstInput.focus(), 50);
+  }
 }
 
 function closeModal(modal) {
   if (!modal) return;
   modal.classList.remove('open');
   document.body.style.overflow = '';
+  if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+    previousActiveElement.focus();
+    previousActiveElement = null;
+  }
 }
 
 function closeAllModals() {
@@ -468,6 +479,21 @@ function updateView() {
     dotCircuit.className = 'status-dot online';
     circuitStatusText.innerHTML = `Protection: <strong>Active</strong>`;
   }
+
+  // Live Discord Gateway status pill
+  if (statusGateway) {
+    if (appState.daemonHealth.gateway_connected) {
+      statusGateway.innerHTML = `<span class="status-dot online"></span><span>Discord: <strong>Connected</strong></span>`;
+    } else {
+      statusGateway.innerHTML = `<span class="status-dot offline"></span><span>Discord: <strong>Disconnected</strong></span>`;
+    }
+  }
+
+  // Connected server display pill in Alerts header
+  const guildNameEl = document.getElementById('current-guild-name');
+  if (guildNameEl && appState.selectedGuild.name) {
+    guildNameEl.textContent = appState.selectedGuild.name;
+  }
 }
 
 // Tab Switching Helper
@@ -650,7 +676,7 @@ window.addEventListener('keydown', e => {
     } else if (e.key === 'd' || e.key === 'D') {
       e.preventDefault();
       appState.resolveIncident(firstIncident.id, 'dismiss');
-    } else if (e.key === 'w' || e.key === 'W') {
+    } else if (e.key === 'w' || e.key === 'W' || e.key === 'a' || e.key === 'A') {
       e.preventDefault();
       openAuthorizedAltModal(firstIncident.id);
     } else if (e.key === 'e' || e.key === 'E') {
@@ -1509,6 +1535,32 @@ function renderDiscordConfig(config) {
 appState.subscribe(updateView);
 updateView();
 loadDiscordConfig();
+
+// Hydrate state from backend and start periodic status & diagnostic sync
+(async () => {
+  await appState.hydrate();
+  syncLiveDiagnostics();
+})();
+
+async function syncLiveDiagnostics() {
+  try {
+    const diag = await invokeCommand('get_health_diagnostics');
+    if (diag) {
+      const footerMem = document.getElementById('footer-memory-stat');
+      if (footerMem && typeof diag.resident_memory_mb === 'number') {
+        footerMem.innerHTML = `<span title="Active RSS memory footprint: ${diag.resident_memory_mb.toFixed(1)} MB / 30 MB budget">RAM: <strong>${diag.resident_memory_mb.toFixed(1)} MB</strong></span> &bull; <span>100% Local SQLite</span>`;
+      }
+      appState.daemonHealth.gateway_connected = !!diag.gateway_connected;
+      appState.daemonHealth.circuit_breaker.tripped = !!diag.circuit_breaker_tripped;
+      updateView();
+    }
+  } catch (_) {
+    // Non-blocking in browser preview mode
+  }
+}
+
+// Background sync every 5 seconds to reflect live daemon status, tray resets, and memory usage
+setInterval(syncLiveDiagnostics, 5000);
 
 // Auto-Updater Integration
 function initAutoUpdater() {

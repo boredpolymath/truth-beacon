@@ -211,6 +211,49 @@ class StateStore {
     this.notify();
   }
 
+  async hydrate() {
+    try {
+      // 1. Discover configured guild
+      const cfg = await invokeCommand('get_discord_config');
+      if (cfg && cfg.guild_id) {
+        this.selectedGuild.id = cfg.guild_id;
+        this.selectedGuild.name = cfg.guild_name || `Server (${cfg.guild_id})`;
+      }
+
+      // 2. Fetch live system status
+      const status = await invokeCommand('get_system_status');
+      if (status) {
+        this.daemonHealth.online = status.daemon_healthy;
+        this.daemonHealth.gateway_connected = status.gateway_connected;
+        this.daemonHealth.circuit_breaker.tripped = status.circuit_breaker_tripped;
+      }
+
+      // 3. Fetch canonical benchmarks for active guild
+      if (this.selectedGuild.id) {
+        const bms = await invokeCommand('list_benchmarks', { guild_id: this.selectedGuild.id });
+        if (Array.isArray(bms) && bms.length > 0) {
+          this.benchmarks = bms;
+        }
+      }
+
+      // 4. Fetch unresolved and historic incidents
+      const incs = await invokeCommand('list_incidents', { guild_id: this.selectedGuild.id || "" });
+      if (Array.isArray(incs) && incs.length > 0) {
+        this.incidents = incs;
+      }
+
+      // 5. Fetch audit trail logs
+      const logs = await invokeCommand('list_audit_logs', { limit: 100 });
+      if (Array.isArray(logs) && logs.length > 0) {
+        this.auditLogs = logs;
+      }
+
+      this.notify();
+    } catch (e) {
+      console.warn('[TruthBeacon State] Hydration from backend fallback active:', e);
+    }
+  }
+
   eradicateLocalData() {
     this.benchmarks = [];
     this.incidents = [];
