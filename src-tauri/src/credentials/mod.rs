@@ -645,6 +645,7 @@ impl CredentialManager {
 
     /// Helper to retrieve the list of guild IDs stored in the vault registry (IDs only, never tokens).
     fn get_registered_guild_ids() -> Result<Vec<String>, CredentialError> {
+        #[cfg(not(test))]
         if let Ok(mem) = MEMORY_GUILD_REGISTRY.read() {
             if !mem.is_empty() {
                 return Ok(mem.clone());
@@ -1266,6 +1267,12 @@ mod tests {
     impl TestVaultDirGuard {
         fn set(dir: PathBuf) -> Self {
             let prev = TEST_OVERRIDE_VAULT_DIR.with(|d| d.borrow_mut().replace(dir));
+            if let Ok(mut reg) = MEMORY_GUILD_REGISTRY.write() {
+                reg.clear();
+            }
+            if let Ok(mut cache) = MEMORY_TOKEN_CACHE.write() {
+                cache.clear();
+            }
             Self { prev }
         }
     }
@@ -1275,6 +1282,12 @@ mod tests {
             TEST_OVERRIDE_VAULT_DIR.with(|d| {
                 *d.borrow_mut() = self.prev.take();
             });
+            if let Ok(mut reg) = MEMORY_GUILD_REGISTRY.write() {
+                reg.clear();
+            }
+            if let Ok(mut cache) = MEMORY_TOKEN_CACHE.write() {
+                cache.clear();
+            }
         }
     }
 

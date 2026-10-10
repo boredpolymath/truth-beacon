@@ -1541,6 +1541,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_discord_config_save_persistence_and_disconnect() {
+        let _ = crate::credentials::CredentialManager::purge_all_credentials();
+
         let seg1 = "TEST_SNOWFLAKE_BASE64_1234";
         let seg2 = "SIG_T";
         let seg3 = "MOCK_SIGNATURE_FOR_UNIT_TEST_PADDING_XYZ";
@@ -1600,6 +1602,8 @@ mod tests {
             !cfg_after.connected,
             "Config after disconnect must show connected = false"
         );
+
+        let _ = crate::credentials::CredentialManager::purge_all_credentials();
     }
 
     #[test]
