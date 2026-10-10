@@ -1,3 +1,43 @@
+# TruthBeacon v0.2.1 — Multi-Guild Benchmark Persistence, Native IPC Hardening, Dynamic System Tray & Live Diagnostics Polling
+**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+
+---
+
+### Overview
+TruthBeacon v0.2.1 delivers critical multi-guild community administration, native IPC defense-in-depth, proactive system supervision, and accessibility hardening. This release integrates SQLite-backed benchmark persistence with guild isolation, mitigates Unicode homoglyphs and Zalgo-combining marks via Unicode Technical Report #39 canonical skeletons, implements live system tray status reflection, sanitizes sensitive bot credentials from logs, introduces real-time health diagnostics polling, and establishes multi-threaded credential vault test isolation, expanding automated regression test coverage to **208 passing tests** (100% pass rate).
+
+---
+
+### What's New & Hardened in v0.2.1
+
+#### 1. Multi-Guild Benchmark Persistence & Isolation (Phase 4)
+- **Authoritative SQLite Benchmarks**: Community steward benchmark records are now durably persisted into SQLite with automatic cache hydration upon startup.
+- **Strict Guild-Level Access Separation**: Prevents cross-guild benchmark leakage; mutations and lookups enforce explicit guild ID boundaries.
+- **Duplicate & Validation Guardrails**: Rejects duplicate benchmark additions, validates inputs, and exposes live backend status reporting (`system_status`).
+
+#### 2. Native Tauri IPC Hardening & Unicode TR #39 Defenses (Phase 5)
+- **Parameter Validation & Bounds**: IPC command boundaries strictly enforce limits on guild IDs, benchmark IDs, and image payloads (8 MB max, 4096px bounds).
+- **UTR #39 Skeletons & Homoglyph Unmasking**: Uses canonical confusable mapping tables to detect cross-script spoofing attacks (e.g. Cyrillic/Greek lookalikes).
+- **Zalgo & Invisible Character Stripping**: Filters zero-width spaces, bidirectional override formatting characters, and excessive combining marks.
+- **Incident Anti-Replay & Consequential Action Guards**: Destructive moderation commands enforce operator attribution and reject repeated executions against already-mitigated incidents.
+
+#### 3. Dynamic System Tray, Log Sanitization & Clean Shutdown (Phase 6)
+- **Dynamic Tray Status Summary**: Multi-resolution system tray icon and menu reflect real-time backend protection state (Online, Degrading, Cooldown, Circuit Breaker).
+- **Zero-Leak Log Sanitization**: Regex-driven log filters automatically mask Discord bot tokens (`Bot [REDACTED]`) and webhook URLs in all application traces and diagnostic exports.
+- **Idempotent Graceful Shutdown**: Process termination coordinates clean SQLite WAL checkpoints and zero-fill memory wiping on shutdown.
+- **Health Diagnostics Reporting**: Comprehensive system health reports verify storage integrity, gateway connectivity, and resource consumption.
+
+#### 4. UI Focus Management, Hydration & Diagnostics Polling (Phase 7)
+- **WCAG 2.1 AA Accessibility**: Full keyboard focus traps, accessible modal interactions, and screen-reader announcements across triage cards and modal dialogues.
+- **Reactive Diagnostics Polling**: System health metrics continuously poll the native backend, displaying real-time memory usage, database status, and uptime.
+- **Direct Vault State Hydration**: UI instantly synchronizes with the native credential vault and benchmark database upon launch.
+
+#### 5. Multi-Threaded Test Isolation & Test Suite Expansion
+- **Vault Cache Concurrency Isolation**: In-memory credential registry and token caches are completely flushed and thread-isolated under `#[cfg(test)]`, preventing cross-thread test contamination.
+- **208 Passing Automated Tests**: Full suite expanded across credential vaults, SQLite engines, gateway resilience, perceptual hashing, IPC security, and lifecycle management with zero warnings under `-D warnings`.
+
+---
+
 # TruthBeacon v0.2.0 — Major Security, Resilience & Release Hardening
 **Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
 
