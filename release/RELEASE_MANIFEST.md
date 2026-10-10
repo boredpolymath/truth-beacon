@@ -8,6 +8,9 @@
 - **Frontend Engine**: Tauri 2 (Webkit / Cocoa WebView, zero npm blobs)
 - **Backend Architecture**: Rust 2021 (Universal 2: `x86_64` + `aarch64`)
 - **Status**: Production Release Build Staged & Signed
+| `TruthBeacon_0.2.2_macos_universal.zip` | Universal 2 (Intel + Apple Silicon) | ~27 MB | `58101f915f97e4950a8d03ff85a32d21fb6e49d9dc7703ca0bb71e3c06375730` | Release deliverable |
+| `TruthBeacon_0.2.2_universal.app.tar.gz` | Universal 2 (Intel + Apple Silicon) | ~27 MB | `7bd8294fa257176482da5af1651681ab3c4fe348d996bf99832e0abbc0215ceb` | Release deliverable |
+| `TruthBeacon_0.2.2_universal.dmg` | Universal 2 (Intel + Apple Silicon) | ~29 MB | `c450fa110a54f2d64eab14763b8d9a7505f7bb0100c95417eca0d185c713a629` | Release deliverable |
 
 ---
 

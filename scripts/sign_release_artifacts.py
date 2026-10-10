@@ -32,7 +32,7 @@ KEYS_DIR = os.path.join(ROOT_DIR, "scripts", ".keys")
 
 with open(os.path.join(SRC_TAURI_DIR, "tauri.conf.json"), "r") as f:
     conf = json.load(f)
-VERSION = conf.get("version", "0.2.1")
+VERSION = conf.get("version", "0.2.2")
 
 SIGNABLE_EXTENSIONS = {".dmg", ".zip", ".exe", ".msi", ".deb", ".AppImage", ".gz"}
 SIGNABLE_NAMES = {"truth-beacon-universal", "TruthBeacon-Portable.exe"}

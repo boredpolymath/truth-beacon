@@ -1,6 +1,6 @@
 [package]
 name = "truth-beacon"
-version = "0.2.1"
+version = "0.2.2"
 description = "TruthBeacon: Desktop Identity Ground-Truth & Impersonation Prevention Console"
 authors = ["Orange Heart Industries"]
 edition = "2021"

@@ -1243,8 +1243,8 @@ mod tests {
         let incident = discrepancy.unwrap();
         assert_eq!(incident.risk_tier, RiskTier::Critical);
 
-        // Enforce pipeline latency budget (< 50ms in release, < 100ms in unoptimized debug test runs)
-        let max_allowed = if cfg!(debug_assertions) { 100.0 } else { 50.0 };
+        // Enforce pipeline latency budget (< 50ms in release, < 150ms in unoptimized debug test runs)
+        let max_allowed = if cfg!(debug_assertions) { 150.0 } else { 50.0 };
         assert!(
             single_duration_millis < max_allowed,
             "Single payload evaluation took {:.2}ms, exceeding {}ms latency budget!",

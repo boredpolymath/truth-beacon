@@ -68,6 +68,8 @@ if [ -d "${APP_DIR}/TruthBeacon.app" ]; then
     if [ -f "${UPDATER_TAR}.sig" ]; then
         cp -f "${UPDATER_TAR}.sig" "${ROOT_DIR}/release/" 2>/dev/null || true
     fi
+    echo "==> Creating portable macOS .zip archive..."
+    (cd "${APP_DIR}" && zip -rq "${ROOT_DIR}/release/TruthBeacon_${VERSION}_macos_universal.zip" TruthBeacon.app)
 fi
 
 # Optional: Execute Code Signing & Notarization if configured

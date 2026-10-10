@@ -1,3 +1,34 @@
+# TruthBeacon v0.2.2 — Hermetic Test Storage Isolation, Professional UI Guidance & Pristine Clean-Slate Architecture
+**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+
+---
+
+### Overview
+TruthBeacon v0.2.2 introduces hermetic database storage isolation for development and testing environments, sanitizes all default guidance placeholders with neutral, professional identity examples, and ensures an immaculate clean-slate deployment experience. Automated test suites (`cargo test`) now run in completely quarantined sandbox directories (`temp_dir()`), preventing mock records from accumulating in operator workstations or leaking into production UI installations.
+
+---
+
+### What's New & Hardened in v0.2.2
+
+#### 1. Hermetic Storage & Test Sandbox Isolation
+- **Quarantined Database Resolution**: In test mode (`#[cfg(test)]`), the SQLite engine (`StorageManager::default_db_path()`) automatically routes storage to a temporary directory (`truthbeacon_test_env`), ensuring automated test suites never write mock benchmarks or incidents into the operator's local `~/.truthbeacon/` database.
+- **Quarantined Vault Directory Resolution**: Credential vault storage paths (`vault_dir()`) similarly default to isolated test directories when running under test harnesses.
+- **Self-Cleaning Test Fixtures**: Added explicit post-test teardown and deletion routines across `commands/mod.rs` test cases, guaranteeing that repeated test executions leave zero residual state.
+- **Zero-Pollution Verified**: Verified via file modification timestamps that full automated test executions produce exactly zero writes to user machine databases.
+
+#### 2. Sanitized & Professional Guidance Placeholders
+- **Neutral Community Member Guidance**: Replaced developer-specific placeholders in modal forms with neutral, professional examples:
+  - Username: `placeholder="e.g. AlexMorgan"`
+  - Display Name: `placeholder="e.g. Alex (Community Lead)"`
+  - Secondary Account Justification: `placeholder="e.g. Confirmed with team member in person; approved mobile device account"`
+- **Neutralized Alert Notification Fallbacks**: Sanitized desktop notification test toast fallback attributes to neutral leadership terminology.
+
+#### 3. Production Clean-Slate Assurance
+- **Cold Launch Verification**: Verified cold application launch against an empty database correctly renders zero alerts, zero benchmarks, and zero audit logs with high-clarity empty-state prompts.
+- **All 208 Tests Passing**: Maintained 100% pass rate across the full test suite with clean Clippy linting and formatting compliance.
+
+---
+
 # TruthBeacon v0.2.1 — Multi-Guild Benchmark Persistence, Native IPC Hardening, Dynamic System Tray & Live Diagnostics Polling
 **Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
 

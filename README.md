@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/boredpolymath/truth-beacon"><img src="https://img.shields.io/badge/GitHub-boredpolymath%2Ftruth--beacon-181717?style=flat-square&logo=github" alt="GitHub Repo"></a>
   <a href="https://boredpolymath.github.io/truth-beacon/"><img src="https://img.shields.io/badge/Web-truth--beacon-5865F2?style=flat-square" alt="Website"></a>
-  <img src="https://img.shields.io/badge/Version-v0.2.1-green?style=flat-square" alt="Version 0.2.1">
+  <img src="https://img.shields.io/badge/Version-v0.2.2-green?style=flat-square" alt="Version 0.2.2">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/Framework-Tauri%20v2-orange?style=flat-square" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Language-Rust%202021-red?style=flat-square" alt="Rust 2021">
@@ -37,7 +37,9 @@ Most moderation tools today either:
 
 Best of all? **It respects your privacy completely.** TruthBeacon has zero tracking, zero cloud telemetry, and keeps all sensitive tokens securely in an authenticated local AES-256-GCM vault with domain-separated AAD binding (`TruthBeacon:EncryptedVault:v1`), Argon2id key derivation, and strict POSIX permissions.
 
-### Security, Reliability & Production Hardening (v0.2.1)
+### Security, Reliability & Production Hardening (v0.2.2)
+- 🧪 **Hermetic Test Storage & Workspace Isolation**: Fully isolated test SQLite database storage (`#[cfg(test)]`) and credential vault paths to temporary test environments, guaranteeing automated test suites (`cargo test`) never pollute developer or production user storage directories (`~/.truthbeacon/`).
+- 🧹 **Neutralized Production Guidance Placeholders**: Sanitized UI input hints and modal placeholder copy with neutral, professional examples (`@AlexMorgan`, `@Alex (Community Lead)`), eliminating developer test fixtures from production displays.
 - 🛡️ **Forensic Database Quarantine & Multi-Guild Benchmark Persistence**: Pre-flight SQLite integrity gates preserve corrupt databases and WAL frames into timestamped forensic archives without silent deletion. Persistent benchmark records maintain strict per-guild isolation and duplicate rejection.
 - 🔐 **Domain-Bound Cryptographic Vault**: AES-256-GCM authenticated encryption bound to application domain AAD (`TruthBeacon:EncryptedVault:v1`) with Argon2id derivation, Zeroize-on-drop hygiene, tamper detection, and token redaction. Multi-threaded test isolation flushes vault caches to eliminate concurrency crosstalk.
 - ⚡ **Authoritative Backend Moderation & Anti-Replay**: Replay-immune incident resolution validated against local SQLite records; operator identity strictly required for consequential actions.
