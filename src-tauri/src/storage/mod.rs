@@ -77,6 +77,46 @@ impl DatabaseIntegrityStatus {
     }
 }
 
+fn ensure_secure_dir(dir: &Path) -> std::io::Result<()> {
+    if !dir.exists() {
+        std::fs::create_dir_all(dir)?;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o700);
+        let _ = std::fs::set_permissions(dir, perms);
+    }
+    Ok(())
+}
+
+fn ensure_secure_file(path: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if path.exists() {
+            let perms = std::fs::Permissions::from_mode(0o600);
+            let _ = std::fs::set_permissions(path, perms);
+        }
+    }
+    let _ = path;
+    Ok(())
+}
+
+fn enforce_database_file_permissions(db_path: &Path) {
+    if db_path != Path::new(":memory:") && db_path.exists() {
+        let _ = ensure_secure_file(db_path);
+        let wal_path = PathBuf::from(format!("{}-wal", db_path.display()));
+        if wal_path.exists() {
+            let _ = ensure_secure_file(&wal_path);
+        }
+        let shm_path = PathBuf::from(format!("{}-shm", db_path.display()));
+        if shm_path.exists() {
+            let _ = ensure_secure_file(&shm_path);
+        }
+    }
+}
+
 pub struct StorageManager {
     db_path: PathBuf,
     conn: Arc<Mutex<Connection>>,
@@ -146,18 +186,24 @@ impl StorageManager {
     pub fn quarantine_corrupt_database(path: &Path) -> std::io::Result<PathBuf> {
         let now = chrono::Utc::now().timestamp();
         let quarantine_path = path.with_extension(format!("corrupt.{}.db", now));
+        if let Some(parent) = quarantine_path.parent() {
+            let _ = ensure_secure_dir(parent);
+        }
         std::fs::copy(path, &quarantine_path)?;
+        let _ = ensure_secure_file(&quarantine_path);
 
         let wal_path = PathBuf::from(format!("{}-wal", path.display()));
         if wal_path.exists() {
             let wal_quarantine = path.with_extension(format!("corrupt.{}.db-wal", now));
             let _ = std::fs::copy(&wal_path, &wal_quarantine);
+            let _ = ensure_secure_file(&wal_quarantine);
         }
 
         let shm_path = PathBuf::from(format!("{}-shm", path.display()));
         if shm_path.exists() {
             let shm_quarantine = path.with_extension(format!("corrupt.{}.db-shm", now));
             let _ = std::fs::copy(&shm_path, &shm_quarantine);
+            let _ = ensure_secure_file(&shm_quarantine);
         }
 
         log::warn!(
@@ -176,7 +222,7 @@ impl StorageManager {
     pub fn init<P: AsRef<Path>>(path: P) -> Result<Self> {
         let db_path = path.as_ref().to_path_buf();
         if let Some(parent) = db_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            let _ = ensure_secure_dir(parent);
         }
 
         // Pre-flight check: If database already exists and has content on disk, verify integrity BEFORE running migrations
@@ -219,7 +265,9 @@ impl StorageManager {
 
         let mut conn = Connection::open(&db_path)?;
         let _ = conn.busy_timeout(std::time::Duration::from_millis(10000));
+        enforce_database_file_permissions(&db_path);
         migrations::run_migrations(&mut conn)?;
+        enforce_database_file_permissions(&db_path);
 
         // Phase 11.3: Automatic database integrity check on startup
         let is_healthy = migrations::run_integrity_check(&conn)?;
@@ -266,7 +314,7 @@ impl StorageManager {
             .unwrap_or_else(|_| PathBuf::from("."));
 
         let tb_dir = base_dir.join(".truthbeacon");
-        let _ = std::fs::create_dir_all(&tb_dir);
+        let _ = ensure_secure_dir(&tb_dir);
         tb_dir.join("truthbeacon.local.db")
     }
 
@@ -375,18 +423,29 @@ impl StorageManager {
     pub fn backup_to<P: AsRef<Path>>(&self, dest: P) -> Result<()> {
         let dest_path = dest.as_ref();
         if let Some(parent) = dest_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            let _ = ensure_secure_dir(parent);
         }
         let mut dest_conn = Connection::open(dest_path)?;
         let conn = self.conn.lock().unwrap();
         let backup = rusqlite::backup::Backup::new(&conn, &mut dest_conn)?;
         backup.run_to_completion(100, std::time::Duration::from_millis(10), None)?;
+        enforce_database_file_permissions(dest_path);
         Ok(())
     }
 
     /// Safely restores database state from a validated backup archive into the active connection.
     pub fn restore_from<P: AsRef<Path>>(&self, src: P) -> Result<()> {
         let src_path = src.as_ref();
+        let status = Self::check_file_integrity(src_path);
+        if !status.is_healthy() {
+            return Err(rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CORRUPT),
+                Some(format!(
+                    "Cannot restore from corrupt backup archive: {:?}",
+                    status
+                )),
+            ));
+        }
         let src_conn = Connection::open_with_flags(
             src_path,
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
@@ -394,6 +453,7 @@ impl StorageManager {
         let mut conn = self.conn.lock().unwrap();
         let backup = rusqlite::backup::Backup::new(&src_conn, &mut conn)?;
         backup.run_to_completion(100, std::time::Duration::from_millis(10), None)?;
+        enforce_database_file_permissions(&self.db_path);
         Ok(())
     }
 
@@ -477,6 +537,8 @@ impl StorageManager {
 
         // Step 5: Final WAL truncation
         let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+
+        enforce_database_file_permissions(&self.db_path);
 
         let remaining_db_bytes = if self.db_path.exists() && self.db_path != Path::new(":memory:") {
             std::fs::metadata(&self.db_path)
@@ -1352,5 +1414,132 @@ mod tests {
             .unwrap();
         assert_eq!(banned.len(), 1);
         assert_eq!(banned[0].id, "inc_dan_spoof");
+    }
+
+    #[test]
+    fn test_database_file_and_directory_restrictive_permissions() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("tb_test_db_perms_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let db_path = temp_dir.join("truthbeacon.local.db");
+        let storage = StorageManager::init(&db_path).expect("Storage init must succeed");
+
+        assert!(db_path.exists(), "Database file must exist");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let dir_meta = std::fs::metadata(&temp_dir).unwrap();
+            let dir_mode = dir_meta.permissions().mode() & 0o777;
+            assert_eq!(
+                dir_mode, 0o700,
+                "Database parent directory must have 0700 permissions"
+            );
+
+            let db_meta = std::fs::metadata(&db_path).unwrap();
+            let db_mode = db_meta.permissions().mode() & 0o777;
+            assert_eq!(db_mode, 0o600, "Database file must have 0600 permissions");
+
+            let wal_path = PathBuf::from(format!("{}-wal", db_path.display()));
+            if wal_path.exists() {
+                let wal_meta = std::fs::metadata(&wal_path).unwrap();
+                let wal_mode = wal_meta.permissions().mode() & 0o777;
+                assert_eq!(wal_mode, 0o600, "WAL file must have 0600 permissions");
+            }
+        }
+
+        // Test backup file and directory permissions
+        let backup_dir = temp_dir.join("backups");
+        let backup_path = backup_dir.join("truthbeacon.backup.db");
+        storage
+            .backup_to(&backup_path)
+            .expect("Backup must succeed");
+
+        assert!(backup_path.exists(), "Backup file must exist");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let backup_dir_meta = std::fs::metadata(&backup_dir).unwrap();
+            let backup_dir_mode = backup_dir_meta.permissions().mode() & 0o777;
+            assert_eq!(
+                backup_dir_mode, 0o700,
+                "Backup parent dir must have 0700 permissions"
+            );
+
+            let backup_meta = std::fs::metadata(&backup_path).unwrap();
+            let backup_mode = backup_meta.permissions().mode() & 0o777;
+            assert_eq!(backup_mode, 0o600, "Backup file must have 0600 permissions");
+        }
+
+        drop(storage);
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_restore_from_rejects_corrupted_backup() {
+        let storage = StorageManager::in_memory().expect("In-memory storage must init");
+
+        let temp_dir =
+            std::env::temp_dir().join(format!("tb_test_corrupt_restore_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let _ = std::fs::create_dir_all(&temp_dir);
+
+        let corrupt_backup_path = temp_dir.join("corrupt_backup.db");
+        std::fs::write(
+            &corrupt_backup_path,
+            b"corrupted_non_sqlite_header_and_data",
+        )
+        .unwrap();
+
+        let restore_res = storage.restore_from(&corrupt_backup_path);
+        assert!(
+            restore_res.is_err(),
+            "restore_from must fail when given a corrupt backup file"
+        );
+
+        // Active database must remain sound and uncorrupted
+        let health = storage
+            .verify_integrity()
+            .expect("Integrity check must run");
+        assert!(
+            health.is_healthy(),
+            "Active database must remain healthy after rejected restore"
+        );
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_quarantine_corrupt_database_preserves_evidence_and_permissions() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("tb_test_quarantine_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let _ = std::fs::create_dir_all(&temp_dir);
+
+        let corrupt_db = temp_dir.join("victim.db");
+        std::fs::write(&corrupt_db, b"forensic_evidence_unparsable_sqlite_bytes").unwrap();
+
+        let quarantine_path = StorageManager::quarantine_corrupt_database(&corrupt_db)
+            .expect("Quarantine must succeed");
+
+        assert!(quarantine_path.exists(), "Quarantined copy must exist");
+        assert_eq!(
+            std::fs::read(&quarantine_path).unwrap(),
+            b"forensic_evidence_unparsable_sqlite_bytes"
+        );
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let meta = std::fs::metadata(&quarantine_path).unwrap();
+            let mode = meta.permissions().mode() & 0o777;
+            assert_eq!(
+                mode, 0o600,
+                "Quarantined database file must have 0600 permissions"
+            );
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

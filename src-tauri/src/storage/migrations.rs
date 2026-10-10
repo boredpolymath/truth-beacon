@@ -133,28 +133,33 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
 
     // Migration Step 2 (Schema Evolution): Non-destructive idempotent column additions
     if version < 2 {
+        let tx = conn.transaction()?;
         add_column_if_not_exists(
-            conn,
+            &tx,
             "benchmarks",
             "sensitivity_override",
             "REAL DEFAULT NULL",
         )?;
-        add_column_if_not_exists(
-            conn,
-            "incidents",
-            "composite_risk_score",
-            "REAL DEFAULT 0.0",
-        )?;
-        conn.execute("PRAGMA user_version = 2;", [])?;
+        add_column_if_not_exists(&tx, "incidents", "composite_risk_score", "REAL DEFAULT 0.0")?;
+        tx.execute("PRAGMA user_version = 2;", [])?;
+        tx.commit()?;
     }
 
     Ok(())
 }
 
-/// Runs SQLite PRAGMA integrity_check; to verify database health
+/// Runs SQLite PRAGMA integrity_check; and PRAGMA foreign_key_check; to verify database health and referential integrity
 pub fn run_integrity_check(conn: &Connection) -> Result<bool> {
     let status: String = conn.query_row("PRAGMA integrity_check;", [], |row| row.get(0))?;
-    Ok(status.to_lowercase() == "ok")
+    if status.to_lowercase() != "ok" {
+        return Ok(false);
+    }
+    let mut stmt = conn.prepare("PRAGMA foreign_key_check;")?;
+    let mut rows = stmt.query([])?;
+    if rows.next()?.is_some() {
+        return Ok(false);
+    }
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -357,5 +362,57 @@ mod tests {
         .is_ok());
         assert!(table_has_column(&conn, "benchmarks", "sensitivity_override").unwrap());
         assert!(table_has_column(&conn, "incidents", "composite_risk_score").unwrap());
+    }
+
+    #[test]
+    fn test_foreign_key_check_detects_violations() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        run_migrations(&mut conn).unwrap();
+
+        // Database is healthy initially
+        assert!(run_integrity_check(&conn).unwrap());
+
+        // Temporarily disable foreign keys to simulate orphaned record corruption
+        conn.execute("PRAGMA foreign_keys = OFF;", []).unwrap();
+        conn.execute(
+            "INSERT INTO incidents (id, guild_id, timestamp, suspect_user_id, suspect_username, suspect_account_age_hours, matched_benchmark_id, matched_benchmark_name, string_similarity_score, homoglyph_detected, normalized_diff, risk_tier, status)
+             VALUES ('inc_corrupt_orphan', 'guild_alpha', 1700000200, '2002', 'CloneOrphan', 1, 'non_existent_bm_id', 'PastorDan', 0.99, 1, 'diff', 'critical', 'pending');",
+            [],
+        ).unwrap();
+        conn.execute("PRAGMA foreign_keys = ON;", []).unwrap();
+
+        // run_integrity_check must now catch the dangling foreign key reference
+        assert!(
+            !run_integrity_check(&conn).unwrap(),
+            "run_integrity_check must report false when foreign key constraints are violated"
+        );
+    }
+
+    #[test]
+    fn test_atomic_migration_step_rollback() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        configure_pragmas(&conn).unwrap();
+
+        // Create base tables
+        run_migrations(&mut conn).unwrap();
+        let version_before = get_user_version(&conn).unwrap();
+        assert_eq!(version_before, CURRENT_SCHEMA_VERSION);
+
+        // Attempt a failing transaction to verify rollback semantics
+        let tx_res = (|| -> Result<()> {
+            let tx = conn.transaction()?;
+            tx.execute("ALTER TABLE benchmarks ADD COLUMN temp_col TEXT;", [])?;
+            // Deliberate syntax failure to trigger rollback
+            tx.execute("INVALID SQL STATEMENT SYNTAX ERROR;", [])?;
+            tx.commit()?;
+            Ok(())
+        })();
+
+        assert!(tx_res.is_err(), "Transaction with syntax error must fail");
+        // Column temp_col must NOT exist due to transaction rollback
+        assert!(
+            !table_has_column(&conn, "benchmarks", "temp_col").unwrap(),
+            "Rolled back transaction must not leave partial columns in schema"
+        );
     }
 }
