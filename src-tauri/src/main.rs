@@ -2,6 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    env_logger::init();
+    truth_beacon_lib::diagnostics::init_sanitized_logger();
     truth_beacon_lib::run();
 }

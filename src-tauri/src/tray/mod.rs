@@ -26,6 +26,51 @@ pub fn load_tray_image(bytes: &[u8]) -> Result<tauri::image::Image<'static>, Box
     ))
 }
 
+/// Formats the current dynamic protection status summary for the tray menu and tooltip.
+pub fn format_tray_status_summary() -> (String, String) {
+    let breaker = crate::circuit_breaker::get_global_circuit_breaker();
+    let is_tripped = breaker.is_tripped();
+
+    let registered_guilds = crate::credentials::CredentialManager::list_registered_guilds()
+        .map(|g| g.len())
+        .unwrap_or(0);
+
+    let is_running = crate::gateway::daemon::is_global_daemon_running_sync();
+
+    if is_tripped {
+        (
+            "⚠️ Status: Circuit Breaker Tripped (Paused)".to_string(),
+            "TruthBeacon — Circuit Breaker Tripped (Safety Paused)".to_string(),
+        )
+    } else if !is_running {
+        if registered_guilds == 0 {
+            (
+                "○ Status: Standby (No Guilds Configured)".to_string(),
+                "TruthBeacon — Standby (No Guilds Configured)".to_string(),
+            )
+        } else {
+            (
+                "○ Status: Disconnected (Standby)".to_string(),
+                "TruthBeacon — Disconnected (Standby)".to_string(),
+            )
+        }
+    } else {
+        let label = if registered_guilds == 1 {
+            "● Status: Protection Active (1 Guild Protected)".to_string()
+        } else {
+            format!(
+                "● Status: Protection Active ({} Guilds Protected)",
+                registered_guilds
+            )
+        };
+        let tooltip = format!(
+            "TruthBeacon — Active Protection ({} Guilds)",
+            registered_guilds
+        );
+        (label, tooltip)
+    }
+}
+
 /// Initializes and registers the persistent system tray icon on startup (Phase 17.1).
 pub fn setup_system_tray(app: &mut App) -> Result<TrayIcon, Box<dyn Error>> {
     let handle = app.handle();
@@ -38,10 +83,11 @@ pub fn setup_system_tray(app: &mut App) -> Result<TrayIcon, Box<dyn Error>> {
         true,
         None::<&str>,
     )?;
+    let (status_label, tooltip_text) = format_tray_status_summary();
     let status_item = MenuItem::with_id(
         handle,
         "protection_status",
-        "● Status: Protection Active",
+        &status_label,
         false, // Disabled / informative
         None::<&str>,
     )?;
@@ -73,7 +119,7 @@ pub fn setup_system_tray(app: &mut App) -> Result<TrayIcon, Box<dyn Error>> {
     // 3. Build Persistent System Tray Icon
     let tray = TrayIconBuilder::with_id("truthbeacon-main-tray")
         .icon(icon_image)
-        .tooltip("TruthBeacon — Community Impersonation Protection")
+        .tooltip(&tooltip_text)
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(move |app_handle, event| match event.id().as_ref() {
@@ -85,6 +131,7 @@ pub fn setup_system_tray(app: &mut App) -> Result<TrayIcon, Box<dyn Error>> {
                 log::info!("Safety circuit breaker reset via System Tray context menu");
             }
             "quit_app" => {
+                crate::diagnostics::graceful_shutdown();
                 app_handle.exit(0);
             }
             _ => {}
@@ -118,6 +165,13 @@ pub fn show_main_window(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_format_tray_status_summary_reflects_protection_state() {
+        let (label, tooltip) = format_tray_status_summary();
+        assert!(label.starts_with('●') || label.starts_with('○') || label.starts_with("⚠️"));
+        assert!(tooltip.contains("TruthBeacon"));
+    }
 
     #[test]
     fn test_multi_resolution_tray_assets_embedded_and_valid() {

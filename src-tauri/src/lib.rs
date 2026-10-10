@@ -2,6 +2,7 @@ pub mod circuit_breaker;
 pub mod commands;
 pub mod credentials;
 pub mod detection;
+pub mod diagnostics;
 pub mod gateway;
 pub mod models;
 pub mod storage;
@@ -95,6 +96,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_system_status,
+            get_health_diagnostics,
             list_benchmarks,
             get_benchmark,
             create_benchmark,
@@ -122,6 +124,11 @@ pub fn run() {
             check_for_updates,
             install_update
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running TruthBeacon application");
+        .build(tauri::generate_context!())
+        .expect("error while running TruthBeacon application")
+        .run(|_app_handle, event| {
+            if matches!(event, tauri::RunEvent::Exit | tauri::RunEvent::ExitRequested { .. }) {
+                diagnostics::graceful_shutdown();
+            }
+        });
 }

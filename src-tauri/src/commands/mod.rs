@@ -1203,6 +1203,12 @@ pub async fn install_update(app: tauri::AppHandle) -> Result<bool, CommandError>
     }
 }
 
+#[tauri::command]
+pub fn get_health_diagnostics() -> Result<crate::diagnostics::HealthDiagnosticReport, CommandError>
+{
+    Ok(crate::diagnostics::generate_health_diagnostics())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2136,5 +2142,15 @@ mod tests {
         // Valid payload passes validation
         let res4 = validate_notification_payload(&base_payload);
         assert!(res4.is_ok());
+    }
+
+    #[test]
+    fn test_get_health_diagnostics_command() {
+        let res = get_health_diagnostics();
+        assert!(res.is_ok(), "get_health_diagnostics must succeed");
+        let diag = res.unwrap();
+        assert!(!diag.database_path.is_empty());
+        assert!(!diag.os_name.is_empty());
+        assert!(diag.memory_budget_bytes > 0);
     }
 }
