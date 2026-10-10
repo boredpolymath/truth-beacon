@@ -50,3 +50,14 @@ scripts/.keys/
 *.pfx
 *.p12
 
+# AI Assistant & VibeDoctor configuration and rules
+.agents/
+.claude/
+.cursor/
+.github/copilot-instructions.md
+.github/instructions/
+.mcp.json
+.windsurfrules
+CLAUDE.md
+
+
