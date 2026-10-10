@@ -158,7 +158,7 @@ function renderTriageCards() {
       server_nickname: "Official Member",
       community_role: "Protected Leader",
       avatar_url: d.suspect_avatar_url,
-      user_id: "291039401928374829"
+      user_id: d.matched_benchmark_id || ""
     };
 
     const isCritical = d.risk_tier === 'critical';
@@ -318,7 +318,7 @@ function renderVaultGrid() {
         </div>
         <h3 style="color: var(--text-header); font-weight: 700; font-size: 1.15rem; margin-bottom: 6px;">No Protected Benchmarks Yet</h3>
         <p style="color: var(--text-secondary); font-size: 0.85rem; max-width: 440px; margin: 0 auto 18px;">
-          Add pastors, elders, or staff to create official ground-truth benchmarks that safeguard against imposter accounts.
+          Add server leaders, moderators, or staff to create official ground-truth benchmarks that safeguard against imposter accounts.
         </p>
         <button class="btn btn-primary" id="btn-empty-add-bm" style="display: inline-flex; align-items: center; gap: 8px; margin: 0 auto;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1587,7 +1587,7 @@ function initAutoUpdater() {
         if (manual) {
           if (updateStatusText) updateStatusText.textContent = 'Up to date ✓';
           setTimeout(() => {
-            if (updateStatusText) updateStatusText.textContent = `v${res?.current_version || '0.2.2'}`;
+            if (updateStatusText) updateStatusText.textContent = `v${res?.current_version || '0.3.0'}`;
           }, 2500);
         }
       }
@@ -1596,7 +1596,7 @@ function initAutoUpdater() {
       if (manual && updateStatusText) {
         updateStatusText.textContent = 'Check Failed';
         setTimeout(() => {
-          if (updateStatusText) updateStatusText.textContent = 'v0.2.2';
+          if (updateStatusText) updateStatusText.textContent = 'v0.3.0';
         }, 2500);
       }
     } finally {

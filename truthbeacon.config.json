@@ -1,7 +1,7 @@
 {
   "application": {
     "name": "TruthBeacon",
-    "version": "0.2.2",
+    "version": "0.3.0",
     "vendor": "Orange Heart Industries",
     "description": "Desktop Identity Ground-Truth & Impersonation Prevention Console"
   },

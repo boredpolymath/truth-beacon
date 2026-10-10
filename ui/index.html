@@ -35,7 +35,7 @@
       </div>
       <button class="status-pill status-pill-update" id="btn-check-update" title="Check for updates" style="cursor: pointer; background: transparent; border: 1px solid var(--border-color, rgba(255,255,255,0.12)); color: var(--text-primary); font-family: inherit; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px;">
         <span class="status-dot" id="dot-update" style="background: #5865f2; width: 7px; height: 7px; border-radius: 50%;"></span>
-        <span id="update-status-text">v0.2.2</span>
+        <span id="update-status-text">v0.3.0</span>
       </button>
     </div>
   </header>
@@ -466,7 +466,7 @@
             <div class="step-badge">3</div>
             <div class="step-content">
               <h4>Generate Bot Invite URL & Add to Your Server</h4>
-              <p>Generate an official Discord OAuth2 invite link to bring your bot into your church or community server with necessary moderation privileges:</p>
+              <p>Generate an official Discord OAuth2 invite link to bring your bot into your Discord server or community with necessary moderation privileges:</p>
               <ol class="step-instructions-list">
                 <li>In the left sidebar of the Developer Portal, go to <strong>"OAuth2" &rarr; "URL Generator"</strong>.</li>
                 <li>Under <strong>Scopes</strong>, check only: <code>bot</code>.</li>
@@ -576,7 +576,7 @@
       <div class="modal-header">
         <div class="modal-title-group">
           <h3 id="modal-bm-title">Protect a Community Leader</h3>
-          <p>Add a pastor, staff member, or moderator to watch for impersonators</p>
+          <p>Add a server owner, administrator, staff member, or moderator to watch for impersonators</p>
         </div>
         <button class="modal-close-btn" id="btn-close-bm-modal" aria-label="Close dialog">&times;</button>
       </div>
@@ -602,10 +602,10 @@
         <div class="form-group">
           <label for="bm-input-role" class="form-label">Server Role *</label>
           <select id="bm-input-role" class="form-select">
-            <option value="Executive Pastor">Executive Pastor / Server Owner</option>
+            <option value="Server Owner">Server Owner / Administrator</option>
             <option value="Lead Moderator">Lead Moderator / Staff</option>
-            <option value="Associate Pastor">Associate Pastor</option>
-            <option value="Ministry Leader">Ministry Leader / Volunteer</option>
+            <option value="Community Moderator">Community Moderator</option>
+            <option value="Verified VIP">Verified VIP / Core Member</option>
             <option value="Official System Service">Official Bot / System Service</option>
           </select>
         </div>
@@ -623,7 +623,7 @@
             Tags (Optional)
             <span class="form-label-hint">e.g. Core Staff, Verified VIP</span>
           </label>
-          <input type="text" id="bm-input-tags" value="Core Staff, Verified VIP" class="form-input">
+          <input type="text" id="bm-input-tags" placeholder="e.g. Core Staff, Verified VIP" class="form-input">
         </div>
       </div>
       <div class="modal-footer">
@@ -659,10 +659,10 @@
           <label for="alt-input-purpose" class="form-label">Account Purpose *</label>
           <select id="alt-input-purpose" class="form-select">
             <option value="Mobile Device">Secondary Mobile Phone Account</option>
-            <option value="Sanctuary Media iPad">Sanctuary Media / Projection iPad</option>
+            <option value="Media Projection Device">Media / Presentation Device</option>
             <option value="Bot Integration Test">Integration / Bot Testing Account</option>
             <option value="Personal Backup Account">Personal Backup Account (Known to Staff)</option>
-            <option value="Volunteer Rotation Alt">Volunteer Rotation Account</option>
+            <option value="Staff Rotation Alt">Staff / Volunteer Rotation Account</option>
           </select>
         </div>
 

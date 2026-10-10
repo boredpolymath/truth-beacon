@@ -170,7 +170,7 @@ export async function invokeCommand(cmd, args = {}) {
         id: `aud_${now}`,
         timestamp: now,
         action: auditAction,
-        guild_id: inc?.guild_id || "guild_crossroads_9921",
+        guild_id: inc?.guild_id || "guild_production_9921",
         operator_id: operator_id || "LocalSteward",
         target_user_id: inc?.discrepancy?.suspect_user_id || "user_unknown",
         incident_id,
@@ -283,7 +283,7 @@ export async function invokeCommand(cmd, args = {}) {
         throw { code: "VALIDATION_FAILED", message: "Bot token is required to discover server guilds." };
       }
       const currentGid = mockDiscordConfig.guild_id || "999888777666555444";
-      const currentName = mockDiscordConfig.guild_name || "Crossroads Community Sanctuary";
+      const currentName = mockDiscordConfig.guild_name || "Primary Community Server";
       return [
         {
           id: currentGid,
@@ -293,7 +293,7 @@ export async function invokeCommand(cmd, args = {}) {
         },
         {
           id: "123456789012345678",
-          name: "TruthBeacon Ops Alpha",
+          name: "Operations & Staff Server",
           icon: null,
           permissions: "1099511628806"
         }
@@ -309,7 +309,7 @@ export async function invokeCommand(cmd, args = {}) {
       if (!token || token.length < 15) {
         throw { code: "VALIDATION_FAILED", message: "Invalid bot token format: Discord Bot tokens must contain 3 segments." };
       }
-      const guildName = targetGid ? `Server (${targetGid})` : "Crossroads Community Sanctuary";
+      const guildName = targetGid ? `Server (${targetGid})` : "Primary Community Server";
       return {
         bot_id: "109827364512938475",
         bot_name: "TruthBeacon Guard",
@@ -425,7 +425,7 @@ export async function invokeCommand(cmd, args = {}) {
     case 'check_for_updates': {
       return {
         should_update: false,
-        current_version: "0.2.2",
+        current_version: "0.3.0",
         latest_version: null,
         release_notes: null,
         release_date: null

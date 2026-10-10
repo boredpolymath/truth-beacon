@@ -1,3 +1,34 @@
+# TruthBeacon v0.3.0 — Universal Community Moderation Architecture, Manifest Cryptographic Sync & Production Release
+**Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
+
+---
+
+### Overview
+TruthBeacon v0.3.0 delivers a fully generalized community moderation architecture, eradicating legacy placeholder defaults in favor of standard universal Discord administration roles (`Server Owner / Administrator`, `Lead Moderator / Staff`, `Community Moderator`, `Verified VIP / Core Member`, `Official Bot / System Service`, `Media / Presentation Device`). Additionally, this release synchronizes public distribution manifests, resolves website checksum verification mismatches, establishes continuous cryptographic asset alignment across GitHub Pages and release artifacts, and verifies 100% test compliance across all 208 test suites.
+
+---
+
+### What's New & Hardened in v0.3.0
+
+#### 1. Universal Community Moderation Architecture
+- **Sanitized Administration Roles**: Fully neutralized role selectors and guidance terminology across the Protect Member modal (`Server Owner / Administrator`, `Lead Moderator / Staff`, `Community Moderator`, `Verified VIP / Core Member`, `Official Bot / System Service`).
+- **Clean Alt Device Options**: Replaced device examples with generalized operational options (`Media / Presentation Device`, `Staff / Volunteer Rotation Account`, `Secondary Mobile Phone Account`).
+- **Zero Placeholder Default Leakage**: Removed hardcoded pre-filled tag values (`value="Core Staff, Verified VIP"`) in favor of clean form placeholders, preventing unvetted data from being saved inadvertently.
+- **Normalized Mock & Offline Fallbacks**: Aligned local offline IPC fallbacks and demo fixtures to professional standard identities (`Alex Rivera`, `CommunityHelpDesk`, `Primary Community Server`).
+
+#### 2. Cryptographic Manifest & Distribution Asset Synchronization
+- **Website Checksum Alignment**: Fixed checksum desynchronizations on the public website for macOS Universal DMG and macOS Portable ZIP archives.
+- **Dual-License URL Remediation**: Repointed documentation and website links to `LICENSE-MIT` to prevent 404 navigation errors.
+- **Automated Two-Way Manifest Sync**: Enhanced `scripts/sign_release_artifacts.py` to automatically mirror `SHA256SUMS.txt`, `RELEASE_MANIFEST.md`, and OpenPGP detached signatures (`.asc`) directly into `website/assets/`.
+
+#### 3. Verification & Compliance
+- **100% Pass Rate**: Maintained 208/208 tests passing in `cargo test --all-targets`.
+- **Zero Warnings**: Verified with `cargo clippy -- -D warnings`.
+- **5/5 Packaging Stages**: Verified drag-and-drop DMG layouts, icon packs, and FreeDesktop desktop entries.
+- **Red Team Mitigation**: 100% mitigation rate across script-mixed homoglyphs and DCT perceptual clone evasion attempts.
+
+---
+
 # TruthBeacon v0.2.2 — Hermetic Test Storage Isolation, Professional UI Guidance & Pristine Clean-Slate Architecture
 **Orange Heart Industries — Identity Ground-Truth & Community Stewardship**
 

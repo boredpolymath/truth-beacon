@@ -115,7 +115,11 @@ def update_checksums():
                 manifest_content = pattern.sub(rf"\1 `{csum}` \2", manifest_content)
             elif f"`{fname}`" not in manifest_content:
                 table_row = f"| `{fname}` | Universal 2 (Intel + Apple Silicon) | ~{int(size_mb)} MB | `{csum}` | Release deliverable |\n"
-                manifest_content = manifest_content.replace("\n---\n", f"{table_row}\n---\n", 1)
+                table_header_marker = "| :--- | :--- | :--- | :--- | :--- |\n"
+                if table_header_marker in manifest_content:
+                    manifest_content = manifest_content.replace(table_header_marker, f"{table_header_marker}{table_row}", 1)
+                else:
+                    manifest_content += f"\n{table_row}"
 
         with open(MANIFEST_FILE, "w", encoding="utf-8") as f:
             f.write(manifest_content)
@@ -264,6 +268,16 @@ def main():
 
     update_checksums()
     gpg_sign_files()
+
+    website_assets_dir = os.path.join(ROOT_DIR, "website", "assets")
+    if os.path.exists(website_assets_dir):
+        print(f"\n==> Synchronizing release verification assets to {website_assets_dir}...")
+        for sync_file in ["SHA256SUMS.txt", "SHA256SUMS.txt.asc", "RELEASE_MANIFEST.md", "RELEASE_MANIFEST.md.asc"]:
+            src = os.path.join(RELEASE_DIR, sync_file)
+            if os.path.exists(src):
+                shutil.copy2(src, os.path.join(website_assets_dir, sync_file))
+                print(f"  ✓ Synced {sync_file} to website/assets/")
+
     print("======================================================================")
     print(" Artifact Integrity & Cryptographic Signatures Complete!")
     print("======================================================================")
